@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import SegmentedProgress from "./SegmentedProgress";
 import ArcSourceBadge from "./ArcSourceBadge";
 import { formatNumber } from "@/lib/format";
@@ -28,7 +29,10 @@ export default function StreamCard({ stream }: StreamCardProps) {
   const vaultStatus = fillPercent >= 80 ? "success" : fillPercent >= 40 ? "neutral" : "warning";
 
   return (
-    <div className="bg-surface border border-border rounded-card p-lg group transition-colors duration-200 ease-nothing hover:border-border-visible">
+    <Link
+      href={`/invest/${stream.id}`}
+      className="block bg-surface border border-border rounded-card p-lg group transition-colors duration-200 ease-nothing hover:border-border-visible"
+    >
       {/* Top row: ENS name + status */}
       <div className="flex items-start justify-between mb-sm">
         <div>
@@ -131,6 +135,6 @@ export default function StreamCard({ stream }: StreamCardProps) {
           {stream.feePercent}% FEES
         </span>
       </div>
-    </div>
+    </Link>
   );
 }

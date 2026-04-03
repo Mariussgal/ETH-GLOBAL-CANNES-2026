@@ -14,14 +14,7 @@ export default function HeroSection() {
     <>
       <DataTicker />
       <section className="min-h-[calc(100vh-32px)] flex flex-col pt-8 md:pt-12 lg:pt-16 px-xl pb-2xl relative overflow-hidden">
-        {/* Global Film Grain */}
-        <div className="noise-grain" />
-        
-        {/* Cinematic Grain / Scanline */}
-        <div className="scanline-overlay pointer-events-none" />
-        
-        {/* Dot-matrix background */}
-        <div className="absolute inset-0 dot-grid-subtle opacity-[0.04] pointer-events-none" />
+
 
         <div className="relative z-10 w-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-2xl items-center">
           {/* Left Column: Top Text & CTAs */}

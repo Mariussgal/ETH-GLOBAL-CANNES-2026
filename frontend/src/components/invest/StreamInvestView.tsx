@@ -2,65 +2,63 @@
 
 import Header from "@/components/Header";
 import SegmentedProgress from "@/components/SegmentedProgress";
-import ArcSourceBadge from "@/components/ArcSourceBadge";
-import StreamLiveEngine from "@/components/invest/StreamLiveEngine";
 import type { StreamData } from "@/components/StreamCard";
 import { formatNumber } from "@/lib/format";
-import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 
 interface StreamInvestViewProps {
   stream: StreamData;
 }
 
-const TARGET_UNIT_USDC = 1;
-
-function projectedApyPercent(stream: StreamData): string {
-  const raw =
-    stream.feePercent * 2.15 +
-    stream.discount * 0.12 +
-    Math.min(8, (1 / stream.priceFloor) * 0.35);
-  return Math.max(4, Math.min(48, raw)).toFixed(1);
-}
-
 export default function StreamInvestView({ stream }: StreamInvestViewProps) {
   const [usdcRaw, setUsdcRaw] = useState("");
-
-  const totalYst = useMemo(
-    () => stream.vaultFill / stream.priceFloor,
-    [stream]
-  );
-
-  const priceFloorFromVault = useMemo(
-    () => stream.vaultFill / totalYst,
-    [stream.vaultFill, totalYst]
-  );
-
-  const fillPercent = Math.round(
-    (stream.vaultFill / stream.vaultTarget) * 100
-  );
-
-  const vaultStatus =
-    fillPercent >= 80 ? "success" : fillPercent >= 40 ? "neutral" : "warning";
 
   const usdcNum = useMemo(() => {
     const n = parseFloat(usdcRaw.replace(/,/g, ""));
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }, [usdcRaw]);
 
-  const ystReceived = usdcNum > 0 ? usdcNum / stream.priceFloor : 0;
+  // Derived metrics based on prompt equations
+  const TARGET_DISTRIBUTION = stream.vaultTarget / (1 - stream.discount / 100);
+  const HISTORICAL_ANNUAL_REVENUE = TARGET_DISTRIBUTION / (stream.feePercent / 100);
+  
+  const projectedYield = ((TARGET_DISTRIBUTION - stream.vaultTarget) / stream.vaultTarget) * 100;
+  
+  const totalYst = stream.vaultTarget; // 1:1 mapping based on "78,000 YST units for $78k"
+  const pricePerUnit = 1.00; // Fixed as per prompt
+  
+  const ystReceived = usdcNum > 0 ? usdcNum / pricePerUnit : 0;
+  const revenueSharePct = totalYst > 0 ? (ystReceived / totalYst) * stream.feePercent : 0;
 
-  const revenueSharePct =
-    totalYst + ystReceived > 0
-      ? (ystReceived / (totalYst + ystReceived)) * stream.feePercent
-      : 0;
+  const isLive = stream.vaultFill >= stream.vaultTarget;
+  const [accumulatedYield, setAccumulatedYield] = useState(142.08);
+  const [feedItems, setFeedItems] = useState<{ id: number; time: string; amount: number; protocol: string }[]>([]);
+  const feedCounterRef = useRef(0);
 
-  const apyDisplay = projectedApyPercent(stream);
-
-  const statusLabel = stream.defaulted
-    ? "DEFAULTED"
-    : "AUCTION_ACTIVE";
+  useEffect(() => {
+    if (!isLive) return;
+    
+    const interval = setInterval(() => {
+      const drop = Math.random() * 0.5 + 0.01;
+      setAccumulatedYield(prev => prev + drop);
+      
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+      
+      setFeedItems(prev => {
+        const newItem = {
+          id: feedCounterRef.current++,
+          time: timeStr,
+          amount: parseFloat(drop.toFixed(4)),
+          protocol: stream.ensName.split('.')[0].toUpperCase()
+        };
+        return [newItem, ...prev].slice(0, 7);
+      });
+    }, 2500);
+    
+    return () => clearInterval(interval);
+  }, [isLive, stream.ensName]);
 
   return (
     <div className="min-h-screen bg-black text-text-primary">
@@ -69,230 +67,323 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
       <main className="px-md sm:px-xl py-2xl max-w-[1200px] mx-auto">
         <Link
           href="/#marketplace"
-          className="font-mono text-label uppercase tracking-label text-text-disabled hover:text-text-secondary transition-colors duration-200 ease-nothing"
+          className="font-mono text-label uppercase tracking-label text-text-disabled hover:text-text-secondary transition-colors duration-200 ease-nothing mb-xl inline-block"
         >
           ← MARKETPLACE
         </Link>
 
-        {/* ── 1. En-tête confiance ── */}
-        <header className="mt-xl border border-border p-xl dot-grid rounded-technical">
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-lg">
+        {/* L'Anatomie du Deal (Header) */}
+        <header className="mb-2xl border border-border p-xl rounded-technical dot-grid flex flex-col md:flex-row gap-xl md:items-center md:justify-between bg-black">
+          <div className="flex flex-wrap items-center gap-md">
+            <h1 className="font-grotesk text-display-md sm:text-display-lg text-text-display leading-none">
+              {stream.ensName}
+            </h1>
+            <span className={`inline-flex items-center px-md py-[4px] border font-mono text-[10px] sm:text-label uppercase tracking-label rounded-sm ${
+              isLive ? "border-success text-success animate-pulse" : "border-text-display text-text-display"
+            }`}>
+              {isLive ? "[v] OPERATIONAL / LIVE_REVENUE_FLOW" : "ENS_VERIFIED"}
+            </span>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-xl md:gap-2xl font-mono text-body-sm">
             <div>
-              <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-sm">
-                PROTOCOL
-              </span>
-              <div className="flex flex-wrap items-center gap-md gap-y-sm">
-                <h1 className="font-grotesk text-display-md sm:text-display-lg text-text-display font-medium tracking-snug">
-                  {stream.ensName}
-                </h1>
-                <span className="inline-flex items-center gap-xs px-md py-sm border-2 border-text-display bg-black font-mono text-label uppercase tracking-label text-text-display">
-                  ENS_VERIFIED
-                </span>
-              </div>
-              <p className="font-mono text-caption text-text-disabled mt-md uppercase">
-                SLUG: {stream.protocol}
-              </p>
+              <span className="text-text-disabled block mb-xs uppercase text-label tracking-label">OFFERING</span>
+              <span className="text-text-display uppercase">{stream.feePercent}% FUTURE_REVENUE</span>
             </div>
-            <div className="flex flex-col items-start lg:items-end gap-sm">
-              <span className="font-mono text-label uppercase tracking-label text-text-secondary">
-                STATUS
-              </span>
-              <div className="flex items-center gap-sm">
-                <span className="relative flex h-[8px] w-[8px]">
-                  {!stream.defaulted && (
-                    <>
-                      <span className="absolute inline-flex h-full w-full rounded-full bg-text-display opacity-50 animate-ping" />
-                      <span className="relative inline-flex h-[8px] w-[8px] rounded-full bg-text-display" />
-                    </>
-                  )}
-                  {stream.defaulted && (
-                    <span className="relative inline-flex h-[8px] w-[8px] rounded-full bg-accent" />
-                  )}
-                </span>
-                <span className="font-mono text-body-sm text-text-display uppercase tracking-wide">
-                  {statusLabel}
-                </span>
-              </div>
+            <div>
+              <span className="text-text-disabled block mb-xs uppercase text-label tracking-label">TERM</span>
+              <span className="text-text-display uppercase block">{Math.round(stream.duration / 30)} MONTHS</span>
+              <span className="text-text-disabled text-[10px] sm:text-[11px] uppercase tracking-wider block mt-xs">EXPIRES_IN: {Math.max(stream.duration - 48, 0)} DAYS</span>
             </div>
           </div>
         </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-2xl mt-2xl items-start">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-2xl items-start">
           <div className="flex flex-col gap-2xl">
-            {/* ── 2. Analyse du deal ── */}
-            <section className="border border-border p-xl rounded-technical">
-              <h2 className="font-mono text-label uppercase tracking-label text-text-secondary mb-lg">
-                THE ARBITRAGE
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-xl mb-xl">
-                <div className="border border-border-visible p-md bg-black">
-                  <span className="font-mono text-label uppercase tracking-label text-text-disabled block mb-sm">
-                    CURRENT PRICE (DISCOUNTED)
-                  </span>
-                  <span className="font-mono text-display-md sm:text-display-lg text-text-display tabular-nums">
-                    ${stream.priceFloor.toFixed(4)}
-                  </span>
-                  <span className="font-mono text-caption text-text-disabled block mt-sm uppercase">
-                    per YST
-                  </span>
-                </div>
-                <div className="border border-border-visible p-md bg-black">
-                  <span className="font-mono text-label uppercase tracking-label text-text-disabled block mb-sm">
-                    TARGET VALUE
-                  </span>
-                  <span className="font-mono text-display-md sm:text-display-lg text-text-display tabular-nums">
-                    ${TARGET_UNIT_USDC.toFixed(2)}
-                  </span>
-                  <span className="font-mono text-caption text-text-disabled block mt-sm uppercase">
-                    USDC / future revenue unit
-                  </span>
-                </div>
-              </div>
+            
+            {isLive ? (
+              <>
+                <section className="border border-border p-xl rounded-technical bg-black grid grid-cols-1 md:grid-cols-3 gap-xl md:divide-x divide-border-visible dot-grid">
+                  {/* 1. Offering */}
+                  <div className="font-mono text-caption sm:text-body-sm">
+                    <h3 className="text-caption text-text-secondary uppercase mb-lg tracking-label">1. THE OFFERING</h3>
+                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Protocol</span><span className="text-text-display">{stream.ensName}</span></div>
+                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Offering</span><span className="text-text-display">{stream.feePercent}% REVENUE</span></div>
+                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Supply</span><span className="text-text-display tabular-nums">{formatNumber(totalYst)} YST</span></div>
+                    <div className="flex justify-between"><span className="text-text-disabled uppercase">Expiry</span><span className="text-text-display">{Math.max(stream.duration - 48, 0)} DAYS</span></div>
+                  </div>
+                  {/* 2. Valuation Engine */}
+                  <div className="font-mono text-caption sm:text-body-sm md:pl-xl">
+                    <h3 className="text-caption text-text-secondary uppercase mb-lg tracking-label">2. VALUATION ENGINE</h3>
+                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Target_Dist</span><span className="text-text-display tabular-nums ml-2">${formatNumber(TARGET_DISTRIBUTION)}</span></div>
+                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Velocity</span><span className="text-success tabular-nums ml-2 font-bold" style={{ textShadow: "0 0 5px rgba(34,197,94,0.3)" }}>${formatNumber(Math.round(TARGET_DISTRIBUTION / stream.duration))} / DAY</span></div>
+                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Risk_Score</span><span className="text-text-display ml-2">{stream.discount}%</span></div>
+                    <div className="flex justify-between"><span className="text-text-disabled uppercase">Hist_Rev</span><span className="text-text-disabled tabular-nums ml-2">${formatNumber(HISTORICAL_ANNUAL_REVENUE)}</span></div>
+                  </div>
+                  {/* 3. Live Evolution */}
+                  <div className="font-mono text-caption sm:text-body-sm md:pl-xl">
+                    <h3 className="text-caption text-text-secondary uppercase mb-lg tracking-label">3. LIVE EVOLUTION</h3>
+                    <div className="text-text-disabled mb-xs uppercase">USDC RAISED (100%)</div>
+                    <div className="text-text-display tabular-nums font-mono text-[14px] sm:text-[16px] mb-lg">{formatNumber(stream.vaultTarget)} / {formatNumber(stream.vaultTarget)}</div>
+                    <SegmentedProgress value={stream.vaultTarget} max={stream.vaultTarget} segments={12} status="success" size="standard" variant="blocks" animated={false} />
+                  </div>
+                </section>
 
-              <div className="border-t border-border pt-lg mb-lg">
-                <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-xs">
-                  PRICE FLOOR (USDC_IN_VAULT / TOTAL_YST)
-                </span>
-                <p className="font-mono text-body-sm text-text-primary tabular-nums">
-                  ${formatNumber(Math.round(stream.vaultFill))} /{" "}
-                  {totalYst.toLocaleString("en-US", {
-                    maximumFractionDigits: 2,
-                  })}{" "}
-                  YST ≈{" "}
-                  <span className="text-text-display">
-                    ${priceFloorFromVault.toFixed(4)}
-                  </span>
-                </p>
-              </div>
+                {/* Live Activity Feed */}
+                <section className="border border-border rounded-technical bg-black flex flex-col relative overflow-hidden flex-1">
+                  <div className="p-xl border-b border-border-visible flex justify-between items-center bg-black z-10">
+                     <h2 className="font-mono text-label uppercase tracking-label text-text-secondary flex items-center gap-sm">
+                      <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                      LIVE ACTIVITY FEED
+                     </h2>
+                     <span className="font-mono text-caption text-text-disabled">LAST_FEE_RECEIVED: just now</span>
+                  </div>
+                  <div className="p-xl h-[300px] font-mono text-body-sm relative z-0">
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black to-transparent pointer-events-none z-10" />
+                    <div className="flex flex-col gap-md overflow-hidden h-full">
+                      {feedItems.length > 0 ? feedItems.map((item, idx) => (
+                        <div key={item.id} className="flex gap-md w-full transition-all duration-300 transform translate-y-0 opacity-100" style={{ opacity: 1 - (idx * 0.15) }}>
+                          <span className="text-text-disabled whitespace-nowrap">[{item.time}]</span>
+                          <span className="text-success flex-1" style={{ textShadow: "0 0 5px rgba(34,197,94,0.3)" }}>+{item.amount.toFixed(4)} USDC</span>
+                          <span className="text-text-secondary">({item.protocol})</span>
+                        </div>
+                      )) : (
+                        <div className="text-text-disabled animate-pulse">Waiting for network routing...</div>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              </>
+            ) : (
+              <>
+                {/* 1. The Offering */}
+                <section className="border border-border p-xl rounded-technical dot-grid">
+                  <h2 className="font-mono text-label uppercase tracking-label text-text-secondary mb-xl">
+                    1. THE OFFERING
+                  </h2>
+                  
+                  <div className="font-mono text-body-sm">
+                    <div className="flex items-center justify-between border-b border-border-visible py-md">
+                      <span className="text-text-disabled">PROTOCOL</span>
+                      <span className="text-text-display">{stream.ensName}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-border-visible py-md">
+                      <span className="text-text-disabled">OFFERING</span>
+                      <span className="text-text-display">{stream.feePercent}% of all future revenue.</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-border-visible py-md">
+                      <span className="text-text-disabled">SUPPLY</span>
+                      <span className="text-text-display">{formatNumber(totalYst)} YST Units.</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-md">
+                      <span className="text-text-disabled">PRICE</span>
+                      <span className="text-text-display">{pricePerUnit.toFixed(2)} USDC / Unit.</span>
+                    </div>
+                  </div>
+                </section>
 
-              <div className="border border-border-visible p-md bg-black">
-                <span className="font-mono text-label uppercase tracking-label text-text-disabled block mb-sm">
-                  PROJECTED APY
-                </span>
-                <p className="font-mono text-display-xl leading-none text-text-display tabular-nums tracking-tight">
-                  {apyDisplay}%
-                </p>
-              </div>
-            </section>
+                {/* 2. The Valuation Engine */}
+                <section className="border border-border rounded-technical overflow-hidden">
+                  <div className="p-xl border-b border-border bg-black">
+                    <h2 className="font-mono text-label uppercase tracking-label text-text-secondary lg:mb-0">
+                      2. THE VALUATION ENGINE
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+                    <div className="p-xl bg-black">
+                      <span className="font-mono text-label uppercase tracking-label text-text-disabled block mb-lg">
+                        HISTORICAL_ANNUAL_REVENUE
+                      </span>
+                      <span className="font-mono text-[20px] sm:text-[24px] text-text-display headline-tight block">
+                        ${formatNumber(HISTORICAL_ANNUAL_REVENUE)}
+                      </span>
+                    </div>
+                    <div className="p-xl bg-black">
+                      <span className="font-mono text-label uppercase tracking-label text-text-disabled block mb-lg">
+                        DISCOUNTED_VALUATION
+                      </span>
+                      <span className="font-mono text-[20px] sm:text-[24px] text-text-display headline-tight block mb-md tabular-nums">
+                        ${formatNumber(stream.vaultTarget)}
+                      </span>
+                      <span className="font-mono text-caption text-text-disabled uppercase">
+                        (Chainlink Risk Score: {stream.discount}%)
+                      </span>
+                    </div>
+                    <div className="p-xl bg-black">
+                      <span className="font-mono text-label uppercase tracking-label text-text-disabled block mb-lg">
+                        TARGET_DISTRIBUTION
+                      </span>
+                      <span className="font-mono text-[20px] sm:text-[24px] text-text-display headline-tight block mb-md tabular-nums">
+                        ${formatNumber(TARGET_DISTRIBUTION)}
+                      </span>
+                      <span className="font-mono text-caption text-text-disabled uppercase">
+                        (Total projected revenue)
+                      </span>
+                    </div>
+                  </div>
+                </section>
 
-            {/* ── 3. Live engine + vault fill ── */}
-            <section>
-              <h2 className="font-mono text-label uppercase tracking-label text-text-secondary mb-md">
-                FLOW ENGINE
-              </h2>
-              <StreamLiveEngine stream={stream} />
-              <div className="mt-md border border-border p-md rounded-technical bg-black">
-                <div className="flex justify-between items-baseline mb-sm">
-                  <span className="font-mono text-label uppercase tracking-label text-text-secondary">
-                    VAULT FILL
-                  </span>
-                  <span className="font-mono text-body-sm text-text-primary tabular-nums">
-                    {fillPercent}%
-                  </span>
-                </div>
-                <SegmentedProgress
-                  value={stream.vaultFill}
-                  max={stream.vaultTarget}
-                  segments={28}
-                  status={vaultStatus}
-                  size="standard"
-                  variant="blocks"
-                  animated
-                />
-                <div className="flex justify-between mt-xs font-mono text-caption text-text-disabled tabular-nums">
-                  <span>${formatNumber(stream.vaultFill)}</span>
-                  <span>${formatNumber(stream.vaultTarget)}</span>
-                </div>
-              </div>
-            </section>
+                {/* 3. Live Evolution */}
+                <section className="border border-border p-xl sm:p-2xl rounded-technical bg-black text-center flex flex-col items-center justify-center">
+                  <h2 className="font-mono text-label uppercase tracking-label text-text-secondary mb-2xl w-full text-left">
+                    3. LIVE EVOLUTION (SIMULATION)
+                  </h2>
+                  
+                  <div className="mb-2xl w-full">
+                    <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-lg">
+                      USDC RAISED ({Math.round((stream.vaultFill / stream.vaultTarget) * 100)}%)
+                    </span>
+                    <span className="font-mono text-display-sm sm:text-display-lg text-text-display leading-none tabular-nums tracking-snug">
+                      {formatNumber(Math.round(stream.vaultFill))} / {formatNumber(stream.vaultTarget)}
+                    </span>
+                  </div>
+                  
+                  <div className="w-full">
+                    <SegmentedProgress
+                        value={stream.vaultFill}
+                        max={stream.vaultTarget}
+                        segments={48}
+                        status="neutral"
+                        size="standard"
+                        variant="blocks"
+                        animated={true}
+                    />
+                  </div>
+                </section>
 
-            {/* ── 5. Collatéral & Arc ── */}
-            <section className="border border-border p-xl rounded-technical flex flex-col sm:flex-row sm:items-center sm:justify-between gap-lg">
-              <div>
-                <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-sm">
-                  COLLATERAL
-                </span>
-                <span className="font-mono text-body-sm text-text-display uppercase">
-                  SAFETY_DEPOSIT: 10% LOCKED
-                </span>
-                <p className="font-mono text-caption text-text-disabled mt-sm max-w-md">
-                  Issuer collateral locked for the auction period.
-                </p>
-              </div>
-              <div className="flex items-center gap-sm border border-border px-md py-sm bg-black">
-                <Image
-                  src="/arc_logo_final.png"
-                  alt="Arc"
-                  width={20}
-                  height={20}
-                  className="brightness-0 invert opacity-80"
-                />
-                <span className="font-mono text-label uppercase tracking-label text-text-secondary">
-                  POWERED BY ARC
-                </span>
-              </div>
-            </section>
-
-            <div className="flex flex-wrap gap-sm">
-              <span className="font-mono text-caption uppercase text-text-disabled">
-                SOURCES
-              </span>
-              {stream.sources.map((src) => (
-                <ArcSourceBadge key={src} chain={src} />
-              ))}
-            </div>
+                {/* 4. The Upside */}
+                <section className="p-xl border border-border rounded-technical flex flex-col md:flex-row md:items-start md:justify-between bg-surface gap-xl">
+                  <div className="flex-1">
+                    <h2 className="font-mono text-label uppercase tracking-label text-text-secondary mb-md">
+                      4. THE UPSIDE
+                    </h2>
+                    <div className="font-mono text-caption text-text-disabled uppercase max-w-lg mb-sm">
+                      Note: You are paying ${formatNumber(stream.vaultTarget)} for a right to ${formatNumber(TARGET_DISTRIBUTION)} of actual cash-flow.
+                    </div>
+                    <div className="font-mono text-[10px] sm:text-[11px] text-accent uppercase tracking-wide max-w-lg">
+                      * Projection assumes revenues are maintained. Actual yields are dynamic and may perform above or below estimates.
+                    </div>
+                  </div>
+                  <div className="md:text-right border-t md:border-t-0 md:border-l border-border-visible pt-md md:pt-0 md:pl-xl whitespace-nowrap">
+                    <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-xs">
+                      PROJECTED_YIELD
+                    </span>
+                    <span className="font-mono text-display-sm sm:text-[32px] text-success tabular-nums leading-none">
+                      +{projectedYield.toFixed(1)}%
+                    </span>
+                  </div>
+                </section>
+              </>
+            )}
           </div>
 
-          {/* ── 4. Terminal d’investissement ── */}
-          <aside className="border border-border p-xl lg:p-2xl rounded-technical lg:sticky lg:top-xl dot-grid">
-            <h2 className="font-mono text-label uppercase tracking-label text-text-secondary mb-xl">
-              INVEST
-            </h2>
-            <label
-              htmlFor="usdc-in"
-              className="font-mono text-label uppercase tracking-label text-text-secondary block mb-sm"
-            >
-              AMOUNT (USDC)
-            </label>
-            <input
-              id="usdc-in"
-              type="text"
-              inputMode="decimal"
-              placeholder="0"
-              value={usdcRaw}
-              onChange={(e) =>
-                setUsdcRaw(e.target.value.replace(/[^\d.]/g, ""))
-              }
-              className="w-full bg-black border border-border-visible px-md py-sm font-mono text-body-sm text-text-primary tabular-nums outline-none focus:border-text-secondary transition-colors duration-200 ease-nothing rounded-technical mb-lg"
-            />
+           {/* 5. Interaction */}
+           <aside className="border border-border p-xl lg:p-2xl rounded-technical lg:sticky lg:top-xl bg-black dot-grid">
+             <h2 className="font-mono text-label uppercase tracking-label text-text-secondary mb-xl">
+              5. {isLive ? "EARNINGS CONSOLE" : "INTERACTION"}
+             </h2>
+             
+             {isLive ? (
+               <div className="flex flex-col gap-xl">
+                 <div className="border border-success p-xl bg-success/5 shadow-[0_0_15px_rgba(34,197,94,0.1)] relative overflow-hidden group">
+                   <div className="absolute inset-0 bg-success/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
+                   
+                   <span className="font-mono text-caption text-success uppercase block mb-sm relative z-10">
+                     MY_ACCUMULATED_YIELD
+                   </span>
+                   <div className="font-mono text-display-md sm:text-[40px] text-success leading-none tabular-nums shadow-success relative z-10 mb-xl" style={{ textShadow: "0 0 10px rgba(34,197,94,0.5)" }}>
+                     {accumulatedYield.toFixed(4)} USDC
+                   </div>
 
-            <div className="border border-border p-md bg-black mb-lg">
-              <p className="font-mono text-caption text-text-secondary leading-relaxed">
-                You will receive{" "}
-                <span className="text-text-display tabular-nums">
-                  {ystReceived.toLocaleString("en-US", {
-                    maximumFractionDigits: 4,
-                  })}
-                </span>{" "}
-                YST tokens, granting you{" "}
-                <span className="text-text-display tabular-nums">
-                  {revenueSharePct.toFixed(2)}
-                </span>
-                % of future revenues.
-              </p>
-            </div>
+                   {/* Breakeven Indicator */}
+                   <div className="relative z-10 pt-md border-t border-success/30">
+                     <div className="flex justify-between items-end mb-xs">
+                        <span className="font-mono text-[10px] text-success/80 uppercase tracking-widest">BREAKEVEN_PROGRESS</span>
+                        <span className="font-mono text-[10px] text-success tabular-nums">{((accumulatedYield / 500) * 100).toFixed(2)}%</span>
+                     </div>
+                     <div className="w-full h-[6px] bg-black border border-success/30 overflow-hidden">
+                       <div className="h-full bg-success transition-all duration-300 shadow-[0_0_8px_rgba(34,197,94,0.8)]" style={{ width: `${Math.min((accumulatedYield / 500) * 100, 100)}%` }} />
+                     </div>
+                     <div className="flex justify-between mt-sm text-text-disabled">
+                        <span className="font-mono text-[9px] uppercase">ROI 0</span>
+                        <span className="font-mono text-[9px] uppercase">INITIAL: 500.00 USDC</span>
+                     </div>
+                   </div>
+                 </div>
 
-            <button
-              type="button"
-              className="w-full font-mono text-[11px] sm:text-[12px] uppercase tracking-[0.06em] px-md py-lg rounded-technical bg-text-display text-black transition-opacity duration-200 ease-nothing hover:opacity-90 min-h-[52px]"
-            >
-              EXECUTE INVESTMENT &amp; MINT YST
-            </button>
+                 <div className="border border-border p-md bg-black">
+                   <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between mb-sm pb-sm border-b border-border-visible">
+                     <span>VAULT_LIQUIDITY:</span>
+                     <span className="text-text-display tabular-nums cursor-default hover:text-success transition-colors">345,000 USDC</span>
+                   </p>
+                   <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between mb-sm pb-sm border-b border-border-visible">
+                     <span>PRICE_FLOOR V4:</span>
+                     <span className="text-text-display tabular-nums">${stream.priceFloor.toFixed(4)}</span>
+                   </p>
+                   <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between">
+                     <span>ROUTING_STATUS:</span>
+                     <span className="text-success tabular-nums flex items-center gap-xs">
+                        <span className="w-[6px] h-[6px] rounded-full bg-success animate-pulse" /> ACTIVE
+                     </span>
+                   </p>
+                 </div>
 
-            <p className="font-mono text-[10px] text-text-disabled mt-md leading-relaxed uppercase">
-              Exit Liquidity guaranteed by Uniswap v4 Hook arbitrage
-            </p>
-          </aside>
+                 <button
+                   type="button"
+                   className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-success bg-black text-success transition-all duration-300 ease-nothing hover:bg-success hover:text-black hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]"
+                 >
+                   [ CLAIM_CURRENT_YIELD ]
+                 </button>
+                 
+                 <button
+                   type="button"
+                   className="w-full font-mono text-[11px] sm:text-[12px] uppercase tracking-widest px-md py-lg border border-border-visible text-text-disabled hover:text-text-display hover:border-text-display transition-colors ease-nothing"
+                 >
+                   [ SECONDARY MARKET ]
+                 </button>
+               </div>
+             ) : (
+               <div className="flex flex-col gap-0">
+                 <label
+                   htmlFor="usdc-in"
+                   className="font-mono text-label uppercase tracking-label text-text-secondary block mb-md"
+                 >
+                   INVEST_AMOUNT (USDC)
+                 </label>
+                 <input
+                   id="usdc-in"
+                   type="text"
+                   inputMode="decimal"
+                   placeholder="0.00"
+                   value={usdcRaw}
+                   onChange={(e) =>
+                     setUsdcRaw(e.target.value.replace(/[^\d.]/g, ""))
+                   }
+                   className="w-full bg-black border border-border px-md py-lg font-mono text-subheading text-text-display tabular-nums outline-none focus:border-text-secondary transition-colors duration-200 ease-nothing mb-xl"
+                 />
+
+                 <div className="border border-border p-md bg-black mb-xl">
+                   <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between mb-sm pb-sm border-b border-border-visible">
+                     <span>RECEIVING:</span>
+                     <span className="text-text-display tabular-nums">{formatNumber(ystReceived)} YST</span>
+                   </p>
+                   <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between">
+                     <span>REVENUE SHARE:</span>
+                     <span className="text-text-display tabular-nums">
+                       {revenueSharePct > 0 ? revenueSharePct.toFixed(4) : "0.00"}%
+                     </span>
+                   </p>
+                 </div>
+
+                 <button
+                   type="button"
+                   className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-text-display bg-black text-text-display transition-colors duration-200 ease-nothing hover:bg-text-display hover:text-black mt-auto"
+                 >
+                   [ INVEST & MINT YST ]
+                 </button>
+               </div>
+             )}
+           </aside>
         </div>
       </main>
     </div>

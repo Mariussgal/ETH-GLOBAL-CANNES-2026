@@ -31,7 +31,7 @@ export default function StreamCard({ stream }: StreamCardProps) {
   return (
     <Link
       href={`/invest/${stream.id}`}
-      className="block bg-surface border border-border rounded-card p-lg group transition-colors duration-200 ease-nothing hover:border-border-visible"
+      className="flex flex-col h-full bg-surface border border-border rounded-card p-lg group transition-colors duration-200 ease-nothing hover:border-border-visible"
     >
       {/* Top row: ENS name + status */}
       <div className="flex items-start justify-between mb-sm">
@@ -94,10 +94,10 @@ export default function StreamCard({ stream }: StreamCardProps) {
       <div className="grid grid-cols-3 gap-md mb-md">
         <div>
           <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-xs">
-            PRICE FLOOR
+            UNIT PRICE
           </span>
           <span className="font-mono text-subheading text-text-display flex items-center">
-            ${stream.priceFloor.toFixed(4)}
+            $1.00
           </span>
         </div>
         <div>
@@ -119,8 +119,8 @@ export default function StreamCard({ stream }: StreamCardProps) {
         </div>
       </div>
 
-      {/* Bottom row: Chain sources + fee % */}
-      <div className="flex items-end justify-between">
+      {/* Bottom row: Chain sources + fee % plus Invest button */}
+      <div className="flex items-end justify-between mt-auto">
         <div>
           <span className="font-mono text-label uppercase tracking-label text-text-disabled block mb-sm">
             REVENUE SOURCES
@@ -131,9 +131,14 @@ export default function StreamCard({ stream }: StreamCardProps) {
             ))}
           </div>
         </div>
-        <span className="font-mono text-caption uppercase tracking-label text-text-disabled">
-          {stream.feePercent}% FEES
-        </span>
+        <div className="flex items-center gap-md">
+          <span className="font-mono text-caption uppercase tracking-label text-text-disabled hidden sm:inline-block">
+            {stream.feePercent}% FEES
+          </span>
+          <span className="inline-flex items-center justify-center font-mono text-[12px] uppercase px-[12px] py-[6px] border border-text-primary text-text-primary rounded-technical transition-colors duration-200 ease-nothing group-hover:bg-text-primary group-hover:text-black">
+            {fillPercent >= 100 ? "[ OPEN_POSITION ]" : "[ INVEST ]"}
+          </span>
+        </div>
       </div>
     </Link>
   );

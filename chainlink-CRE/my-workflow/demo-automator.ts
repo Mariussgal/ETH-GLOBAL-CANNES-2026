@@ -50,10 +50,15 @@ async function runDeployer() {
       console.log(`✅ Résultat capturé par le mock oracle: ${payloadHex}`);
       
       console.log(`📡 Envoi de la transaction sur Sepolia Testnet...`);
+      
+      // On encode l'appel à la fonction onReport(bytes) car le contrat attend un appel de fonction, pas juste des bytes.
+      const iface = new ethers.Interface(["function onReport(bytes calldata report) external"]);
+      const calldata = iface.encodeFunctionData("onReport", [payloadHex]);
+
       // ON ENVOIE LA DONNÉE DIRECTEMENT AU CONTRAT DE P1 COMME LE FERAIT CHAINLINK
       const tx = await wallet.sendTransaction({
         to: FACTORY_ADDRESS,
-        data: payloadHex,
+        data: calldata,
         gasLimit: 3000000 // Gas safe pour éviter OOG
       });
 

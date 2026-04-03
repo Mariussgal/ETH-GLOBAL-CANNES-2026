@@ -50,7 +50,7 @@ contract Factory is IReceiver {
     IENSReverseRegistrar public constant ENS_REVERSE =
         IENSReverseRegistrar(0xA0a1AbcDAe1a2a4A2EF8e9113Ff0e02DD81DC0C6);
 
-    address public constant CRE_FORWARDER = 0x15fC6ae953E024d975e77382eEeC56A9101f9F88;
+    address public creForwarder = 0x15fC6ae953E024d975e77382eEeC56A9101f9F88;
 
     IERC20  public immutable usdc;
     address public immutable owner;
@@ -88,13 +88,17 @@ contract Factory is IReceiver {
     }
 
     modifier onlyCREForwarder() {
-        if (msg.sender != CRE_FORWARDER) revert NotCREForwarder();
+        if (msg.sender != creForwarder) revert NotCREForwarder();
         _;
     }
 
     constructor(address _usdc) {
         usdc  = IERC20(_usdc);
         owner = msg.sender;
+    }
+
+    function setCREForwarder(address _forwarder) external onlyOwner {
+        creForwarder = _forwarder;
     }
 
     function registerWorkflow(bytes32 workflowId, bytes32 streamKey) external onlyOwner {
@@ -173,6 +177,46 @@ contract Factory is IReceiver {
         _deployStream(streamKey);
     }
 }
+
+
+    function createStreamDirect(
+        string calldata protocolSlug,
+        uint256 streamBps,
+        uint256 durationDays,
+        uint256 capitalRaised,
+        uint256 discountBps
+    ) external returns (bytes32 streamKey) {
+        // Gate ENS
+        bytes32 reverseNode  = ENS_REVERSE.node(msg.sender);
+        address resolverAddr = ENS_REGISTRY.resolver(reverseNode);
+        if (resolverAddr == address(0)) revert NoENSName();
+        string memory ensName = IENSResolver(resolverAddr).name(reverseNode);
+        if (bytes(ensName).length == 0) revert NoENSName();
+
+        if (streamBps < 100 || streamBps > 5_000) revert InvalidBps();
+        if (capitalRaised == 0) revert ZeroAmount();
+        if (discountBps < MIN_DISCOUNT_BPS) discountBps = MIN_DISCOUNT_BPS;
+        if (discountBps > MAX_DISCOUNT_BPS) discountBps = MAX_DISCOUNT_BPS;
+
+        streamKey = keccak256(abi.encodePacked(protocolSlug, msg.sender));
+        if (streams[streamKey].active) revert StreamAlreadyExists();
+
+        pendingStreams[streamKey] = PendingStream({
+            emitter:          msg.sender,
+            protocolSlug:     protocolSlug,
+            streamBps:        streamBps,
+            durationDays:     durationDays,
+            capitalRaised:    capitalRaised,
+            collateralAmount: 0,
+            gateValidated:    true,
+            discountReceived: true,
+            discountBps:      discountBps,
+            executed:         false
+        });
+
+        _deployStream(streamKey);
+        emit StreamRequested(streamKey, msg.sender, protocolSlug);
+    }
 
     function _deployStream(bytes32 streamKey) internal {
         PendingStream storage pending = pendingStreams[streamKey];

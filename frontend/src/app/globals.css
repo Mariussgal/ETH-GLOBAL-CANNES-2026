@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Nothing Design System — Pure Black/White + Red accent ── */
+:root {
+  /* Surfaces — OLED Black */
+  --black: #000000;
+  --surface: #111111;
+  --surface-raised: #1a1a1a;
+
+  /* Borders */
+  --border: #222222;
+  --border-visible: #333333;
+
+  /* Text hierarchy — Pure White */
+  --text-disabled: #666666;
+  --text-secondary: #999999;
+  --text-primary: #e8e8e8;
+  --text-display: #ffffff;
+
+  /* Accent — Red only */
+  --accent: #ff0000;
+  --accent-subtle: rgba(255, 0, 0, 0.12);
+  --success: #4a9e5c;
+  --warning: #d4a843;
+  --error: #ff0000;
+  --interactive: #5b9bf6;
+
+  /* Spacing (8px base) */
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+}
+
+/* ── Base ── */
+body {
+  background: var(--black);
+  color: var(--text-primary);
+  font-family: var(--font-space-grotesk), "DM Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Dot-matrix motif ── */
+.dot-grid {
+  background-image: radial-gradient(
+    circle,
+    var(--border-visible) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
+}
+
+.dot-grid-subtle {
+  background-image: radial-gradient(
+    circle,
+    var(--border) 0.5px,
+    transparent 0.5px
+  );
+  background-size: 12px 12px;
+}
+
+/* ── Label utility ── */
+.label {
+  font-family: var(--font-space-mono), "JetBrains Mono", "SF Mono", monospace;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* ── Mono utility ── */
+.mono {
+  font-family: var(--font-space-mono), "JetBrains Mono", "SF Mono", monospace;
+}
+
+/* ── Segment animation ── */
+@keyframes segmentFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Marquee Animation ── */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+/* ── Steppy Industrial Animations ── */
+@keyframes steppyFlow {
+  0% { left: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+@keyframes steppyDrop {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.animate-steppy-flow {
+  animation: steppyFlow 2s steps(8, end) infinite;
+}
+
+.animate-steppy-drop {
+  animation: steppyDrop 1s steps(4, end) infinite;
+}
+
+.animate-steppy-drop-long {
+  animation: steppyDrop 2s steps(8, end) infinite;
+}
+
+.animation-delay-500 {
+  animation-delay: 500ms;
+}
+
+.animation-delay-700 {
+  animation-delay: 700ms;
+}
+
+.animation-delay-1000 {
+  animation-delay: 1000ms;
+}
+
+/* ── Scanline / CRT Grain Overlay ── */
+.noise-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+  opacity: 0.04;
+  z-index: 50;
+}
+
+.scanline-crt {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(transparent 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+}
+
+.scanline-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(transparent 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+  opacity: 0.05;
+}
+
+/* ── Button Dot-Matrix Hover ── */
+.btn-dot-matrix-hover:hover {
+  background-color: var(--text-primary);
+  color: var(--black);
+  background-image: radial-gradient(circle, var(--black) 1px, transparent 1px);
+  background-size: 8px 8px;
+}

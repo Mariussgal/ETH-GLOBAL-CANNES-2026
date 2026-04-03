@@ -1,0 +1,48 @@
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Environnement & secrets ──
+.env
+.env.*
+!.env.example
+
+# ── Éditeurs & outils ──
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Frontend (Next.js) — voir frontend/package.json ──
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+frontend/.yarn/install-state.gz
+
+frontend/coverage/
+frontend/.next/
+frontend/out/
+frontend/build/
+
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+frontend/.vercel
+
+frontend/*.tsbuildinfo
+
+# Fichiers locaux Next (garder next-env.d.ts versionné si présent)
+frontend/.env*.local
+
+# ── Divers ──
+*.pem
+*.log
+
+# Référence design locale (optionnel — retirer cette ligne si tu veux la versionner)
+nothing-design-skill/
+
+# Docs pitch / plan (locaux — retirer ces lignes pour les versionner)
+YSM_ETHGlobal_Cannes.md
+YSM_Plan_Attaque.md

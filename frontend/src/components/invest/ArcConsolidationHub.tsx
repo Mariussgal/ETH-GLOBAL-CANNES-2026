@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import SegmentedProgress from "@/components/SegmentedProgress";
-import { useMemo } from "react";
 
 interface ArcConsolidationHubProps {
   totalBaseRevenue: number;

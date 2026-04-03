@@ -3,10 +3,10 @@
 export const SEPOLIA_CHAIN_ID = 11155111;
 
 export const ADDRESSES = {
-  streamFactory: "0x1F62a1dc839A1b308a0AB7fa617F0d23dbf07EBf" as `0x${string}`,
+  streamFactory: "0x3615CFfF7D94710AC12Ed63c94E28F53551Ac32E" as `0x${string}`,
   ystSplitter: "0x02E75407376e5FBEd0e507E8265d92CeE9279fDC" as `0x${string}`,
-  mockBase: "0xa1A2A7280Ff5EB33773A89F8e05F2Ab7ba67351A" as `0x${string}`,
-  mockPolygon: "0xCfb176618D17c7e05A2A5D3d044D89Bce5f320F5" as `0x${string}`,
+  mockBase: "0x89e3dF8A6970B62564b232cbBD7376987cD093a8" as `0x${string}`,
+  mockPolygon: "0x006969A32349d9581ac7206a7a1fC1168DbBcfbc" as `0x${string}`,
   masterSettler: "0xFE6B4a8Ae90C47dA0E19296CaeBb2FF8D313954f" as `0x${string}`,
   usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as `0x${string}`,
 } as const;

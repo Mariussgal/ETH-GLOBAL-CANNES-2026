@@ -8,7 +8,7 @@ contract MockQuickswapPolygon {
     using SafeERC20 for IERC20;
 
     IERC20  public immutable usdc;
-    address public immutable splitter;
+    address public splitter;
     address public immutable owner;
 
     string  public constant CHAIN_LABEL = "Polygon";
@@ -37,6 +37,11 @@ contract MockQuickswapPolygon {
         splitter         = _splitter;
         owner            = msg.sender;
         lastFeeTimestamp = block.timestamp;
+    }
+
+    function setSplitter(address _newSplitter) external {
+        if (msg.sender != owner) revert NotOwner();
+        splitter = _newSplitter;
     }
 
     function generateFees() external {

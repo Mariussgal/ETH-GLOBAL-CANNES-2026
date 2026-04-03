@@ -138,7 +138,7 @@ export default function FeeSplitterVisual() {
           <div className="flex items-center gap-4 relative z-10 translate-x-[40px]">
             <div className="flex flex-col items-end mr-6">
               <span className="font-mono text-[10px] text-text-secondary">VAULT_FILL</span>
-              <span className="font-mono text-body-sm text-text-display leading-none">+{displayCount}</span>
+              <span className="font-mono text-body-sm text-text-display leading-none">+{displayCount}$</span>
             </div>
             <div className="w-[120px] border border-border-visible border-dashed px-3 py-1.5 flex justify-center bg-black">
               <span className="font-mono text-[11px] text-text-secondary tracking-widest">YST_VAULT</span>

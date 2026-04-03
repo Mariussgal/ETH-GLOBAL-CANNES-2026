@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
+import Web3Provider from "@/components/Web3Provider";
+import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -32,7 +34,7 @@ export default function RootLayout({
       >
         <div className="fixed inset-0 pointer-events-none noise-grain z-[9999] opacity-[0.08]" />
         <div className="fixed inset-0 pointer-events-none scanline-overlay z-[9998] opacity-[0.1]" />
-        {children}
+        <Web3Provider>{children}</Web3Provider>
       </body>
     </html>
   );

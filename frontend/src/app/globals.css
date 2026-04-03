@@ -175,3 +175,18 @@ body {
   background-image: radial-gradient(circle, var(--black) 1px, transparent 1px);
   background-size: 8px 8px;
 }
+
+/* ── RainbowKit × Nothing — typo (Grotesk UI, Mono identité portefeuille) ── */
+[data-rk] {
+  --rk-fonts-body: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-rk] #rk_account_modal_title {
+  font-family: var(--font-space-mono), "JetBrains Mono", "SF Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+[data-testid="rk-connect-header-label"] {
+  font-family: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+}

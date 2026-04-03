@@ -5,7 +5,10 @@ import SegmentedProgress from "@/components/SegmentedProgress";
 import type { StreamData } from "@/components/StreamCard";
 import { formatNumber } from "@/lib/format";
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState, useEffect, useRef } from "react";
+import ArcConsolidationHub from "./ArcConsolidationHub";
+import ArcSourceBadge from "@/components/ArcSourceBadge";
 
 interface StreamInvestViewProps {
   stream: StreamData;
@@ -33,15 +36,26 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
 
   const isLive = stream.vaultFill >= stream.vaultTarget;
   const [accumulatedYield, setAccumulatedYield] = useState(142.08);
-  const [feedItems, setFeedItems] = useState<{ id: number; time: string; amount: number; protocol: string }[]>([]);
+  const [totalBaseRevenue, setTotalBaseRevenue] = useState(2540.50);
+  const [totalPolygonRevenue, setTotalPolygonRevenue] = useState(1850.20);
+  
+  const [feedItems, setFeedItems] = useState<{ id: number; time: string; amount: number; protocol: string; chainLabel: string }[]>([]);
   const feedCounterRef = useRef(0);
 
   useEffect(() => {
     if (!isLive) return;
     
+    // Simulate live sub-graph/log polling
     const interval = setInterval(() => {
       const drop = Math.random() * 0.5 + 0.01;
+      const chainLabel = Math.random() > 0.4 ? "Base" : "Polygon"; // 60% probability for Base flow
+      
       setAccumulatedYield(prev => prev + drop);
+      if (chainLabel === "Base") {
+        setTotalBaseRevenue(prev => prev + drop);
+      } else {
+        setTotalPolygonRevenue(prev => prev + drop);
+      }
       
       const now = new Date();
       const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
@@ -51,7 +65,8 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
           id: feedCounterRef.current++,
           time: timeStr,
           amount: parseFloat(drop.toFixed(4)),
-          protocol: stream.ensName.split('.')[0].toUpperCase()
+          protocol: stream.ensName.split('.')[0].toUpperCase(),
+          chainLabel
         };
         return [newItem, ...prev].slice(0, 7);
       });
@@ -112,13 +127,18 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                     <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Supply</span><span className="text-text-display tabular-nums">{formatNumber(totalYst)} YST</span></div>
                     <div className="flex justify-between"><span className="text-text-disabled uppercase">Expiry</span><span className="text-text-display">{Math.max(stream.duration - 48, 0)} DAYS</span></div>
                   </div>
-                  {/* 2. Valuation Engine */}
-                  <div className="font-mono text-caption sm:text-body-sm md:pl-xl">
-                    <h3 className="text-caption text-text-secondary uppercase mb-lg tracking-label">2. VALUATION ENGINE</h3>
-                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Target_Dist</span><span className="text-text-display tabular-nums ml-2">${formatNumber(TARGET_DISTRIBUTION)}</span></div>
-                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Velocity</span><span className="text-success tabular-nums ml-2 font-bold" style={{ textShadow: "0 0 5px rgba(34,197,94,0.3)" }}>${formatNumber(Math.round(TARGET_DISTRIBUTION / stream.duration))} / DAY</span></div>
-                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Risk_Score</span><span className="text-text-display ml-2">{stream.discount}%</span></div>
-                    <div className="flex justify-between"><span className="text-text-disabled uppercase">Hist_Rev</span><span className="text-text-disabled tabular-nums ml-2">${formatNumber(HISTORICAL_ANNUAL_REVENUE)}</span></div>
+                  {/* 2. 24H Protocol Revenue */}
+                  <div className="font-mono text-caption sm:text-body-sm md:pl-xl flex flex-col">
+                    <h3 className="text-caption text-text-secondary uppercase mb-lg tracking-label">2. 24H PROTOCOL REVENUE</h3>
+                    <div className="flex-1 flex flex-col justify-center mb-md">
+                      <div className="text-success text-[28px] sm:text-[32px] tabular-nums leading-none font-bold" style={{ textShadow: "0 0 10px rgba(34,197,94,0.3)" }}>
+                        ${formatNumber(Math.round(HISTORICAL_ANNUAL_REVENUE / 365))}
+                      </div>
+                    </div>
+                    <div className="flex justify-between border-t border-border-visible pt-sm">
+                      <span className="text-text-disabled uppercase">Streamed ({stream.feePercent}%)</span>
+                      <span className="text-text-display tabular-nums">+${formatNumber(Math.round((HISTORICAL_ANNUAL_REVENUE / 365) * (stream.feePercent / 100)))}</span>
+                    </div>
                   </div>
                   {/* 3. Live Evolution */}
                   <div className="font-mono text-caption sm:text-body-sm md:pl-xl">
@@ -142,9 +162,10 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                     <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black to-transparent pointer-events-none z-10" />
                     <div className="flex flex-col gap-md overflow-hidden h-full">
                       {feedItems.length > 0 ? feedItems.map((item, idx) => (
-                        <div key={item.id} className="flex gap-md w-full transition-all duration-300 transform translate-y-0 opacity-100" style={{ opacity: 1 - (idx * 0.15) }}>
+                        <div key={item.id} className="flex gap-md w-full items-center transition-all duration-300 transform translate-y-0 opacity-100" style={{ opacity: 1 - (idx * 0.15) }}>
                           <span className="text-text-disabled whitespace-nowrap">[{item.time}]</span>
-                          <span className="text-success flex-1" style={{ textShadow: "0 0 5px rgba(34,197,94,0.3)" }}>+{item.amount.toFixed(4)} USDC</span>
+                          <ArcSourceBadge chain={item.chainLabel} />
+                          <span className="text-success flex-1 ml-sm" style={{ textShadow: "0 0 5px rgba(34,197,94,0.3)" }}>+{item.amount.toFixed(4)} USDC</span>
                           <span className="text-text-secondary">({item.protocol})</span>
                         </div>
                       )) : (
@@ -153,6 +174,14 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                     </div>
                   </div>
                 </section>
+                
+                {/* Multi-Chain Hub */}
+                <div className="mt-xl">
+                  <ArcConsolidationHub 
+                    totalBaseRevenue={totalBaseRevenue} 
+                    totalPolygonRevenue={totalPolygonRevenue} 
+                  />
+                </div>
               </>
             ) : (
               <>
@@ -328,12 +357,18 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                    </p>
                  </div>
 
-                 <button
-                   type="button"
-                   className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-success bg-black text-success transition-all duration-300 ease-nothing hover:bg-success hover:text-black hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]"
-                 >
-                   [ CLAIM_CURRENT_YIELD ]
-                 </button>
+                 <div className="flex flex-col gap-sm w-full">
+                   <button
+                     type="button"
+                     className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-success bg-black text-success transition-all duration-300 ease-nothing hover:bg-success hover:text-black hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]"
+                   >
+                     [ CLAIM_CURRENT_YIELD ]
+                   </button>
+                   <div className="flex justify-center items-center gap-xs mt-1">
+                     <Image src="/arc_logo_white_sharp.png" alt="Arc" width={10} height={10} className="opacity-50 brightness-0 invert" />
+                     <span className="font-mono text-[9px] text-text-disabled uppercase tracking-widest">CONSOLIDATED_BY_ARC</span>
+                   </div>
+                 </div>
                  
                  <button
                    type="button"

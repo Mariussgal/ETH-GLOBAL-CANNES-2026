@@ -311,7 +311,7 @@ function submitWorkflowResult(
             capitalRaised: pending.capitalRaised,
             active:        true
         });
-        vault.initStream(address(token), params);
+        vault.initStream(address(token), pending.emitter, params);
 
         token.mint(pending.emitter, totalYST);
 

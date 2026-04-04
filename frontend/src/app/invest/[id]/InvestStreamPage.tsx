@@ -21,8 +21,7 @@ import { getStreamById } from "@/lib/mock-streams";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useMemo } from "react";
-import { useEnsName, useReadContract, useReadContracts } from "wagmi";
-import { mainnet } from "wagmi/chains";
+import { useReadContract, useReadContracts } from "wagmi";
 
 const ZERO_KEY =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
@@ -128,12 +127,6 @@ export default function InvestStreamPage({ id }: { id: string }) {
     query: { enabled: Boolean(record?.ystToken), refetchInterval: 15_000 },
   });
 
-  const { data: ensName } = useEnsName({
-    address: record?.emitter,
-    chainId: mainnet.id,
-    query: { enabled: Boolean(record?.emitter) },
-  });
-
   const { chainlinkAutomationActive } = useCreAutomationStatus(
     streamKey as `0x${string}` | undefined
   );
@@ -161,12 +154,11 @@ export default function InvestStreamPage({ id }: { id: string }) {
     );
     return {
       ...base,
-      ensName: ensName ?? base.ensName,
+      ensName: base.ensName,
     };
   }, [
     record,
     streamParams,
-    ensName,
     numericId,
     totalFeesRaw,
     priceFloorRaw,

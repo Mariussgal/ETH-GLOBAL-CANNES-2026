@@ -101,6 +101,7 @@ contract Vault is ReentrancyGuard {
 
     function initStream(
         address _ystToken,
+        address _emitter,
         StreamParams calldata params
     ) external onlyFactory {
         if (stream.active) revert AlreadyInitialized();
@@ -108,7 +109,7 @@ contract Vault is ReentrancyGuard {
         ystToken = _ystToken;
         stream = params;
         stream.active = true;
-        emitterAddress = msg.sender;
+        emitterAddress = _emitter;
         lastFeeTimestamp = block.timestamp;
 
         emit StreamInitialized(

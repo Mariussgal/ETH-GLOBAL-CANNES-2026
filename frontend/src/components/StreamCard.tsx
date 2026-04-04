@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import SegmentedProgress from "./SegmentedProgress";
 import ArcSourceBadge from "./ArcSourceBadge";
@@ -51,6 +52,24 @@ export default function StreamCard({ stream }: StreamCardProps) {
           <h3 className="font-grotesk text-heading text-text-display mt-xs">
             {stream.ensName}
           </h3>
+          {stream.ensName.endsWith(".mariusgal.eth") && (
+            <a
+              href={`https://app.ens.domains/${stream.ensName}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-[4px] mt-xs font-mono text-[10px] text-text-disabled hover:text-success transition-colors duration-150"
+            >
+              <Image
+                src="/ens.png"
+                alt="ENS"
+                width={10}
+                height={10}
+                className="brightness-0 invert opacity-50"
+              />
+              {stream.ensName}
+            </a>
+          )}
           {/* Offering line */}
           <p className="font-mono text-caption text-text-secondary mt-xs">
             Offering {stream.feePercent}% of future fees for{" "}

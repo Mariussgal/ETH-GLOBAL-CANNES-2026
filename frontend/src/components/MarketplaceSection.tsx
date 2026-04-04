@@ -6,8 +6,7 @@ import { MOCK_STREAMS } from "@/lib/mock-streams";
 import { formatNumber } from "@/lib/format";
 import Link from "next/link";
 import { useMemo } from "react";
-import { useEnsName } from "wagmi";
-import { mainnet } from "wagmi/chains";
+import { useEnsSubdomainStatus } from "@/hooks/useEnsSubdomainStatus";
 
 function StreamCardWithEns({
   stream,
@@ -16,15 +15,16 @@ function StreamCardWithEns({
   stream: StreamData;
   emitter: `0x${string}`;
 }) {
-  const { data: ensName } = useEnsName({
-    address: emitter,
-    chainId: mainnet.id,
-    query: { enabled: Boolean(emitter) },
-  });
-  const resolved: StreamData = {
-    ...stream,
-    ensName: ensName ?? stream.ensName,
-  };
+  const { isDefaulted } = useEnsSubdomainStatus(stream.protocol);
+
+  const resolved: StreamData = useMemo(
+    () => ({
+      ...stream,
+      defaulted: stream.defaulted || isDefaulted,
+    }),
+    [stream, isDefaulted]
+  );
+
   return <StreamCard stream={resolved} />;
 }
 

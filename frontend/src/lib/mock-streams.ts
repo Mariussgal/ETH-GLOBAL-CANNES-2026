@@ -1,9 +1,10 @@
 import type { StreamData } from "@/components/StreamCard";
 
 /** Données démo — alignées sur le plan d’attaque YSM */
+/** IDs 201+ réservent 1–N pour les streams on-chain (Factory `streamKeys`) */
 export const MOCK_STREAMS: StreamData[] = [
   {
-    id: 1,
+    id: 201,
     protocol: "quickswap-v3",
     ensName: "quickswap.eth",
     feePercent: 10,
@@ -17,7 +18,7 @@ export const MOCK_STREAMS: StreamData[] = [
     defaulted: false,
   },
   {
-    id: 2,
+    id: 202,
     protocol: "mockbase-dex",
     ensName: "mockbase.eth",
     feePercent: 10,
@@ -31,7 +32,7 @@ export const MOCK_STREAMS: StreamData[] = [
     defaulted: false,
   },
   {
-    id: 3,
+    id: 203,
     protocol: "defi-ghost",
     ensName: "defighost.eth",
     feePercent: 8,
@@ -45,7 +46,7 @@ export const MOCK_STREAMS: StreamData[] = [
     defaulted: true,
   },
   {
-    id: 4,
+    id: 204,
     protocol: "quickswap-v4",
     ensName: "quickswap.eth",
     feePercent: 12,

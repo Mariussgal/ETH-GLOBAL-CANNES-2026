@@ -3,7 +3,7 @@
 export const SEPOLIA_CHAIN_ID = 11155111;
 
 export const ADDRESSES = {
-  streamFactory: "0x3615CFfF7D94710AC12Ed63c94E28F53551Ac32E" as `0x${string}`,
+  streamFactory: "0x0a52b6D02f55ae19Ff3973559Bf2b8129EfcC73B" as `0x${string}`,
   ystSplitter: "0x02E75407376e5FBEd0e507E8265d92CeE9279fDC" as `0x${string}`,
   /** Vault Arc / YSM — lecture `earned(user)` (yield accumulé USDC 6 décimales) */
   vault: "0xaa122Fd7940B575c8eaf8376e315002F33D9ad11" as `0x${string}`,
@@ -43,29 +43,67 @@ export const CHAINLINK_SUB_ID = 6399;
 
 // ── Minimal ABIs for read operations ──
 
+/** Lecture + écriture Factory — aligné sur `smart-contracts/contracts/Factory.sol` */
 export const STREAM_FACTORY_ABI = [
   {
-    name: "getStreamCount",
+    type: "event",
+    name: "StreamCreated",
+    inputs: [
+      { name: "streamKey", type: "bytes32", indexed: true },
+      { name: "splitter", type: "address", indexed: false },
+      { name: "vault", type: "address", indexed: false },
+      { name: "ystToken", type: "address", indexed: false },
+      { name: "capitalRaised", type: "uint256", indexed: false },
+      { name: "discountBps", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    name: "createStreamDirect",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "protocolSlug", type: "string" },
+      { name: "streamBps", type: "uint256" },
+      { name: "durationDays", type: "uint256" },
+      { name: "capitalRaised", type: "uint256" },
+      { name: "discountBps", type: "uint256" },
+    ],
+    outputs: [{ name: "streamKey", type: "bytes32" }],
+  },
+  {
+    name: "getStream",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "streamKey", type: "bytes32" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "splitter", type: "address" },
+          { name: "vault", type: "address" },
+          { name: "ystToken", type: "address" },
+          { name: "emitter", type: "address" },
+          { name: "protocolSlug", type: "string" },
+          { name: "createdAt", type: "uint256" },
+          { name: "active", type: "bool" },
+        ],
+      },
+    ],
+  },
+  {
+    name: "getAllStreamKeys",
     type: "function",
     stateMutability: "view",
     inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
+    outputs: [{ name: "", type: "bytes32[]" }],
   },
   {
-    name: "streams",
+    name: "streamKeys",
     type: "function",
     stateMutability: "view",
     inputs: [{ name: "index", type: "uint256" }],
-    outputs: [
-      { name: "vault", type: "address" },
-      { name: "splitter", type: "address" },
-      { name: "token", type: "address" },
-      { name: "protocol", type: "string" },
-      { name: "feePercent", type: "uint256" },
-      { name: "duration", type: "uint256" },
-      { name: "startTime", type: "uint256" },
-      { name: "discount", type: "uint256" },
-    ],
+    outputs: [{ name: "", type: "bytes32" }],
   },
 ] as const;
 
@@ -97,6 +135,41 @@ export const YST_VAULT_ABI = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ name: "", type: "address" }],
+  },
+  {
+    name: "stream",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "totalYST", type: "uint256" },
+          { name: "streamBps", type: "uint256" },
+          { name: "discountBps", type: "uint256" },
+          { name: "startTime", type: "uint256" },
+          { name: "endTime", type: "uint256" },
+          { name: "capitalRaised", type: "uint256" },
+          { name: "active", type: "bool" },
+        ],
+      },
+    ],
+  },
+  {
+    name: "totalFeesReceived",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "priceFloor",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;
 

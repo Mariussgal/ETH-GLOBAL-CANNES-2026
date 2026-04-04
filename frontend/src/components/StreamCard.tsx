@@ -15,6 +15,8 @@ export interface StreamData {
   discount: number;
   vaultFill: number;
   vaultTarget: number;
+  /** Levée primaire : plafond nominal (USDC) depuis `capitalRaised` — pour « 100 % » et caps d’invest. */
+  nominalRaiseCapUsdc?: number;
   priceFloor: number;
   sources: string[];
   defaulted: boolean;
@@ -25,7 +27,14 @@ interface StreamCardProps {
 }
 
 export default function StreamCard({ stream }: StreamCardProps) {
-  const fillPercent = Math.round((stream.vaultFill / stream.vaultTarget) * 100);
+  const raiseCap =
+    stream.nominalRaiseCapUsdc !== undefined && stream.nominalRaiseCapUsdc > 0
+      ? stream.nominalRaiseCapUsdc
+      : stream.vaultTarget;
+  const fillPercent =
+    raiseCap > 0
+      ? Math.min(100, Math.round((stream.vaultFill / raiseCap) * 100))
+      : 0;
   const vaultStatus = fillPercent >= 80 ? "success" : fillPercent >= 40 ? "neutral" : "warning";
 
   return (
@@ -72,8 +81,8 @@ export default function StreamCard({ stream }: StreamCardProps) {
           </span>
         </div>
         <SegmentedProgress
-          value={stream.vaultFill}
-          max={stream.vaultTarget}
+          value={Math.min(stream.vaultFill, raiseCap)}
+          max={Math.max(raiseCap, 1)}
           segments={24}
           status={vaultStatus}
         />
@@ -82,7 +91,7 @@ export default function StreamCard({ stream }: StreamCardProps) {
             ${formatNumber(stream.vaultFill)}
           </span>
           <span className="font-mono text-caption text-text-disabled">
-            ${formatNumber(stream.vaultTarget)}
+            ${formatNumber(raiseCap)}
           </span>
         </div>
       </div>

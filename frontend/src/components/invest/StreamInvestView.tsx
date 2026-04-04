@@ -16,6 +16,7 @@ import ArcConsolidationHub from "./ArcConsolidationHub";
 import ArcActivityFeed from "./ArcActivityFeed";
 import { useArcSepoliaSync } from "@/hooks/useArcSepoliaSync";
 import { useDemoProtocolRevenueFeed } from "@/hooks/useDemoProtocolRevenueFeed";
+import { useMockFeeAutoCrank } from "@/hooks/useMockFeeAutoCrank";
 import { usePrimaryMarketInvest } from "@/hooks/usePrimaryMarketInvest";
 import { shouldSimulateDemoRevenue } from "@/lib/demo-revenue-protocol";
 
@@ -41,10 +42,21 @@ export default function StreamInvestView({
   const { openConnectModal } = useConnectModal();
   const [usdcRaw, setUsdcRaw] = useState("");
 
+  /** Plafond de levée affiché : nominal (`capitalRaised`) si on-chain primaire, sinon `vaultTarget`. */
+  const raiseCapUsdc = useMemo(() => {
+    if (
+      stream.nominalRaiseCapUsdc !== undefined &&
+      stream.nominalRaiseCapUsdc > 0
+    ) {
+      return stream.nominalRaiseCapUsdc;
+    }
+    return stream.vaultTarget;
+  }, [stream.nominalRaiseCapUsdc, stream.vaultTarget]);
+
   /** Ceiling: do not exceed the raise objective or remaining capacity. */
   const maxInvestUsdc = useMemo(
-    () => Math.max(0, stream.vaultTarget - stream.vaultFill),
-    [stream.vaultTarget, stream.vaultFill]
+    () => Math.max(0, raiseCapUsdc - stream.vaultFill),
+    [raiseCapUsdc, stream.vaultFill]
   );
 
   const usdcNum = useMemo(() => {
@@ -65,12 +77,43 @@ export default function StreamInvestView({
     }
   }, [maxInvestUsdc, usdcRaw]);
 
-  // vaultTarget = nominal on-chain (= fee% × annual ref revenue, see CreateStreamTerminal).
-  // Claim face value (total YST) = nominal / (1 − discount), aligns with Factory.projectedRevenue.
-  const TARGET_DISTRIBUTION = stream.vaultTarget / (1 - stream.discount / 100);
-  const HISTORICAL_ANNUAL_REVENUE = stream.vaultTarget / (stream.feePercent / 100);
-  
-  const projectedYield = ((TARGET_DISTRIBUTION - stream.vaultTarget) / stream.vaultTarget) * 100;
+  const nominalUsdc = stream.nominalRaiseCapUsdc;
+  /** En primaire, `vaultTarget` = valeur faciale ; sinon nominal vault. */
+  const TARGET_DISTRIBUTION = useMemo(() => {
+    if (nominalUsdc !== undefined && nominalUsdc > 0) {
+      return stream.vaultTarget;
+    }
+    return stream.vaultTarget / (1 - stream.discount / 100);
+  }, [nominalUsdc, stream.vaultTarget, stream.discount]);
+
+  const HISTORICAL_ANNUAL_REVENUE = useMemo(() => {
+    const base =
+      nominalUsdc !== undefined && nominalUsdc > 0
+        ? nominalUsdc
+        : stream.vaultTarget;
+    return base / (stream.feePercent / 100);
+  }, [nominalUsdc, stream.vaultTarget, stream.feePercent]);
+
+  const projectedYield = useMemo(() => {
+    if (nominalUsdc !== undefined && nominalUsdc > 0 && stream.vaultTarget > nominalUsdc) {
+      return ((stream.vaultTarget - nominalUsdc) / nominalUsdc) * 100;
+    }
+    if (stream.vaultTarget <= 0) return 0;
+    return ((TARGET_DISTRIBUTION - stream.vaultTarget) / stream.vaultTarget) * 100;
+  }, [nominalUsdc, stream.vaultTarget, TARGET_DISTRIBUTION]);
+
+  /** 100 % = levée nominale atteinte (primaire on-chain), pas la valeur faciale. */
+  const primaryRaiseComplete = Boolean(
+    chainInvest &&
+      nominalUsdc !== undefined &&
+      nominalUsdc > 0 &&
+      stream.vaultFill + 1e-6 >= nominalUsdc
+  );
+
+  const vaultLive = chainInvest
+    ? primaryRaiseComplete
+    : stream.vaultFill >= stream.vaultTarget;
+  const isLive = vaultLive;
 
   const { data: ystDecimalsRaw } = useReadContract({
     address: chainInvest?.ystToken,
@@ -129,9 +172,6 @@ export default function StreamInvestView({
   }, [myYstHuman, totalYst, stream.feePercent]);
 
   const demoRevenue = shouldSimulateDemoRevenue(stream.protocol);
-  /** Subscribed offer / full vault — only this criterion switches to "live" view (not the CRE mock). */
-  const vaultLive = stream.vaultFill >= stream.vaultTarget;
-  const isLive = vaultLive;
   /** Nohem revenue mock: only when the stream is already in live mode. */
   const demoFeedActive = demoRevenue && vaultLive;
 
@@ -151,6 +191,11 @@ export default function StreamInvestView({
   const totalBaseRevenue = demoFeedActive ? demo.demoBaseUsdc : arc.totalBaseRevenue;
   const totalPolygonRevenue = demoFeedActive ? demo.demoPolygonUsdc : arc.totalPolygonRevenue;
   const hubLiveSync = demoFeedActive || arc.liveSync;
+
+  /** Après 100 % : appelle /api/crank-mock-fees tout de puis puis toutes les ~11 min (page ouverte). */
+  const mockFeeCrank = useMockFeeAutoCrank({
+    enabled: Boolean(chainInvest && vaultLive && !demoRevenue),
+  });
 
   const demoYieldEstimate = useMemo(
     () => demo.feedItems.reduce((s, i) => s + i.amount, 0) * 0.012,
@@ -191,52 +236,93 @@ export default function StreamInvestView({
       ? "PrimarySale contract: add NEXT_PUBLIC_PRIMARY_SALE_ADDRESS."
       : null;
 
+  const isEmitterWallet = Boolean(
+    address &&
+      chainInvest?.emitter &&
+      address.toLowerCase() === chainInvest.emitter.toLowerCase()
+  );
+
+  const ystBalanceDisplay =
+    myYstHuman !== null && Number.isFinite(myYstHuman)
+      ? myYstHuman.toLocaleString("en-US", {
+          maximumFractionDigits: 8,
+          minimumFractionDigits: 0,
+        })
+      : "0";
+
   const myPositionBlock =
     chainInvest ? (
       <div className="border border-border p-md bg-black mb-xl">
-        <p className="font-mono text-caption text-text-secondary uppercase mb-md tracking-wide">
-          YOUR POSITION
-        </p>
         {!address ? (
-          <p className="font-mono text-body-sm text-text-disabled">
-            Connect wallet to view your position.
-          </p>
-        ) : myYstBalancePending ? (
-          <p className="font-mono text-subheading text-text-disabled tabular-nums animate-pulse">
-            …
-          </p>
-        ) : (
-          <div className="flex flex-col gap-sm font-mono text-caption">
-            <div className="flex justify-between items-baseline gap-md border-b border-border-visible pb-sm">
-              <span className="text-text-secondary uppercase">USDC (principal)</span>
-              <span className="text-text-display tabular-nums">
-                {formatNumber(myInvestedUsdc ?? 0)}
-              </span>
-            </div>
-            <div className="flex justify-between items-baseline gap-md border-b border-border-visible pb-sm">
-              <span className="text-text-secondary uppercase">YST balance</span>
-              <span className="text-text-display tabular-nums">
-                {myYstHuman !== null && Number.isFinite(myYstHuman)
-                  ? myYstHuman.toLocaleString("en-US", {
-                      maximumFractionDigits: 8,
-                      minimumFractionDigits: 0,
-                    })
-                  : "0"}{" "}
-                YST
-              </span>
-            </div>
-            <div className="flex justify-between items-baseline gap-md">
-              <span className="text-text-secondary uppercase">Revenue share</span>
-              <span className="text-text-display tabular-nums">
-                {myRevenueShareOfProtocolPct > 0
-                  ? `${myRevenueShareOfProtocolPct.toFixed(4)}%`
-                  : "0%"}
-              </span>
-            </div>
-            <p className="font-mono text-[9px] text-text-disabled uppercase tracking-wide pt-xs leading-relaxed">
-              Of the {stream.feePercent}% protocol revenue stream (your YST / total supply).
+          <>
+            <p className="font-mono text-caption text-text-secondary uppercase mb-md tracking-wide">
+              YOUR POSITION
             </p>
-          </div>
+            <p className="font-mono text-body-sm text-text-disabled">
+              Connect wallet to view your position.
+            </p>
+          </>
+        ) : isEmitterWallet ? (
+          <>
+            <p className="font-mono text-caption text-text-secondary uppercase mb-md tracking-wide">
+              EMITTER WALLET
+            </p>
+            {myYstBalancePending ? (
+              <p className="font-mono text-subheading text-text-disabled tabular-nums animate-pulse">
+                …
+              </p>
+            ) : (
+              <div className="flex flex-col gap-sm font-mono text-caption">
+                <p className="font-mono text-[11px] text-text-secondary leading-relaxed normal-case">
+                  You are the issuer. This address holds minted YST for the primary sale — inventory,
+                  not a purchased investor position (no USDC principal / revenue share here).
+                </p>
+                <div className="flex justify-between items-baseline gap-md border-t border-border-visible pt-sm">
+                  <span className="text-text-secondary uppercase">YST inventory</span>
+                  <span className="text-text-display tabular-nums">
+                    {ystBalanceDisplay} YST
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="font-mono text-caption text-text-secondary uppercase mb-md tracking-wide">
+              YOUR POSITION
+            </p>
+            {myYstBalancePending ? (
+              <p className="font-mono text-subheading text-text-disabled tabular-nums animate-pulse">
+                …
+              </p>
+            ) : (
+              <div className="flex flex-col gap-sm font-mono text-caption">
+                <div className="flex justify-between items-baseline gap-md border-b border-border-visible pb-sm">
+                  <span className="text-text-secondary uppercase">USDC (principal)</span>
+                  <span className="text-text-display tabular-nums">
+                    {formatNumber(myInvestedUsdc ?? 0)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline gap-md border-b border-border-visible pb-sm">
+                  <span className="text-text-secondary uppercase">YST balance</span>
+                  <span className="text-text-display tabular-nums">
+                    {ystBalanceDisplay} YST
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline gap-md">
+                  <span className="text-text-secondary uppercase">Revenue share</span>
+                  <span className="text-text-display tabular-nums">
+                    {myRevenueShareOfProtocolPct > 0
+                      ? `${myRevenueShareOfProtocolPct.toFixed(4)}%`
+                      : "0%"}
+                  </span>
+                </div>
+                <p className="font-mono text-[9px] text-text-disabled uppercase tracking-wide pt-xs leading-relaxed">
+                  Of the {stream.feePercent}% protocol revenue stream (your YST / total supply).
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     ) : null;
@@ -278,7 +364,15 @@ export default function StreamInvestView({
             </div>
           </div>
         </header>
-        
+
+        {chainInvest && primaryRaiseComplete && (
+          <div className="mb-2xl border border-success/50 bg-success/5 rounded-technical px-xl py-md font-mono text-caption text-success">
+            PRIMARY ROUND COMPLETE · Nominal raise target reached (
+            {formatNumber(Math.round(raiseCapUsdc))} USDC). Operational views and revenue
+            routing below.
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-2xl items-start">
           <div className="flex flex-col gap-2xl">
             
@@ -310,8 +404,19 @@ export default function StreamInvestView({
                   <div className="font-mono text-caption sm:text-body-sm md:pl-xl">
                     <h3 className="text-caption text-text-secondary uppercase mb-lg tracking-label">3. LIVE EVOLUTION</h3>
                     <div className="text-text-disabled mb-xs uppercase">USDC RAISED (100%)</div>
-                    <div className="text-text-display tabular-nums font-mono text-[14px] sm:text-[16px] mb-lg">{formatNumber(stream.vaultTarget)} / {formatNumber(stream.vaultTarget)}</div>
-                    <SegmentedProgress value={stream.vaultTarget} max={stream.vaultTarget} segments={12} status="success" size="standard" variant="blocks" animated={false} />
+                    <div className="text-text-display tabular-nums font-mono text-[14px] sm:text-[16px] mb-lg">
+                      {formatNumber(Math.round(stream.vaultFill))} /{" "}
+                      {formatNumber(Math.round(raiseCapUsdc))}
+                    </div>
+                    <SegmentedProgress
+                      value={Math.min(stream.vaultFill, raiseCapUsdc)}
+                      max={Math.max(raiseCapUsdc, 1)}
+                      segments={12}
+                      status="success"
+                      size="standard"
+                      variant="blocks"
+                      animated={false}
+                    />
                   </div>
                 </section>
 
@@ -326,6 +431,77 @@ export default function StreamInvestView({
                     chainlinkAutomationActive={chainlinkAutomationActive}
                   />
                 </div>
+
+                {chainInvest && !demoRevenue && (
+                  <div className="font-mono text-[10px] text-text-disabled border border-border rounded-technical p-md leading-relaxed space-y-sm">
+                    <div className="text-text-secondary uppercase tracking-wide">
+                      Revenue mocks (Base + Polygon) → Router → vault
+                    </div>
+                    <p className="text-text-disabled normal-case">
+                      Levée nominale complète : le serveur appelle{" "}
+                      <code className="text-text-secondary">generateFees()</code> sur Base + Polygon
+                      tout de suite puis toutes les ~8–15&nbsp;s (aléatoire) tant que cette page est
+                      ouverte. Montants pseudo-aléatoires on-chain entre min/max (contrats déployés).
+                      Env serveur :{" "}
+                      <code className="text-text-secondary">MOCK_CRANK_PRIVATE_KEY</code> = owner des
+                      mocks + ETH Sepolia.
+                    </p>
+                    <p
+                      className={
+                        mockFeeCrank.pending
+                          ? "text-text-secondary animate-pulse"
+                          : mockFeeCrank.status?.ok === false
+                            ? "text-accent"
+                            : "text-success"
+                      }
+                    >
+                      {mockFeeCrank.pending
+                        ? "CRANK…"
+                        : mockFeeCrank.status
+                          ? `${mockFeeCrank.status.ok ? "LAST_TICK_OK" : "LAST_TICK_ERR"} · ${mockFeeCrank.status.message}`
+                          : "En attente du premier tick…"}
+                    </p>
+                    <div className="flex flex-wrap gap-sm pt-sm">
+                      <button
+                        type="button"
+                        className="font-mono text-[10px] uppercase border border-accent px-sm py-xs text-accent hover:bg-accent/10 rounded-sm"
+                        onClick={async () => {
+                          const headers: HeadersInit = {
+                            "Content-Type": "application/json",
+                          };
+                          const s = process.env.NEXT_PUBLIC_CRANK_SECRET?.trim();
+                          if (s) headers.Authorization = `Bearer ${s}`;
+                          await fetch("/api/mock-fees-enabled", {
+                            method: "POST",
+                            headers,
+                            body: JSON.stringify({ enabled: false }),
+                          });
+                          void mockFeeCrank.crankAgain();
+                        }}
+                      >
+                        Arrêter les mocks (on-chain)
+                      </button>
+                      <button
+                        type="button"
+                        className="font-mono text-[10px] uppercase border border-text-secondary px-sm py-xs text-text-secondary hover:bg-white/5 rounded-sm"
+                        onClick={async () => {
+                          const headers: HeadersInit = {
+                            "Content-Type": "application/json",
+                          };
+                          const s = process.env.NEXT_PUBLIC_CRANK_SECRET?.trim();
+                          if (s) headers.Authorization = `Bearer ${s}`;
+                          await fetch("/api/mock-fees-enabled", {
+                            method: "POST",
+                            headers,
+                            body: JSON.stringify({ enabled: true }),
+                          });
+                        }}
+                      >
+                        Réactiver les mocks
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -376,7 +552,12 @@ export default function StreamInvestView({
                         DISCOUNTED_VALUATION
                       </span>
                       <span className="font-mono text-[20px] sm:text-[24px] text-text-display headline-tight block mb-md tabular-nums">
-                        ${formatNumber(stream.vaultTarget)}
+                        $
+                        {formatNumber(
+                          nominalUsdc !== undefined && nominalUsdc > 0
+                            ? nominalUsdc
+                            : stream.vaultTarget
+                        )}
                       </span>
                       <span className="font-mono text-caption text-text-disabled uppercase">
                         (Chainlink Risk Score: {stream.discount}%)
@@ -404,17 +585,25 @@ export default function StreamInvestView({
                   
                   <div className="mb-2xl w-full">
                     <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-lg">
-                      USDC RAISED ({Math.round((stream.vaultFill / stream.vaultTarget) * 100)}%)
+                      USDC RAISED (
+                      {raiseCapUsdc > 0
+                        ? Math.min(
+                            100,
+                            Math.round((stream.vaultFill / raiseCapUsdc) * 100)
+                          )
+                        : 0}
+                      %)
                     </span>
                     <span className="font-mono text-display-sm sm:text-display-lg text-text-display leading-none tabular-nums tracking-snug">
-                      {formatNumber(Math.round(stream.vaultFill))} / {formatNumber(stream.vaultTarget)}
+                      {formatNumber(Math.round(stream.vaultFill))} /{" "}
+                      {formatNumber(Math.round(raiseCapUsdc))}
                     </span>
                   </div>
                   
                   <div className="w-full">
                     <SegmentedProgress
-                        value={stream.vaultFill}
-                        max={stream.vaultTarget}
+                        value={Math.min(stream.vaultFill, raiseCapUsdc)}
+                        max={Math.max(raiseCapUsdc, 1)}
                         segments={48}
                         status="neutral"
                         size="standard"
@@ -431,7 +620,13 @@ export default function StreamInvestView({
                       4. THE UPSIDE
                     </h2>
                     <div className="font-mono text-caption text-text-disabled uppercase max-w-lg mb-sm">
-                      Note: You are paying ${formatNumber(stream.vaultTarget)} for a right to ${formatNumber(TARGET_DISTRIBUTION)} of actual cash-flow.
+                      Note: You are paying $
+                      {formatNumber(
+                        nominalUsdc !== undefined && nominalUsdc > 0
+                          ? nominalUsdc
+                          : stream.vaultTarget
+                      )}{" "}
+                      for a right to ${formatNumber(TARGET_DISTRIBUTION)} of actual cash-flow.
                     </div>
                     <div className="font-mono text-[10px] sm:text-[11px] text-accent uppercase tracking-wide max-w-lg">
                       * Projection assumes revenues are maintained. Actual yields are dynamic and may perform above or below estimates.
@@ -557,7 +752,7 @@ export default function StreamInvestView({
                  <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wide mb-sm">
                    Max {formatNumber(Math.round(maxInvestUsdc))} USDC
                    {stream.vaultFill > 0
-                     ? ` (${formatNumber(Math.round(stream.vaultTarget))} raise − ${formatNumber(Math.round(stream.vaultFill))} filled)`
+                     ? ` (${formatNumber(Math.round(raiseCapUsdc))} raise − ${formatNumber(Math.round(stream.vaultFill))} filled)`
                      : ` (raise cap)`}
                  </p>
                  <input

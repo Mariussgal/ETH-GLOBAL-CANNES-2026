@@ -294,8 +294,8 @@ function submitWorkflowResult(
 
         Vault vault = new Vault(address(usdc), address(this));
 
-        string memory tokenName = string(abi.encodePacked("YST-", pending.protocolSlug));
-        YSTToken token = new YSTToken(tokenName, "YST", address(vault), address(this));
+        // Nom du token = slug de déploiement (identique à `protocolSlug` passé à createStreamDirect)
+        YSTToken token = new YSTToken(pending.protocolSlug, "YST", address(vault), address(this));
 
         Router splitter = new Router(
             address(usdc),

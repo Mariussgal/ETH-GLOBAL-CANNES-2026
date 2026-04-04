@@ -1,7 +1,8 @@
 /** Chainlink ETH/USD AggregatorV3 (mainnet + Sepolia) — MARKET_RISK feed source */
 export const ETH_USD_AGGREGATOR_V3: Record<number, `0x${string}`> = {
   1: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
-  11155111: "0x694AA693936D9A674AFB0BDEAF2ED13B69BB0A22",
+  /** Sepolia ETH/USD — https://docs.chain.link/data-feeds/price-feeds/addresses */
+  11155111: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
 };
 
 export const aggregatorV3LatestRoundAbi = [

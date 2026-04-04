@@ -3,6 +3,7 @@
 import type { StreamData } from "@/components/StreamCard";
 import StreamInvestView from "@/components/invest/StreamInvestView";
 import { ADDRESSES, SEPOLIA_CHAIN_ID, STREAM_FACTORY_ABI, YST_VAULT_ABI } from "@/contracts";
+import { useCreAutomationStatus } from "@/hooks/useCreAutomationStatus";
 import {
   buildChainStreamCardData,
   parseFactoryRecord,
@@ -105,6 +106,10 @@ export default function InvestStreamPage({ id }: { id: string }) {
     query: { enabled: Boolean(record?.emitter) },
   });
 
+  const { chainlinkAutomationActive } = useCreAutomationStatus(
+    streamKey as `0x${string}` | undefined
+  );
+
   const chainStream: StreamData | null = useMemo(() => {
     if (!record?.active || !streamParams) return null;
     const totalFees = (totalFeesRaw as bigint | undefined) ?? BigInt(0);
@@ -158,5 +163,10 @@ export default function InvestStreamPage({ id }: { id: string }) {
     );
   }
 
-  return <StreamInvestView stream={chainStream} />;
+  return (
+    <StreamInvestView
+      stream={chainStream}
+      chainlinkAutomationActive={chainlinkAutomationActive}
+    />
+  );
 }

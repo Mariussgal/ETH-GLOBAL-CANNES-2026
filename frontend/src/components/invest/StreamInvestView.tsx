@@ -16,9 +16,14 @@ import { shouldSimulateDemoRevenue } from "@/lib/demo-revenue-protocol";
 
 interface StreamInvestViewProps {
   stream: StreamData;
+  /** Factory + CRE : forwarder et mapping workflow (streams on-chain uniquement). */
+  chainlinkAutomationActive?: boolean;
 }
 
-export default function StreamInvestView({ stream }: StreamInvestViewProps) {
+export default function StreamInvestView({
+  stream,
+  chainlinkAutomationActive = false,
+}: StreamInvestViewProps) {
   const { address } = useAccount();
   const [usdcRaw, setUsdcRaw] = useState("");
 
@@ -156,6 +161,7 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                     totalBaseRevenue={totalBaseRevenue}
                     totalPolygonRevenue={totalPolygonRevenue}
                     liveSync={hubLiveSync}
+                    chainlinkAutomationActive={chainlinkAutomationActive}
                   />
                 </div>
               </>

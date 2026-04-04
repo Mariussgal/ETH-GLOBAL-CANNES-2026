@@ -2,13 +2,20 @@
 
 import Image from "next/image";
 import SegmentedProgress from "@/components/SegmentedProgress";
+import { SEPOLIA_CHAIN_ID } from "@/contracts";
 
 interface ArcConsolidationHubProps {
   totalBaseRevenue: number;
   totalPolygonRevenue: number;
+  /** Badge LIVE_SYNC vert lorsque `isConnected && chainId === 11155111` (Sepolia) */
+  liveSync?: boolean;
 }
 
-export default function ArcConsolidationHub({ totalBaseRevenue, totalPolygonRevenue }: ArcConsolidationHubProps) {
+export default function ArcConsolidationHub({
+  totalBaseRevenue,
+  totalPolygonRevenue,
+  liveSync = false,
+}: ArcConsolidationHubProps) {
   // Calculate flow distributions
   const total = totalBaseRevenue + totalPolygonRevenue;
   const baseFlow = total > 0 ? Math.round((totalBaseRevenue / total) * 100) : 0;
@@ -21,9 +28,28 @@ export default function ArcConsolidationHub({ totalBaseRevenue, totalPolygonReve
 
       {/* Terminal Header */}
       <div className="w-full text-center mb-xl relative z-10">
-        <h2 className="font-mono text-label uppercase tracking-label text-text-secondary mb-xs">
-          MULTI-CHAIN YIELD ROUTING
-        </h2>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-sm sm:gap-xl mb-xs">
+          <h2 className="font-mono text-label uppercase tracking-label text-text-secondary">
+            MULTI-CHAIN YIELD ROUTING
+          </h2>
+          <div
+            className={`inline-flex items-center gap-xs font-mono text-[10px] uppercase tracking-widest px-sm py-[3px] border rounded-sm ${
+              liveSync
+                ? "border-success text-success bg-success/10"
+                : "border-border text-text-disabled bg-black/40"
+            }`}
+            title={
+              liveSync
+                ? `Connecté à Sepolia (chain ${SEPOLIA_CHAIN_ID})`
+                : "Connectez le wallet sur Sepolia (11155111) pour LIVE_SYNC"
+            }
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${liveSync ? "bg-success shadow-[0_0_6px_rgba(34,197,94,0.9)]" : "bg-text-disabled"}`}
+            />
+            LIVE_SYNC
+          </div>
+        </div>
         <span className="font-mono text-[10px] text-text-disabled uppercase">
           Consolidating fragmented liquidity across EVM networks
         </span>

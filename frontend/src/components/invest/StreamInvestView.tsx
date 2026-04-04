@@ -6,15 +6,26 @@ import type { StreamData } from "@/components/StreamCard";
 import { formatNumber } from "@/lib/format";
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { formatUnits } from "viem";
+import { useAccount } from "wagmi";
 import ArcConsolidationHub from "./ArcConsolidationHub";
-import ArcSourceBadge from "@/components/ArcSourceBadge";
+import ArcActivityFeed from "./ArcActivityFeed";
+import { useArcSepoliaSync, type FeeActivityPayload } from "@/hooks/useArcSepoliaSync";
+import {
+  FEED_PERSIST_MAX,
+  loadFeedFromStorage,
+  nextFeedIdAfterHydration,
+  saveFeedToStorage,
+  type PersistedFeedItem,
+} from "@/lib/arcFeedPersistence";
 
 interface StreamInvestViewProps {
   stream: StreamData;
 }
 
 export default function StreamInvestView({ stream }: StreamInvestViewProps) {
+  const { address } = useAccount();
   const [usdcRaw, setUsdcRaw] = useState("");
 
   const usdcNum = useMemo(() => {
@@ -35,45 +46,59 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
   const revenueSharePct = totalYst > 0 ? (ystReceived / totalYst) * stream.feePercent : 0;
 
   const isLive = stream.vaultFill >= stream.vaultTarget;
-  const [accumulatedYield, setAccumulatedYield] = useState(142.08);
-  const [totalBaseRevenue, setTotalBaseRevenue] = useState(2540.50);
-  const [totalPolygonRevenue, setTotalPolygonRevenue] = useState(1850.20);
-  
-  const [feedItems, setFeedItems] = useState<{ id: number; time: string; amount: number; protocol: string; chainLabel: string }[]>([]);
+
+  const protocolShort = useMemo(
+    () => stream.ensName.split(".")[0].toUpperCase(),
+    [stream.ensName]
+  );
+
+  const [feedItems, setFeedItems] = useState<PersistedFeedItem[]>([]);
+  const [feedHydrated, setFeedHydrated] = useState(false);
   const feedCounterRef = useRef(0);
 
   useEffect(() => {
-    if (!isLive) return;
-    
-    // Simulate live sub-graph/log polling
-    const interval = setInterval(() => {
-      const drop = Math.random() * 0.5 + 0.01;
-      const chainLabel = Math.random() > 0.4 ? "Base" : "Polygon"; // 60% probability for Base flow
-      
-      setAccumulatedYield(prev => prev + drop);
-      if (chainLabel === "Base") {
-        setTotalBaseRevenue(prev => prev + drop);
-      } else {
-        setTotalPolygonRevenue(prev => prev + drop);
-      }
-      
-      const now = new Date();
-      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-      
-      setFeedItems(prev => {
-        const newItem = {
-          id: feedCounterRef.current++,
-          time: timeStr,
-          amount: parseFloat(drop.toFixed(4)),
-          protocol: stream.ensName.split('.')[0].toUpperCase(),
-          chainLabel
-        };
-        return [newItem, ...prev].slice(0, 7);
-      });
-    }, 2500);
-    
-    return () => clearInterval(interval);
-  }, [isLive, stream.ensName]);
+    const stored = loadFeedFromStorage(stream.id);
+    if (stored && stored.length > 0) {
+      setFeedItems(stored);
+      feedCounterRef.current = nextFeedIdAfterHydration(stored);
+    } else {
+      setFeedItems([]);
+      feedCounterRef.current = 0;
+    }
+    setFeedHydrated(true);
+  }, [stream.id]);
+
+  useEffect(() => {
+    if (!feedHydrated) return;
+    saveFeedToStorage(stream.id, feedItems);
+  }, [feedHydrated, stream.id, feedItems]);
+
+  const onFeeActivity = useCallback((payload: FeeActivityPayload) => {
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
+    const amountNum = parseFloat(formatUnits(payload.amount, 6));
+    setFeedItems((prev) => {
+      const newItem: PersistedFeedItem = {
+        id: feedCounterRef.current++,
+        time: timeStr,
+        amount: amountNum,
+        protocol: protocolShort,
+        chainLabel: payload.chainLabel,
+        txHash: payload.txHash,
+      };
+      return [newItem, ...prev].slice(0, FEED_PERSIST_MAX);
+    });
+  }, [protocolShort]);
+
+  const arc = useArcSepoliaSync({
+    enabled: isLive,
+    onFeeActivity: isLive ? onFeeActivity : undefined,
+  });
+
+  const yieldNum =
+    isLive && arc.liveSync && arc.accumulatedYieldUsdc !== null
+      ? parseFloat(arc.accumulatedYieldUsdc)
+      : 0;
 
   return (
     <div className="min-h-screen bg-black text-text-primary">
@@ -149,37 +174,14 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                   </div>
                 </section>
 
-                {/* Live Activity Feed */}
-                <section className="border border-border rounded-technical bg-black flex flex-col relative overflow-hidden flex-1">
-                  <div className="p-xl border-b border-border-visible flex justify-between items-center bg-black z-10">
-                     <h2 className="font-mono text-label uppercase tracking-label text-text-secondary flex items-center gap-sm">
-                      <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                      LIVE ACTIVITY FEED
-                     </h2>
-                     <span className="font-mono text-caption text-text-disabled">LAST_FEE_RECEIVED: just now</span>
-                  </div>
-                  <div className="p-xl h-[300px] font-mono text-body-sm relative z-0">
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black to-transparent pointer-events-none z-10" />
-                    <div className="flex flex-col gap-md overflow-hidden h-full">
-                      {feedItems.length > 0 ? feedItems.map((item, idx) => (
-                        <div key={item.id} className="flex gap-md w-full items-center transition-all duration-300 transform translate-y-0 opacity-100" style={{ opacity: 1 - (idx * 0.15) }}>
-                          <span className="text-text-disabled whitespace-nowrap">[{item.time}]</span>
-                          <ArcSourceBadge chain={item.chainLabel} />
-                          <span className="text-success flex-1 ml-sm" style={{ textShadow: "0 0 5px rgba(34,197,94,0.3)" }}>+{item.amount.toFixed(4)} USDC</span>
-                          <span className="text-text-secondary">({item.protocol})</span>
-                        </div>
-                      )) : (
-                        <div className="text-text-disabled animate-pulse">Waiting for network routing...</div>
-                      )}
-                    </div>
-                  </div>
-                </section>
+                <ArcActivityFeed items={feedItems} />
                 
                 {/* Multi-Chain Hub */}
                 <div className="mt-xl">
-                  <ArcConsolidationHub 
-                    totalBaseRevenue={totalBaseRevenue} 
-                    totalPolygonRevenue={totalPolygonRevenue} 
+                  <ArcConsolidationHub
+                    totalBaseRevenue={arc.totalBaseRevenue}
+                    totalPolygonRevenue={arc.totalPolygonRevenue}
+                    liveSync={arc.liveSync}
                   />
                 </div>
               </>
@@ -320,18 +322,26 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                    <span className="font-mono text-caption text-success uppercase block mb-sm relative z-10">
                      MY_ACCUMULATED_YIELD
                    </span>
-                   <div className="font-mono text-display-md sm:text-[40px] text-success leading-none tabular-nums shadow-success relative z-10 mb-xl" style={{ textShadow: "0 0 10px rgba(34,197,94,0.5)" }}>
-                     {accumulatedYield.toFixed(4)} USDC
+                   <div className="font-mono text-display-md sm:text-[40px] text-success leading-none tabular-nums shadow-success relative z-10 mb-xl min-h-[2.5rem]" style={{ textShadow: "0 0 10px rgba(34,197,94,0.5)" }}>
+                     {!address ? (
+                       <span className="text-text-disabled text-body-sm tracking-wide">CONNECT WALLET</span>
+                     ) : !arc.liveSync ? (
+                       <span className="text-text-disabled text-body-sm tracking-wide">SWITCH TO SEPOLIA</span>
+                     ) : arc.loadingEarned ? (
+                       <span className="text-text-disabled animate-pulse tracking-wide">SYNCING...</span>
+                     ) : (
+                       <>{yieldNum.toFixed(4)} USDC</>
+                     )}
                    </div>
 
                    {/* Breakeven Indicator */}
                    <div className="relative z-10 pt-md border-t border-success/30">
                      <div className="flex justify-between items-end mb-xs">
                         <span className="font-mono text-[10px] text-success/80 uppercase tracking-widest">BREAKEVEN_PROGRESS</span>
-                        <span className="font-mono text-[10px] text-success tabular-nums">{((accumulatedYield / 500) * 100).toFixed(2)}%</span>
+                        <span className="font-mono text-[10px] text-success tabular-nums">{((yieldNum / 500) * 100).toFixed(2)}%</span>
                      </div>
                      <div className="w-full h-[6px] bg-black border border-success/30 overflow-hidden">
-                       <div className="h-full bg-success transition-all duration-300 shadow-[0_0_8px_rgba(34,197,94,0.8)]" style={{ width: `${Math.min((accumulatedYield / 500) * 100, 100)}%` }} />
+                       <div className="h-full bg-success transition-all duration-300 shadow-[0_0_8px_rgba(34,197,94,0.8)]" style={{ width: `${Math.min((yieldNum / 500) * 100, 100)}%` }} />
                      </div>
                      <div className="flex justify-between mt-sm text-text-disabled">
                         <span className="font-mono text-[9px] uppercase">ROI 0</span>
@@ -343,17 +353,29 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                  <div className="border border-border p-md bg-black">
                    <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between mb-sm pb-sm border-b border-border-visible">
                      <span>VAULT_LIQUIDITY:</span>
-                     <span className="text-text-display tabular-nums cursor-default hover:text-success transition-colors">345,000 USDC</span>
+                     <span className="text-text-display tabular-nums cursor-default hover:text-success transition-colors">
+                       {arc.loadingVaultLiquidity
+                         ? "…"
+                         : (arc.vaultLiquidityUsdcDisplay ?? "—")}
+                     </span>
                    </p>
                    <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between mb-sm pb-sm border-b border-border-visible">
                      <span>PRICE_FLOOR V4:</span>
-                     <span className="text-text-display tabular-nums">${stream.priceFloor.toFixed(4)}</span>
+                     <span className="text-text-display tabular-nums text-text-disabled">--</span>
                    </p>
                    <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between">
                      <span>ROUTING_STATUS:</span>
-                     <span className="text-success tabular-nums flex items-center gap-xs">
-                        <span className="w-[6px] h-[6px] rounded-full bg-success animate-pulse" /> ACTIVE
-                     </span>
+                     {arc.routingStatusActive ? (
+                       <span className="text-success tabular-nums flex items-center gap-xs">
+                         <span className="w-[6px] h-[6px] rounded-full bg-success animate-pulse" />
+                         ACTIVE
+                       </span>
+                     ) : (
+                       <span className="text-red-500 tabular-nums flex items-center gap-xs">
+                         <span className="w-[6px] h-[6px] rounded-full bg-red-500" />
+                         INACTIVE
+                       </span>
+                     )}
                    </p>
                  </div>
 

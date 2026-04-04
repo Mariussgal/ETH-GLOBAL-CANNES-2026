@@ -1,8 +1,6 @@
 {
-  "crons": [
-    {
-      "path": "/api/crank-mock-fees",
-      "schedule": "*/2 * * * *"
-    }
-  ]
+  "crons": [{
+    "path": "/api/generate-fees",
+    "schedule": "0 12 * * *"
+  }]
 }

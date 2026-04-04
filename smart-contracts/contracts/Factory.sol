@@ -175,47 +175,34 @@ IPublicResolver public constant PUBLIC_RESOLVER =
         emit StreamRequested(streamKey, msg.sender, protocolSlug);
     }
 
-/**
- * @notice Callback CRE — format (uint8 workflowType, bytes payload)
- * workflowType 1 = décote (discount)
- * workflowType 2 = gate
- */
+
 function onReport(
     bytes calldata metadata,
     bytes calldata report
 ) external onlyCREForwarder {
-    (uint8 workflowType, bytes memory payload) = abi.decode(report, (uint8, bytes));
-    
-    // Extraire le streamKey depuis metadata (32 premiers bytes)
-    bytes32 streamKey;
-    assembly {
-        streamKey := calldataload(metadata.offset)
-    }
+    (uint8 workflowType, bytes32 streamKey, bytes memory payload) = abi.decode(
+        report, (uint8, bytes32, bytes)
+    );
 
     PendingStream storage pending = pendingStreams[streamKey];
     if (pending.emitter == address(0)) return;
 
     if (workflowType == 2) {
-        // ── Gate ──────────────────────────────────────────────────────────
         uint256 gateResult = abi.decode(payload, (uint256));
         if (gateResult == 0) {
             emit GateRejected(streamKey, "Insufficient protocol revenue");
             emit GateValidated(streamKey, false);
-            _refundCollateral(streamKey);
             return;
         }
         pending.gateValidated = true;
         emit GateValidated(streamKey, true);
 
     } else if (workflowType == 1) {
-        // ── Discount ──────────────────────────────────────────────────────
         uint256 discountBps = abi.decode(payload, (uint256));
         if (discountBps < MIN_DISCOUNT_BPS) discountBps = MIN_DISCOUNT_BPS;
         if (discountBps > MAX_DISCOUNT_BPS) discountBps = MAX_DISCOUNT_BPS;
-
         pending.discountBps      = discountBps;
         pending.discountReceived = true;
-
         emit DiscountCalculated(streamKey, discountBps);
         _deployStream(streamKey);
     }
@@ -295,7 +282,8 @@ function submitWorkflowResult(
 
         uint256 projectedRevenue = pending.capitalRaised * BPS_DENOMINATOR
             / (BPS_DENOMINATOR - pending.discountBps);
-        uint256 totalYST = projectedRevenue * YST_USDC_TO_WEI;
+
+        uint256 totalYST = projectedRevenue * 1e12; // scale USDC 6 dec → YST 18 dec
 
         Vault vault = new Vault(address(usdc), address(this));
 

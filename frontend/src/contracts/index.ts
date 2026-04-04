@@ -3,23 +3,16 @@
 export const SEPOLIA_CHAIN_ID = 11155111;
 
 export const ADDRESSES = {
-  streamFactory: "0x9fe81bF16cf52c32636D48B9034356DC3981Ca03" as `0x${string}`,
-  ystSplitter: "0x02E75407376e5FBEd0e507E8265d92CeE9279fDC" as `0x${string}`,
-  /** Vault Arc / YSM — lecture `earned(user)` (yield accumulé USDC 6 décimales) */
-  vault: "0xaa122Fd7940B575c8eaf8376e315002F33D9ad11" as `0x${string}`,
+  streamFactory: "0x249c8855b842Cf044De78596702471098B31B082" as `0x${string}`,
+  ystSplitter: "0xaCD8f042eE1E29580A84e213760D144957eec148" as `0x${string}`,
+  vault: "0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8" as `0x${string}`,
   mockBase: "0x89e3dF8A6970B62564b232cbBD7376987cD093a8" as `0x${string}`,
   mockPolygon: "0x006969A32349d9581ac7206a7a1fC1168DbBcfbc" as `0x${string}`,
-  masterSettler: "0xFE6B4a8Ae90C47dA0E19296CaeBb2FF8D313954f" as `0x${string}`,
-  /** USDC Sepolia (aligné sur le Vault) */
-  usdc: "0x1c7D4B196Cb0274891fA4630730B4863E77a56B9" as `0x${string}`,
+  masterSettler: "0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4" as `0x${string}`,
+  usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as `0x${string}`,
   ystToken: "0x343f28CEA446Cef6e8A380bFe11BcBf95f115370" as `0x${string}`,
-  /** Keeper AutomationCompatible — aligné `chainlink-CRE/my-workflow/main.ts` (Sepolia). */
-  keeper: "0xaad4F938F75A14015E84D7f1aFA81F8A53ad79B7" as `0x${string}`,
-  /**
-   * PrimarySale (marché primaire YST/USDC). Remplacer après déploiement Sepolia.
-   * Surcharge possible : `NEXT_PUBLIC_PRIMARY_SALE_ADDRESS` (même logique que le keeper).
-   */
-  primarySale: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+  keeper: "0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4" as `0x${string}`,
+  primarySale: "0x5161d70daCBfFc651FAd24aC63200Ac72c4A4aF3" as `0x${string}`,
 } as const;
 
 /** Surcharge déploiement (Vercel). */

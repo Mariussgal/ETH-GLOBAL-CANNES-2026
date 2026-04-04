@@ -103,13 +103,7 @@ export function buildChainStreamCardData(
   const { streamBps, discountBps, startTime, endTime, capitalRaised, totalYST } = streamParams;
   const durationDays = Number((endTime - startTime) / BigInt(86400));
   const daysRemaining = endTime > now ? Number((endTime - now) / BigInt(86400)) : 0;
-  const BPS_DEN = BigInt(10000);
-  const projectedRevenueRaw =
-    (capitalRaised * BPS_DEN) / (BPS_DEN - discountBps);
-  const targetUsdc =
-    opts?.emitterYstBalanceWei !== undefined
-      ? Number(projectedRevenueRaw) / 1e6
-      : Number(capitalRaised) / 1e6;
+  const targetUsdc = Number(capitalRaised) / 1e6;
   const capForPrimary = opts?.capYstWei ?? totalYST;
   const fillUsdc =
     opts?.emitterYstBalanceWei !== undefined
@@ -125,10 +119,6 @@ export function buildChainStreamCardData(
     }
   }
 
-  const nominalRaiseCapUsdc =
-    opts?.emitterYstBalanceWei !== undefined
-      ? Number(capitalRaised) / 1e6
-      : undefined;
 
   return {
     id: indexOneBased,
@@ -140,9 +130,11 @@ export function buildChainStreamCardData(
     discount: Number(discountBps) / 100,
     vaultFill: fillUsdc,
     vaultTarget: targetUsdc,
-    nominalRaiseCapUsdc,
+    nominalRaiseCapUsdc: targetUsdc,
+    totalTokenSupply: Number(capForPrimary) / 1e12 / 1e6, // Conversion 18 → 6 dec pour affichage "humain"
     priceFloor,
     sources: ["SEPOLIA"],
     defaulted: false,
+    createdAt: Number(record.createdAt),
   };
 }

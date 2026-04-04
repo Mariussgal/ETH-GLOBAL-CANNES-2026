@@ -9,7 +9,7 @@ interface ArcConsolidationHubProps {
   totalPolygonRevenue: number;
   /** Badge LIVE_SYNC vert lorsque `isConnected && chainId === 11155111` (Sepolia) */
   liveSync?: boolean;
-  /** Factory : CRE forwarder + mapping workflow → stream (si configuré). */
+  /** Badge CHAINLINK_AUTOMATION vert lorsque l'automation est active. */
   chainlinkAutomationActive?: boolean;
 }
 
@@ -52,13 +52,18 @@ export default function ArcConsolidationHub({
             />
             LIVE_SYNC
           </div>
+
           {chainlinkAutomationActive && (
             <div
-              className="inline-flex items-center gap-xs font-mono text-[10px] uppercase tracking-widest px-sm py-[3px] border rounded-sm border-[#375BD2] text-[#9ECFFF] bg-[#375BD2]/10"
-              title="Factory : creForwarder actif et workflow CRE lié à ce stream (si NEXT_PUBLIC_CRE_WORKFLOW_ID)"
+              className="inline-flex items-center gap-xs font-mono text-[10px] uppercase tracking-widest px-sm py-[3px] border border-success/40 text-success bg-success/5 rounded-sm"
+              title="Chainlink Automation (CRE) detects protocol fees on L2s and triggers Sepolia minting."
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#375BD2] shadow-[0_0_6px_rgba(55,91,210,0.8)]" />
-              CHAINLINK AUTOMATION ACTIVE
+              <div className="flex gap-[2px]">
+                <span className="w-1 h-1 bg-success rounded-full animate-bounce" />
+                <span className="w-1 h-1 bg-success rounded-full animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1 h-1 bg-success rounded-full animate-bounce [animation-delay:-0.3s]" />
+              </div>
+              CHAINLINK_AUTOMATION
             </div>
           )}
         </div>

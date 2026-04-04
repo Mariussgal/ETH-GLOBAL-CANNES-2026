@@ -5,7 +5,7 @@
  * POST ou GET (pour Vercel Cron). Si `CRANK_SECRET` est défini : header
  * `Authorization: Bearer <CRANK_SECRET>`.
  *
- * Env : MOCK_CRANK_PRIVATE_KEY, CRANK_SECRET (optionnel),
+ * Env : PRIVATE_KEY, CRANK_SECRET (optionnel),
  * SEPOLIA_RPC_URL ou NEXT_PUBLIC_SEPOLIA_RPC_URL (recommandé : même URL Alchemy que le client).
  */
 
@@ -80,11 +80,11 @@ function authorize(request: Request): NextResponse | null {
 }
 
 async function runCrank(): Promise<NextResponse> {
-  const pkRaw = process.env.MOCK_CRANK_PRIVATE_KEY?.trim();
+  const pkRaw = process.env.PRIVATE_KEY?.trim();
   if (!pkRaw) {
     return NextResponse.json(
       {
-        error: "MOCK_CRANK_PRIVATE_KEY not set",
+        error: "PRIVATE_KEY not set",
         hint: "Add a Sepolia-funded wallet key to crank mock fees on-chain.",
       },
       { status: 503 }
@@ -95,7 +95,7 @@ async function runCrank(): Promise<NextResponse> {
   try {
     account = privateKeyToAccount(normalizePk(pkRaw));
   } catch {
-    return NextResponse.json({ error: "invalid MOCK_CRANK_PRIVATE_KEY" }, { status: 500 });
+    return NextResponse.json({ error: "invalid PRIVATE_KEY" }, { status: 500 });
   }
 
   const rpc =

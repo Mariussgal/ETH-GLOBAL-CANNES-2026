@@ -5,7 +5,7 @@
  * - `{ "halve": true }` — divise min/max par 2 sur chaque mock (plancher min ≥ 1 wei).
  * - `{ "minFeeUsdc": 0.05, "maxFeeUsdc": 12.5 }` — bornes explicites (nombres humains).
  *
- * Owner uniquement : même clé que les autres routes mock (`MOCK_CRANK_PRIVATE_KEY`).
+ * Owner uniquement : même clé que les autres routes mock (`PRIVATE_KEY`).
  */
 
 import { NextResponse } from "next/server";
@@ -58,9 +58,9 @@ export async function POST(request: Request) {
   const denied = authorize(request);
   if (denied) return denied;
 
-  const pkRaw = process.env.MOCK_CRANK_PRIVATE_KEY?.trim();
+  const pkRaw = process.env.PRIVATE_KEY?.trim();
   if (!pkRaw) {
-    return NextResponse.json({ error: "MOCK_CRANK_PRIVATE_KEY not set" }, { status: 503 });
+    return NextResponse.json({ error: "PRIVATE_KEY not set" }, { status: 503 });
   }
 
   let body: { halve?: boolean; minFeeUsdc?: number; maxFeeUsdc?: number };
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
   try {
     account = privateKeyToAccount(pk);
   } catch {
-    return NextResponse.json({ error: "invalid MOCK_CRANK_PRIVATE_KEY" }, { status: 500 });
+    return NextResponse.json({ error: "invalid PRIVATE_KEY" }, { status: 500 });
   }
 
   const transport = http(rpcUrl());

@@ -20,6 +20,7 @@ import { useDemoProtocolRevenueFeed } from "@/hooks/useDemoProtocolRevenueFeed";
 import { useMockFeeAutoCrank } from "@/hooks/useMockFeeAutoCrank";
 import { usePrimaryMarketInvest } from "@/hooks/usePrimaryMarketInvest";
 import { shouldSimulateDemoRevenue } from "@/lib/demo-revenue-protocol";
+import InvestorClaimButton from "@/components/dashboard/InvestorClaimButton";
 
 /** Getter `splitter` sur MockQuickswapBase / Polygon */
 const MOCK_SPLITTER_READ_ABI = [
@@ -108,13 +109,16 @@ export default function StreamInvestView({
   }, [maxInvestUsdc, usdcRaw]);
 
   const nominalUsdc = stream.nominalRaiseCapUsdc;
-  /** En primaire, `vaultTarget` = valeur faciale ; sinon nominal vault. */
+  /** En primaire, on utilise le supply réel si disponible (Factory) ; sinon on utilise vaultTarget. */
   const TARGET_DISTRIBUTION = useMemo(() => {
+    if (stream.totalTokenSupply !== undefined && stream.totalTokenSupply > 0) {
+      return stream.totalTokenSupply;
+    }
     if (nominalUsdc !== undefined && nominalUsdc > 0) {
       return stream.vaultTarget;
     }
     return stream.vaultTarget / (1 - stream.discount / 100);
-  }, [nominalUsdc, stream.vaultTarget, stream.discount]);
+  }, [stream.totalTokenSupply, nominalUsdc, stream.vaultTarget, stream.discount]);
 
   const HISTORICAL_ANNUAL_REVENUE = useMemo(() => {
     const base =
@@ -311,7 +315,7 @@ export default function StreamInvestView({
             .join(" · ");
           throw new Error(
             msg.includes("NotOwner") || msg.includes("owner")
-              ? `${msg} — la clé MOCK_CRANK_PRIVATE_KEY doit être owner des mocks (transferOwnership).`
+              ? `${msg} — la clé PRIVATE_KEY doit être owner des mocks (transferOwnership).`
               : msg
           );
         }
@@ -381,7 +385,7 @@ export default function StreamInvestView({
           .join(" · ");
         throw new Error(
           msg.includes("NotOwner") || msg.includes("owner")
-            ? `${msg} — MOCK_CRANK_PRIVATE_KEY doit être owner des mocks.`
+            ? `${msg} — PRIVATE_KEY doit être owner des mocks.`
             : msg
         );
       }
@@ -431,6 +435,24 @@ export default function StreamInvestView({
       : vaultLive && arc.liveSync && arc.accumulatedYieldUsdc !== null
         ? parseFloat(arc.accumulatedYieldUsdc)
         : 0;
+
+  /** `YST.claimRewards()` — désactivé si pas de rewards claimables (vault.earned). */
+  const claimYieldDisabled = useMemo(() => {
+    if (!chainInvest?.ystToken) return true;
+    if (demoFeedActive) return true;
+    if (mockSplitterMismatch) return true;
+    if (!arc.liveSync || !address) return true;
+    if (arc.loadingEarned) return true;
+    return !Number.isFinite(yieldNum) || yieldNum <= 1e-9;
+  }, [
+    chainInvest?.ystToken,
+    demoFeedActive,
+    mockSplitterMismatch,
+    arc.liveSync,
+    arc.loadingEarned,
+    address,
+    yieldNum,
+  ]);
 
   const {
     invest,
@@ -498,8 +520,9 @@ export default function StreamInvestView({
             ) : (
               <div className="flex flex-col gap-sm font-mono text-caption">
                 <p className="font-mono text-[11px] text-text-secondary leading-relaxed normal-case">
-                  You are the issuer. This address holds minted YST for the primary sale — inventory,
-                  not a purchased investor position (no USDC principal / revenue share here).
+                  You are the issuer. This address holds minted YST for the primary sale — inventory, 
+                  not a purchased investor position. Since you sell 1:1, any surplus YST (from yield discount)
+                  remains in your wallet as retention.
                 </p>
                 <div className="flex justify-between items-baseline gap-md border-t border-border-visible pt-sm">
                   <span className="text-text-secondary uppercase">YST inventory</span>
@@ -747,10 +770,8 @@ export default function StreamInvestView({
                       </p>
                     ) : null}
                     <p className="text-text-disabled normal-case">
-                      Levée complète : le serveur appelle{" "}
-                      <code className="text-text-secondary">generateFees()</code> tant que l’interrupteur
                       est ON et que la page est ouverte (~8–15&nbsp;s). Crank :{" "}
-                      <code className="text-text-secondary">MOCK_CRANK_PRIVATE_KEY</code> + ETH Sepolia.
+                      <code className="text-text-secondary">PRIVATE_KEY</code> + ETH Sepolia.
                     </p>
                     {!feesGenerationEnabled ? (
                       <p className="text-text-secondary normal-case">
@@ -1039,12 +1060,36 @@ export default function StreamInvestView({
                  </div>
 
                  <div className="flex flex-col gap-sm w-full">
-                   <button
-                     type="button"
-                     className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-success bg-black text-success transition-all duration-300 ease-nothing hover:bg-success hover:text-black hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]"
-                   >
-                     [ CLAIM_CURRENT_YIELD ]
-                   </button>
+                   {demoFeedActive ? (
+                     <button
+                       type="button"
+                       disabled
+                       className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-border bg-black text-text-disabled opacity-50 cursor-not-allowed"
+                     >
+                       CLAIM (démo synthétique — pas on-chain)
+                     </button>
+                   ) : chainInvest ? (
+                     <>
+                       <InvestorClaimButton
+                         ystToken={chainInvest.ystToken}
+                         disabled={claimYieldDisabled}
+                         className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-success bg-black text-success transition-all duration-300 ease-nothing hover:bg-success hover:text-black hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-black disabled:hover:text-success rounded-sm"
+                       />
+                       <p className="font-mono text-[9px] text-text-disabled normal-case text-center leading-snug">
+                         Envoie <code className="text-text-secondary">claimRewards()</code> sur le YST de ce
+                         stream — transfère l’USDC accumulé depuis le vault (frais 50 bps au claim dans le
+                         contrat).
+                       </p>
+                     </>
+                   ) : (
+                     <button
+                       type="button"
+                       disabled
+                       className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-border bg-black text-text-disabled opacity-50"
+                     >
+                       CLAIM (stream hors chaîne)
+                     </button>
+                   )}
                    <div className="flex justify-center items-center gap-xs mt-1">
                      <Image src="/arc_logo_white_sharp.png" alt="Arc" width={10} height={10} className="opacity-50 brightness-0 invert" />
                      <span className="font-mono text-[9px] text-text-disabled uppercase tracking-widest">CONSOLIDATED_BY_ARC</span>

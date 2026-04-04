@@ -245,6 +245,14 @@ export const STREAM_FACTORY_ABI = [
 
 export const YST_VAULT_ABI = [
   {
+    type: "event",
+    name: "RewardsClaimed",
+    inputs: [
+      { name: "user", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  {
     name: "totalAccumulated",
     type: "function",
     stateMutability: "view",

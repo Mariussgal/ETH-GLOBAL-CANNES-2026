@@ -7,6 +7,9 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useIssuerReceiveHistory } from "@/hooks/useIssuerReceiveHistory";
+
+const SEPOLIA_TX_URL = "https://sepolia.etherscan.io/tx/";
 
 function SkeletonCard() {
   return (
@@ -45,6 +48,17 @@ export default function IssuerDashboard() {
         : [],
     [rows, address]
   );
+
+  const { receiveEntries: rawEntries, isLoading: receiveHistoryLoading } = useIssuerReceiveHistory();
+  
+  // Filtrage pour ne garder que les tx qui correspondent aux streams de la factory actuelle
+  const receiveEntries = useMemo(() => {
+    if (issuerRows.length === 0) return [];
+    // On trouve le timestamp le plus ancien parmi nos streams (secondes -> ms)
+    const minTime = Math.min(...issuerRows.map(r => r.stream.createdAt)) * 1000;
+    // On garde une petite marge (ex: 5 min) au cas où la tx de création et le log de fetch soient proches
+    return rawEntries.filter(e => new Date(e.timestamp).getTime() >= (minTime - 300_000));
+  }, [rawEntries, issuerRows]);
 
   const totalRaised = useMemo(
     () => issuerRows.reduce((acc, r) => acc + r.stream.vaultFill, 0),
@@ -99,7 +113,7 @@ export default function IssuerDashboard() {
             {[
               { label: "STREAMS", value: String(issuerRows.length) },
               {
-                label: "RAISED (USDC)",
+                label: "RECEIVED (USDC)",
                 value: `$${new Intl.NumberFormat("en-US").format(Math.round(totalRaised))}`,
               },
               {
@@ -120,6 +134,83 @@ export default function IssuerDashboard() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* ── Receive history (Issuer specific) ── */}
+        {showStreams && (
+          <section className="mb-2xl border border-border rounded-technical overflow-hidden bg-black shadow-[0_0_15px_rgba(255,255,255,0.02)]">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-md bg-surface/30">
+              <span className="font-mono text-label uppercase tracking-label text-text-secondary">
+                Receive history
+              </span>
+              <span className="font-mono text-[10px] text-text-disabled uppercase">
+                CAPITAL_INFLOW_RECORDS · [ STATUS: ESCROWED ]
+              </span>
+            </div>
+            {receiveHistoryLoading && receiveEntries.length === 0 ? (
+              <div className="font-mono text-body-sm text-text-secondary py-xl text-center">
+                [ SCANNING_PRIMARY_MARKET_RECEIPTS… ]
+              </div>
+            ) : receiveEntries.length === 0 ? (
+              <div className="font-mono text-body-sm text-text-disabled py-xl text-center">
+                [ NO_INCOMING_CAPITAL_DETECTED_FOR_THIS_ISSUER ]
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] font-mono text-left text-body-sm">
+                  <thead>
+                    <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-disabled">
+                      <th className="px-4 py-3 font-normal">Date (UTC)</th>
+                      <th className="px-4 py-3 font-normal">From (Buyer)</th>
+                      <th className="px-4 py-3 font-normal tabular-nums">Amount Received</th>
+                      <th className="px-4 py-3 font-normal text-right">Transaction</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {receiveEntries.map((e) => (
+                      <tr
+                        key={e.hash}
+                        className="border-b border-border/80 hover:bg-surface/20 transition-colors"
+                      >
+                        <td className="px-4 py-3 text-text-display tabular-nums whitespace-nowrap">
+                          {new Date(e.timestamp).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary tabular-nums">
+                          {e.buyer.slice(0, 6)}…{e.buyer.slice(-4)}
+                        </td>
+                        <td className="px-4 py-3 tabular-nums text-success">
+                          ${e.amountUsdc.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <a
+                            href={`${SEPOLIA_TX_URL}${e.hash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-[11px] text-text-secondary hover:text-text-display underline underline-offset-2"
+                          >
+                            Etherscan ↗
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="px-4 py-3 bg-surface/10 border-t border-border">
+                  <p className="font-mono text-[10px] text-text-disabled leading-relaxed max-w-2xl">
+                    Note: Incoming capital is currently held in the <span className="text-text-secondary">PrimarySale</span> escrow contract until the campaign duration ends or is finalized.
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
         )}
 
         {/* ── Not connected ── */}

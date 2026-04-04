@@ -18,9 +18,11 @@ export interface StreamData {
   vaultTarget: number;
   /** Levée primaire : plafond nominal (USDC) depuis `capitalRaised` — pour « 100 % » et caps d’invest. */
   nominalRaiseCapUsdc?: number;
+  totalTokenSupply?: number;
   priceFloor: number;
   sources: string[];
   defaulted: boolean;
+  createdAt: number;
 }
 
 interface StreamCardProps {

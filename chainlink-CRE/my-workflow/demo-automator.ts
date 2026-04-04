@@ -2,19 +2,17 @@ import { execSync } from "child_process";
 import { ethers } from "ethers";
 import * as dotenv from "dotenv";
 
-// On charge le .env (celui du dossier courant ou du dossier parent)
 dotenv.config({ path: '../.env' });
 dotenv.config();
 
-const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"; // Plus stable que le rpc.sepolia.org par défaut
+const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"; 
 const FACTORY_ADDRESS = "0x3615CFfF7D94710AC12Ed63c94E28F53551Ac32E";
 const CLI_PATH = "/Users/cyriacmirkovik/.cre/bin/cre";
 
-// Configuration des workflows
 const workflows = [
   { name: "Décote", payload: '{"slug": "quickswap"}', index: 0 },
   { name: "Gate", payload: '{"slug": "quickswap"}', index: 1 },
-  { name: "Settlement", payload: '{"slug": "quickswap"}', index: 2 } // Index 2 si tu as divisé ton cron en trigger manuel
+  { name: "Settlement", payload: '{"slug": "quickswap"}', index: 2 }
 ];
 
 async function runDeployer() {
@@ -39,7 +37,6 @@ async function runDeployer() {
       console.log(`⏳ Simulation CRE locale en cours...`);
       const output = execSync(cmd, { encoding: "utf-8", cwd: ".." });
       
-      // On cherche le résultat encodé en hexa dans les logs de Chainlink
       const match = output.match(/Simulation Result:\s*"([0-9a-fA-F]+)"/);
       if (!match || !match[1]) {
         console.warn(`⚠️ Résultat introuvable pour ${wf.name}, le workflow ne retourne peut-être pas de valeur HEX.`);
@@ -49,17 +46,16 @@ async function runDeployer() {
       const payloadHex = "0x" + match[1];
       console.log(`✅ Résultat capturé par le mock oracle: ${payloadHex}`);
       
-      console.log(`📡 Envoi de la transaction sur Sepolia Testnet...`);
-      
-      // On encode l'appel à la fonction onReport(bytes) car le contrat attend un appel de fonction, pas juste des bytes.
       const iface = new ethers.Interface(["function onReport(bytes calldata report) external"]);
       const calldata = iface.encodeFunctionData("onReport", [payloadHex]);
 
-      // ON ENVOIE LA DONNÉE DIRECTEMENT AU CONTRAT DE P1 COMME LE FERAIT CHAINLINK
+      console.log(`📡 Calldata généré : ${calldata}`);
+      console.log(`📡 Envoi de la transaction sur Sepolia Testnet...`);
+      
       const tx = await wallet.sendTransaction({
         to: FACTORY_ADDRESS,
         data: calldata,
-        gasLimit: 3000000 // Gas safe pour éviter OOG
+        gasLimit: 3000000 
       });
 
       console.log(`🎉 Transaction diffusée !`);

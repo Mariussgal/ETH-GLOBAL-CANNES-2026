@@ -601,7 +601,6 @@ export default function CreateStreamTerminal() {
     annualRevenueUsd,
     feesLoading,
     creDecotePercent,
-    revenuePct,
     offeringEconomics,
     writeError,
     receipt,

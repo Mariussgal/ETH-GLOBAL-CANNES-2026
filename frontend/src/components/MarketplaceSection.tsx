@@ -10,7 +10,7 @@ import { useEnsSubdomainStatus } from "@/hooks/useEnsSubdomainStatus";
 
 function StreamCardWithEns({
   stream,
-  emitter,
+  emitter: _emitter,
 }: {
   stream: StreamData;
   emitter: `0x${string}`;

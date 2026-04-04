@@ -1,6 +1,7 @@
 "use client";
 
 import ActivateAutomationButton from "@/components/dashboard/ActivateAutomationButton";
+import EndCampaignButton from "@/components/dashboard/EndCampaignButton";
 import SegmentedProgress from "@/components/SegmentedProgress";
 import { useCreAutomationStatus } from "@/hooks/useCreAutomationStatus";
 import type { OnChainStreamRow } from "@/hooks/useMarketplaceOnChainStreams";
@@ -86,6 +87,7 @@ export default function IssuerStreamCard({ row }: Props) {
         </Link>
 
         <ActivateAutomationButton row={row} />
+        <EndCampaignButton row={row} />
       </div>
     </article>
   );

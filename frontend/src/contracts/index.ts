@@ -19,7 +19,7 @@ function mockAddressFromEnv(
 }
 
 export const ADDRESSES = {
-  streamFactory: "0x167879605c17b82f78431F0CDaD52210380Bc68c" as `0x${string}`,
+  streamFactory: "0xb68A81ddF5c17B40716659b8405AA25c8F9Ee168" as `0x${string}`,
   ystSplitter: "0xaCD8f042eE1E29580A84e213760D144957eec148" as `0x${string}`,
   vault: "0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8" as `0x${string}`,
   mockBase: mockAddressFromEnv("NEXT_PUBLIC_MOCK_BASE_ADDRESS", MOCK_BASE_DEFAULT),
@@ -219,6 +219,27 @@ export const STREAM_FACTORY_ABI = [
       { name: "streamKey", type: "bytes32" },
     ],
     outputs: [],
+  },
+  {
+    name: "markDefaulted",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "streamKey", type: "bytes32" }],
+    outputs: [],
+  },
+  {
+    name: "clearDefaulted",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "streamKey", type: "bytes32" }],
+    outputs: [],
+  },
+  {
+    name: "streamKeyToSubnode",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "streamKey", type: "bytes32" }],
+    outputs: [{ name: "", type: "bytes32" }],
   },
 ] as const;
 

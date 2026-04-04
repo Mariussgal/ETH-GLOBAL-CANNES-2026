@@ -343,7 +343,7 @@ function submitWorkflowResult(
             address(PUBLIC_RESOLVER),
             0,                       // TTL
             0,                       // pas de fuses
-            uint64(block.timestamp + 365 days * 10)  // expiry 10 ans
+            uint64(block.timestamp + 300 days)  // expiry < 1 an, dans la limite de ysm.eth
         ) returns (bytes32 subnode) {
             // Pointe le subdomain vers le vault
             try PUBLIC_RESOLVER.setAddr(subnode, address(vault)) {} catch {}

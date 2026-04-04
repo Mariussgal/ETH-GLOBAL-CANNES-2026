@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import {
   ADDRESSES,
+  ERC20_ABI,
   SEPOLIA_CHAIN_ID,
   STREAM_FACTORY_ABI,
   YST_VAULT_ABI,
@@ -18,6 +19,16 @@ import type { StreamData } from "@/components/StreamCard";
 export type OnChainStreamRow = {
   stream: StreamData;
   emitter: `0x${string}`;
+  vault: `0x${string}`;
+  ystToken: `0x${string}`;
+  /**
+   * Part du YST qui a quitté l’émetteur (vente / distribution), vs supply initial.
+   * À la création tout est minté sur l’émetteur — totalSupply/cap faisait 100 % à tort.
+   */
+  fundingRatio: number;
+  totalFeesWei: bigint;
+  totalYST: bigint;
+  emitterYstBalance: bigint;
 };
 
 export function useMarketplaceOnChainStreams() {
@@ -60,6 +71,7 @@ export function useMarketplaceOnChainStreams() {
     indexOneBased: number;
     vault: `0x${string}`;
     emitter: `0x${string}`;
+    ystToken: `0x${string}`;
   };
 
   const vaultRows = useMemo((): VaultRow[] => {
@@ -74,10 +86,34 @@ export function useMarketplaceOnChainStreams() {
         indexOneBased: i + 1,
         vault: rec.vault,
         emitter: rec.emitter,
+        ystToken: rec.ystToken,
       });
     }
     return out;
   }, [streamResults]);
+
+  /** Solde YST encore détenu par l’émetteur (le reste = distribué aux investisseurs). */
+  const ystEmitterBalanceReads = useMemo(
+    () =>
+      vaultRows.map((row) => ({
+        address: row.ystToken,
+        abi: ERC20_ABI,
+        functionName: "balanceOf" as const,
+        args: [row.emitter] as const,
+        chainId: SEPOLIA_CHAIN_ID,
+      })),
+    [vaultRows]
+  );
+
+  const { data: ystEmitterBalanceResults, isPending: ystEmitterBalancePending } =
+    useReadContracts({
+      contracts: ystEmitterBalanceReads,
+      query: {
+        enabled: ystEmitterBalanceReads.length > 0,
+        staleTime: 15_000,
+        refetchInterval: 30_000,
+      },
+    });
 
   const vaultReads = useMemo(() => {
     return vaultRows.flatMap((row) => [
@@ -148,15 +184,41 @@ export function useMarketplaceOnChainStreams() {
         priceFloorRaw
       );
 
-      out.push({ stream, emitter: row.emitter });
+      const balRes = ystEmitterBalanceResults?.[j];
+      const emitterYstBalance =
+        balRes?.status === "success"
+          ? (balRes.result as bigint)
+          : BigInt(0);
+      const cap = params.totalYST;
+      const sold =
+        cap > emitterYstBalance ? cap - emitterYstBalance : BigInt(0);
+      let fundingRatio = 0;
+      if (cap > BigInt(0)) {
+        const tenK = BigInt(10000);
+        const bps = (sold * tenK) / cap;
+        const capped = bps > tenK ? tenK : bps;
+        fundingRatio = Math.min(1, Number(capped) / 10000);
+      }
+
+      out.push({
+        stream,
+        emitter: row.emitter,
+        vault: row.vault,
+        ystToken: row.ystToken,
+        fundingRatio,
+        totalFeesWei: totalFees,
+        totalYST: cap,
+        emitterYstBalance,
+      });
     }
 
     return out.reverse();
-  }, [vaultRows, vaultResults, streamResults]);
+  }, [vaultRows, vaultResults, streamResults, ystEmitterBalanceResults]);
 
   const isLoading =
     keysPending ||
     (keys.length > 0 && streamsPending) ||
+    (ystEmitterBalanceReads.length > 0 && ystEmitterBalancePending) ||
     (vaultReads.length > 0 && vaultPending);
 
   return {

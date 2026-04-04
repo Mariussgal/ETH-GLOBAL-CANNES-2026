@@ -698,7 +698,7 @@ export default function CreateStreamTerminal() {
                     <span className="text-text-display">{ensName}</span>
                   </p>
                   <p className="font-mono text-caption text-text-disabled">
-                    The slug shown on the marketplace and deployed on-chain follows the "protocol slug" field
+                    The slug shown on the marketplace and deployed on-chain follows the &ldquo;protocol slug&rdquo; field
                     (e.g. uniswap); without an override, it is your ENS label.
                   </p>
                 </div>

@@ -44,7 +44,7 @@ export default function InvestorDashboard() {
   } = useInvestorClaimHistory({
     vaultAddresses,
     userAddress: address,
-    enabled: Boolean(address && vaultAddresses.length > 0),
+    enabled: Boolean(address),
   });
 
   const vaultToStreamLabel = useMemo(() => {
@@ -207,33 +207,35 @@ export default function InvestorDashboard() {
               </div>
             </section>
 
-            {(claimEntries.length > 0 ||
-              claimHistoryLoading ||
-              claimHistoryError) && (
-              <section className="mb-2xl border border-border rounded-technical overflow-hidden bg-black">
-                <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-md bg-surface/30">
-                  <span className="font-mono text-label uppercase tracking-label text-text-secondary">
-                    Claim history
-                  </span>
-                  <span className="font-mono text-[10px] text-text-disabled uppercase">
-                    RewardsClaimed (net USDC)
-                  </span>
-                </div>
-                {claimHistoryError && !claimHistoryLoading ? (
-                  <div className="px-4 py-xl font-mono text-body-sm text-accent text-center leading-relaxed">
-                    <p className="mb-sm">
-                      Impossible de charger les logs (limite de plage ou RPC).
-                    </p>
-                    <p className="text-[11px] text-text-secondary normal-case max-w-lg mx-auto">
-                      {claimHistoryErrorMessage}
-                    </p>
-                  </div>
-                ) : claimHistoryLoading && claimEntries.length === 0 ? (
-                  <div className="font-mono text-body-sm text-text-secondary py-xl text-center">
-                    [ LOADING_LOGS… ]
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
+        {address && (
+          <section className="mb-2xl border border-border rounded-technical overflow-hidden bg-black">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-md bg-surface/30">
+              <span className="font-mono text-label uppercase tracking-label text-text-secondary">
+                Claim history
+              </span>
+              <span className="font-mono text-[10px] text-text-disabled uppercase">
+                RewardsClaimed (net USDC)
+              </span>
+            </div>
+            {claimHistoryError && !claimHistoryLoading ? (
+              <div className="px-4 py-xl font-mono text-body-sm text-accent text-center leading-relaxed">
+                <p className="mb-sm">
+                  Impossible de charger les logs (limite de plage ou RPC).
+                </p>
+                <p className="text-[11px] text-text-secondary normal-case max-w-lg mx-auto">
+                  {claimHistoryErrorMessage}
+                </p>
+              </div>
+            ) : claimHistoryLoading && claimEntries.length === 0 ? (
+              <div className="font-mono text-body-sm text-text-secondary py-xl text-center">
+                [ SCANNING_YIELD_DISTRIBUTIONS… ]
+              </div>
+            ) : claimEntries.length === 0 ? (
+              <div className="font-mono text-body-sm text-text-disabled py-xl text-center">
+                [ NO_YIELD_CLAIMED_YET_BY_THIS_INVESTOR ]
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
                     <table className="w-full min-w-[640px] font-mono text-left text-body-sm">
                       <thead>
                         <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-disabled">

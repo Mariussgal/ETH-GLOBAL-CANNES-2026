@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!Array.isArray(vaultsRaw) || vaultsRaw.length === 0) {
+  if (!Array.isArray(vaultsRaw)) {
     return NextResponse.json(
       { ok: false as const, error: "invalid_vaults" },
       { status: 400 }

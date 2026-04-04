@@ -38,7 +38,6 @@ function SkeletonCard() {
 export default function IssuerDashboard() {
   const { address, isConnected } = useAccount();
   const { rows, isLoading, isError } = useMarketplaceOnChainStreams();
-  const { receiveEntries, isLoading: receiveHistoryLoading } = useIssuerReceiveHistory();
 
   const issuerRows = useMemo(
     () =>
@@ -49,6 +48,17 @@ export default function IssuerDashboard() {
         : [],
     [rows, address]
   );
+
+  const { receiveEntries: rawEntries, isLoading: receiveHistoryLoading } = useIssuerReceiveHistory();
+  
+  // Filtrage pour ne garder que les tx qui correspondent aux streams de la factory actuelle
+  const receiveEntries = useMemo(() => {
+    if (issuerRows.length === 0) return [];
+    // On trouve le timestamp le plus ancien parmi nos streams (secondes -> ms)
+    const minTime = Math.min(...issuerRows.map(r => r.stream.createdAt)) * 1000;
+    // On garde une petite marge (ex: 5 min) au cas où la tx de création et le log de fetch soient proches
+    return rawEntries.filter(e => new Date(e.timestamp).getTime() >= (minTime - 300_000));
+  }, [rawEntries, issuerRows]);
 
   const totalRaised = useMemo(
     () => issuerRows.reduce((acc, r) => acc + r.stream.vaultFill, 0),
@@ -127,7 +137,7 @@ export default function IssuerDashboard() {
         )}
 
         {/* ── Receive history (Issuer specific) ── */}
-        {showStreams && (receiveEntries.length > 0 || receiveHistoryLoading) && (
+        {showStreams && (
           <section className="mb-2xl border border-border rounded-technical overflow-hidden bg-black shadow-[0_0_15px_rgba(255,255,255,0.02)]">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-md bg-surface/30">
               <span className="font-mono text-label uppercase tracking-label text-text-secondary">

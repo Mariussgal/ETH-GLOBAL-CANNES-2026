@@ -135,13 +135,10 @@ export async function fetchInvestorClaimsEtherscan(
   vaultAddresses: readonly `0x${string}`[],
   userAddress: `0x${string}`
 ): Promise<{ entries: SerializedClaimEntry[]; totalClaimedUsdc: number }> {
-  if (vaultAddresses.length === 0) {
-    return { entries: [], totalClaimedUsdc: 0 };
-  }
-
-  const vaultSet = new Set(
-    vaultAddresses.map((a) => getAddress(a).toLowerCase())
-  );
+  const hasVaultFilter = vaultAddresses.length > 0;
+  const vaultSet = hasVaultFilter 
+    ? new Set(vaultAddresses.map((a) => getAddress(a).toLowerCase()))
+    : null;
   const lookback = readLookbackFromEnv();
   const fixedFrom = readOptionalFromBlock();
 
@@ -188,7 +185,7 @@ export async function fetchInvestorClaimsEtherscan(
 
   for (const row of allRows) {
     const addr = getAddress(row.address as `0x${string}`);
-    if (!vaultSet.has(addr.toLowerCase())) continue;
+    if (vaultSet && !vaultSet.has(addr.toLowerCase())) continue;
 
     let amount: bigint;
     try {

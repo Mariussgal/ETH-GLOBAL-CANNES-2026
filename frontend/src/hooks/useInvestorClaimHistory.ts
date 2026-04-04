@@ -205,7 +205,7 @@ export function useInvestorClaimHistory({
         : "",
       "etherscan-first",
     ],
-    enabled: Boolean(enabled && userAddress && vaultAddresses.length > 0),
+    enabled: Boolean(enabled && userAddress),
     staleTime: 20_000,
     retry: 1,
     queryFn: async (): Promise<{
@@ -216,9 +216,6 @@ export function useInvestorClaimHistory({
         return { entries: [], totalClaimedUsdc: 0 };
       }
       const vaults = dedupeVaults(vaultAddresses);
-      if (vaults.length === 0) {
-        return { entries: [], totalClaimedUsdc: 0 };
-      }
 
       const viaApi = await fetchInvestorClaimsViaEtherscanApi(vaults, userAddress);
       if (viaApi) {

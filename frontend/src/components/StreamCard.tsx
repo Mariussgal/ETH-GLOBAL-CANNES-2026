@@ -21,6 +21,7 @@ export interface StreamData {
   priceFloor: number;
   sources: string[];
   defaulted: boolean;
+  createdAt: number;
 }
 
 interface StreamCardProps {

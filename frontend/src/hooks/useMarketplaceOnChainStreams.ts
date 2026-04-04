@@ -46,7 +46,7 @@ export function useMarketplaceOnChainStreams() {
       },
     });
 
-  const keys = keysRaw ?? [];
+  const keys = useMemo(() => keysRaw ?? [], [keysRaw]);
 
   const streamContracts = useMemo(
     () =>

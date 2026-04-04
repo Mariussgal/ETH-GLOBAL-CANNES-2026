@@ -115,6 +115,26 @@ export function useMarketplaceOnChainStreams() {
       },
     });
 
+  const ystTotalSupplyReads = useMemo(
+    () =>
+      vaultRows.map((row) => ({
+        address: row.ystToken,
+        abi: ERC20_ABI,
+        functionName: "totalSupply" as const,
+        chainId: SEPOLIA_CHAIN_ID,
+      })),
+    [vaultRows]
+  );
+
+  const { data: ystSupplyResults, isPending: ystSupplyPending } = useReadContracts({
+    contracts: ystTotalSupplyReads,
+    query: {
+      enabled: ystTotalSupplyReads.length > 0,
+      staleTime: 15_000,
+      refetchInterval: 30_000,
+    },
+  });
+
   const vaultReads = useMemo(() => {
     return vaultRows.flatMap((row) => [
       {
@@ -176,22 +196,31 @@ export function useMarketplaceOnChainStreams() {
       const totalFees = feesRes.result as bigint;
       const priceFloorRaw = priceRes.result as bigint;
 
+      const balRes = ystEmitterBalanceResults?.[j];
+      const emitterYstBalance =
+        balRes?.status === "success"
+          ? (balRes.result as bigint)
+          : undefined;
+
+      const supplyRes = ystSupplyResults?.[j];
+      const cap =
+        supplyRes?.status === "success"
+          ? (supplyRes.result as bigint)
+          : params.totalYST;
+      const emitterBalForRatio = emitterYstBalance ?? cap;
+
       const stream = buildChainStreamCardData(
         row.indexOneBased,
         record,
         params,
         totalFees,
-        priceFloorRaw
+        priceFloorRaw,
+        emitterYstBalance !== undefined
+          ? { emitterYstBalanceWei: emitterYstBalance, capYstWei: cap }
+          : undefined
       );
-
-      const balRes = ystEmitterBalanceResults?.[j];
-      const emitterYstBalance =
-        balRes?.status === "success"
-          ? (balRes.result as bigint)
-          : BigInt(0);
-      const cap = params.totalYST;
       const sold =
-        cap > emitterYstBalance ? cap - emitterYstBalance : BigInt(0);
+        cap > emitterBalForRatio ? cap - emitterBalForRatio : BigInt(0);
       let fundingRatio = 0;
       if (cap > BigInt(0)) {
         const tenK = BigInt(10000);
@@ -208,17 +237,18 @@ export function useMarketplaceOnChainStreams() {
         fundingRatio,
         totalFeesWei: totalFees,
         totalYST: cap,
-        emitterYstBalance,
+        emitterYstBalance: emitterYstBalance ?? BigInt(0),
       });
     }
 
     return out.reverse();
-  }, [vaultRows, vaultResults, streamResults, ystEmitterBalanceResults]);
+  }, [vaultRows, vaultResults, streamResults, ystEmitterBalanceResults, ystSupplyResults]);
 
   const isLoading =
     keysPending ||
     (keys.length > 0 && streamsPending) ||
     (ystEmitterBalanceReads.length > 0 && ystEmitterBalancePending) ||
+    (ystTotalSupplyReads.length > 0 && ystSupplyPending) ||
     (vaultReads.length > 0 && vaultPending);
 
   return {

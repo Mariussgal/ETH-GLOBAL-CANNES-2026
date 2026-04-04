@@ -115,6 +115,26 @@ export function useMarketplaceOnChainStreams() {
       },
     });
 
+  const ystTotalSupplyReads = useMemo(
+    () =>
+      vaultRows.map((row) => ({
+        address: row.ystToken,
+        abi: ERC20_ABI,
+        functionName: "totalSupply" as const,
+        chainId: SEPOLIA_CHAIN_ID,
+      })),
+    [vaultRows]
+  );
+
+  const { data: ystSupplyResults, isPending: ystSupplyPending } = useReadContracts({
+    contracts: ystTotalSupplyReads,
+    query: {
+      enabled: ystTotalSupplyReads.length > 0,
+      staleTime: 15_000,
+      refetchInterval: 30_000,
+    },
+  });
+
   const vaultReads = useMemo(() => {
     return vaultRows.flatMap((row) => [
       {
@@ -182,7 +202,11 @@ export function useMarketplaceOnChainStreams() {
           ? (balRes.result as bigint)
           : undefined;
 
-      const cap = params.totalYST;
+      const supplyRes = ystSupplyResults?.[j];
+      const cap =
+        supplyRes?.status === "success"
+          ? (supplyRes.result as bigint)
+          : params.totalYST;
       const emitterBalForRatio = emitterYstBalance ?? cap;
 
       const stream = buildChainStreamCardData(
@@ -192,7 +216,7 @@ export function useMarketplaceOnChainStreams() {
         totalFees,
         priceFloorRaw,
         emitterYstBalance !== undefined
-          ? { emitterYstBalanceWei: emitterYstBalance }
+          ? { emitterYstBalanceWei: emitterYstBalance, capYstWei: cap }
           : undefined
       );
       const sold =
@@ -218,12 +242,13 @@ export function useMarketplaceOnChainStreams() {
     }
 
     return out.reverse();
-  }, [vaultRows, vaultResults, streamResults, ystEmitterBalanceResults]);
+  }, [vaultRows, vaultResults, streamResults, ystEmitterBalanceResults, ystSupplyResults]);
 
   const isLoading =
     keysPending ||
     (keys.length > 0 && streamsPending) ||
     (ystEmitterBalanceReads.length > 0 && ystEmitterBalancePending) ||
+    (ystTotalSupplyReads.length > 0 && ystSupplyPending) ||
     (vaultReads.length > 0 && vaultPending);
 
   return {

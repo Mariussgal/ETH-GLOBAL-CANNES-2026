@@ -5,13 +5,17 @@ import { formatUnits } from "viem";
 const YST_WEI_PER_USDC_RAW = BigInt("1000000000000");
 
 export function primaryMarketRaisedUsdc(
-  totalYstWei: bigint,
+  capYstWei: bigint,
   emitterYstBalanceWei: bigint
 ): number {
-  if (emitterYstBalanceWei >= totalYstWei) return 0;
-  const soldWei = totalYstWei - emitterYstBalanceWei;
+  if (emitterYstBalanceWei >= capYstWei) return 0;
+  const soldWei = capYstWei - emitterYstBalanceWei;
   const usdcRaw6 = soldWei / YST_WEI_PER_USDC_RAW;
-  return Number(usdcRaw6) / 1e6;
+  try {
+    return parseFloat(formatUnits(usdcRaw6, 6));
+  } catch {
+    return Number(usdcRaw6) / 1e6;
+  }
 }
 
 export function parseVaultStreamTuple(raw: unknown): {
@@ -91,8 +95,8 @@ export function buildChainStreamCardData(
   opts?: {
     /** Si défini : levée marché primaire (USDC), pas les frais vault. */
     emitterYstBalanceWei?: bigint;
-    /** Supply YST on-chain (prioritaire vs `stream.totalYST` du vault). */
-    ystTotalSupplyWei?: bigint;
+    /** Supply YST « réelle » (souvent `totalSupply()`), plus fiable que `stream.totalYST` seul. */
+    capYstWei?: bigint;
   }
 ): StreamData {
   const now = BigInt(Math.floor(Date.now() / 1000));
@@ -102,17 +106,15 @@ export function buildChainStreamCardData(
   const BPS_DEN = BigInt(10000);
   const projectedRevenueRaw =
     (capitalRaised * BPS_DEN) / (BPS_DEN - discountBps);
-  const emitterBal = opts?.emitterYstBalanceWei;
-  const supplyOnChain = opts?.ystTotalSupplyWei;
-  const usePrimaryFill =
-    emitterBal !== undefined && supplyOnChain !== undefined;
-
-  const targetUsdc = usePrimaryFill
-    ? Number(projectedRevenueRaw) / 1e6
-    : Number(capitalRaised) / 1e6;
-  const fillUsdc = usePrimaryFill
-    ? primaryMarketRaisedUsdc(supplyOnChain, emitterBal)
-    : Number(totalFeesReceived) / 1e6;
+  const targetUsdc =
+    opts?.emitterYstBalanceWei !== undefined
+      ? Number(projectedRevenueRaw) / 1e6
+      : Number(capitalRaised) / 1e6;
+  const capForPrimary = opts?.capYstWei ?? totalYST;
+  const fillUsdc =
+    opts?.emitterYstBalanceWei !== undefined
+      ? primaryMarketRaisedUsdc(capForPrimary, opts.emitterYstBalanceWei)
+      : Number(totalFeesReceived) / 1e6;
 
   let priceFloor = 0;
   if (priceFloorRaw !== undefined && priceFloorRaw > BigInt(0)) {

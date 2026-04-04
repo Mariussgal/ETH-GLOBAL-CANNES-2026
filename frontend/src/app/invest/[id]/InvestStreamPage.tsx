@@ -120,6 +120,14 @@ export default function InvestStreamPage({ id }: { id: string }) {
     },
   });
 
+  const { data: ystTotalSupplyWei, isPending: ystSupplyPending } = useReadContract({
+    address: record?.ystToken,
+    abi: ERC20_ABI,
+    functionName: "totalSupply",
+    chainId: SEPOLIA_CHAIN_ID,
+    query: { enabled: Boolean(record?.ystToken), refetchInterval: 15_000 },
+  });
+
   const { data: ensName } = useEnsName({
     address: record?.emitter,
     chainId: mainnet.id,
@@ -134,6 +142,10 @@ export default function InvestStreamPage({ id }: { id: string }) {
     if (!record?.active || !streamParams) return null;
     const totalFees = (totalFeesRaw as bigint | undefined) ?? BigInt(0);
     const priceFloor = priceFloorRaw as bigint | undefined;
+    const capYst =
+      ystTotalSupplyWei !== undefined
+        ? (ystTotalSupplyWei as bigint)
+        : streamParams.totalYST;
     const base = buildChainStreamCardData(
       numericId,
       record,
@@ -141,7 +153,10 @@ export default function InvestStreamPage({ id }: { id: string }) {
       totalFees,
       priceFloor,
       emitterYstBalanceWei !== undefined
-        ? { emitterYstBalanceWei: emitterYstBalanceWei as bigint }
+        ? {
+            emitterYstBalanceWei: emitterYstBalanceWei as bigint,
+            capYstWei: capYst,
+          }
         : undefined
     );
     return {
@@ -156,6 +171,7 @@ export default function InvestStreamPage({ id }: { id: string }) {
     totalFeesRaw,
     priceFloorRaw,
     emitterYstBalanceWei,
+    ystTotalSupplyWei,
   ]);
 
   if (mockStream) {
@@ -178,7 +194,9 @@ export default function InvestStreamPage({ id }: { id: string }) {
   if (
     keyPending ||
     (streamKey &&
-      (recordPending || vaultPending || (record?.ystToken && emitterBalPending)))
+      (recordPending ||
+        vaultPending ||
+        (record?.ystToken && (emitterBalPending || ystSupplyPending))))
   ) {
     return (
       <div className="min-h-screen bg-black text-text-primary flex items-center justify-center font-mono text-body-sm text-text-secondary">

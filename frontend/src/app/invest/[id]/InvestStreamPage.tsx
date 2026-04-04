@@ -4,7 +4,13 @@ import type { StreamData } from "@/components/StreamCard";
 import StreamInvestView, {
   type StreamChainInvest,
 } from "@/components/invest/StreamInvestView";
-import { ADDRESSES, SEPOLIA_CHAIN_ID, STREAM_FACTORY_ABI, YST_VAULT_ABI } from "@/contracts";
+import {
+  ADDRESSES,
+  ERC20_ABI,
+  SEPOLIA_CHAIN_ID,
+  STREAM_FACTORY_ABI,
+  YST_VAULT_ABI,
+} from "@/contracts";
 import { useCreAutomationStatus } from "@/hooks/useCreAutomationStatus";
 import {
   buildChainStreamCardData,
@@ -102,6 +108,18 @@ export default function InvestStreamPage({ id }: { id: string }) {
     [streamTupleRaw]
   );
 
+  const { data: emitterYstBalanceWei, isPending: emitterBalPending } = useReadContract({
+    address: record?.ystToken,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: record?.emitter ? [record.emitter] : undefined,
+    chainId: SEPOLIA_CHAIN_ID,
+    query: {
+      enabled: Boolean(record?.ystToken && record?.emitter),
+      refetchInterval: 15_000,
+    },
+  });
+
   const { data: ensName } = useEnsName({
     address: record?.emitter,
     chainId: mainnet.id,
@@ -121,13 +139,24 @@ export default function InvestStreamPage({ id }: { id: string }) {
       record,
       streamParams,
       totalFees,
-      priceFloor
+      priceFloor,
+      emitterYstBalanceWei !== undefined
+        ? { emitterYstBalanceWei: emitterYstBalanceWei as bigint }
+        : undefined
     );
     return {
       ...base,
       ensName: ensName ?? base.ensName,
     };
-  }, [record, streamParams, ensName, numericId, totalFeesRaw, priceFloorRaw]);
+  }, [
+    record,
+    streamParams,
+    ensName,
+    numericId,
+    totalFeesRaw,
+    priceFloorRaw,
+    emitterYstBalanceWei,
+  ]);
 
   if (mockStream) {
     return <StreamInvestView stream={mockStream} />;
@@ -146,7 +175,11 @@ export default function InvestStreamPage({ id }: { id: string }) {
     notFound();
   }
 
-  if (keyPending || (streamKey && (recordPending || vaultPending))) {
+  if (
+    keyPending ||
+    (streamKey &&
+      (recordPending || vaultPending || (record?.ystToken && emitterBalPending)))
+  ) {
     return (
       <div className="min-h-screen bg-black text-text-primary flex items-center justify-center font-mono text-body-sm text-text-secondary">
         [LOADING_STREAM…]

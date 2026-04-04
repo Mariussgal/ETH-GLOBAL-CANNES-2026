@@ -1,6 +1,19 @@
 import type { StreamData } from "@/components/StreamCard";
 import { formatUnits } from "viem";
 
+/** USDC levés au primaire : aligné Factory mint × PrimarySale (wei YST vendus / 1e12 → raw USDC 6 dec). */
+const YST_WEI_PER_USDC_RAW = BigInt("1000000000000");
+
+export function primaryMarketRaisedUsdc(
+  totalYstWei: bigint,
+  emitterYstBalanceWei: bigint
+): number {
+  if (emitterYstBalanceWei >= totalYstWei) return 0;
+  const soldWei = totalYstWei - emitterYstBalanceWei;
+  const usdcRaw6 = soldWei / YST_WEI_PER_USDC_RAW;
+  return Number(usdcRaw6) / 1e6;
+}
+
 export function parseVaultStreamTuple(raw: unknown): {
   totalYST: bigint;
   streamBps: bigint;
@@ -74,14 +87,32 @@ export function buildChainStreamCardData(
   record: NonNullable<ReturnType<typeof parseFactoryRecord>>,
   streamParams: NonNullable<ReturnType<typeof parseVaultStreamTuple>>,
   totalFeesReceived: bigint,
-  priceFloorRaw: bigint | undefined
+  priceFloorRaw: bigint | undefined,
+  opts?: {
+    /** Si défini : levée marché primaire (USDC), pas les frais vault. */
+    emitterYstBalanceWei?: bigint;
+    /** Supply YST on-chain (prioritaire vs `stream.totalYST` du vault). */
+    ystTotalSupplyWei?: bigint;
+  }
 ): StreamData {
   const now = BigInt(Math.floor(Date.now() / 1000));
-  const { streamBps, discountBps, startTime, endTime, capitalRaised } = streamParams;
+  const { streamBps, discountBps, startTime, endTime, capitalRaised, totalYST } = streamParams;
   const durationDays = Number((endTime - startTime) / BigInt(86400));
   const daysRemaining = endTime > now ? Number((endTime - now) / BigInt(86400)) : 0;
-  const targetUsdc = Number(capitalRaised) / 1e6;
-  const fillUsdc = Number(totalFeesReceived) / 1e6;
+  const BPS_DEN = BigInt(10000);
+  const projectedRevenueRaw =
+    (capitalRaised * BPS_DEN) / (BPS_DEN - discountBps);
+  const emitterBal = opts?.emitterYstBalanceWei;
+  const supplyOnChain = opts?.ystTotalSupplyWei;
+  const usePrimaryFill =
+    emitterBal !== undefined && supplyOnChain !== undefined;
+
+  const targetUsdc = usePrimaryFill
+    ? Number(projectedRevenueRaw) / 1e6
+    : Number(capitalRaised) / 1e6;
+  const fillUsdc = usePrimaryFill
+    ? primaryMarketRaisedUsdc(supplyOnChain, emitterBal)
+    : Number(totalFeesReceived) / 1e6;
 
   let priceFloor = 0;
   if (priceFloorRaw !== undefined && priceFloorRaw > BigInt(0)) {

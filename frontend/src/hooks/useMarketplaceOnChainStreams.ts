@@ -176,22 +176,27 @@ export function useMarketplaceOnChainStreams() {
       const totalFees = feesRes.result as bigint;
       const priceFloorRaw = priceRes.result as bigint;
 
+      const balRes = ystEmitterBalanceResults?.[j];
+      const emitterYstBalance =
+        balRes?.status === "success"
+          ? (balRes.result as bigint)
+          : undefined;
+
+      const cap = params.totalYST;
+      const emitterBalForRatio = emitterYstBalance ?? cap;
+
       const stream = buildChainStreamCardData(
         row.indexOneBased,
         record,
         params,
         totalFees,
-        priceFloorRaw
+        priceFloorRaw,
+        emitterYstBalance !== undefined
+          ? { emitterYstBalanceWei: emitterYstBalance }
+          : undefined
       );
-
-      const balRes = ystEmitterBalanceResults?.[j];
-      const emitterYstBalance =
-        balRes?.status === "success"
-          ? (balRes.result as bigint)
-          : BigInt(0);
-      const cap = params.totalYST;
       const sold =
-        cap > emitterYstBalance ? cap - emitterYstBalance : BigInt(0);
+        cap > emitterBalForRatio ? cap - emitterBalForRatio : BigInt(0);
       let fundingRatio = 0;
       if (cap > BigInt(0)) {
         const tenK = BigInt(10000);
@@ -208,7 +213,7 @@ export function useMarketplaceOnChainStreams() {
         fundingRatio,
         totalFeesWei: totalFees,
         totalYST: cap,
-        emitterYstBalance,
+        emitterYstBalance: emitterYstBalance ?? BigInt(0),
       });
     }
 

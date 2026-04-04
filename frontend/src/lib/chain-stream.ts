@@ -144,5 +144,6 @@ export function buildChainStreamCardData(
     priceFloor,
     sources: ["SEPOLIA"],
     defaulted: false,
+    createdAt: Number(record.createdAt),
   };
 }

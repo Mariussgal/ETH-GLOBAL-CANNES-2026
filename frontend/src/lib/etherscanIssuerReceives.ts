@@ -9,8 +9,8 @@ import { ADDRESSES, SEPOLIA_CHAIN_ID } from "@/contracts";
 const ETHERSCAN_V2 = "https://api.etherscan.io/v2/api";
 const USDC_DECIMALS = 6;
 
-/** topic0 = keccak256("Buy(address,address,address,uint256)") */
-export const BUY_EVENT_TOPIC0 = "0xde6f78816c7cf51f4788ee96f4201880e6439f04ca37d578c772c72b2204a919" as const;
+/** topic0 = keccak256("Transfer(address,address,uint256)") */
+export const TRANSFER_EVENT_TOPIC0 = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" as const;
 
 export type IssuerReceiveTx = {
   hash: `0x${string}`;
@@ -27,17 +27,20 @@ export async function fetchIssuerBuyLogsEtherscan(
 ): Promise<IssuerReceiveTx[]> {
   if (!apiKey) throw new Error("Etherscan API key missing");
 
-  // On cherche l'émetteur dans le topic3 (3ème paramètre indexé de Buy)
-  const topic3 = issuerAddress.toLowerCase().padStart(66, "0") as `0x${string}`;
+  // On cherche les transferts USDC DEPUIS le PrimarySale VERS l'émetteur
+  const topic1 = `0x${ADDRESSES.primarySale.toLowerCase().slice(2).padStart(64, "0")}` as `0x${string}`;
+  const topic2 = `0x${issuerAddress.toLowerCase().slice(2).padStart(64, "0")}` as `0x${string}`;
 
   const params = new URLSearchParams({
     chainid: String(SEPOLIA_CHAIN_ID),
     module: "logs",
     action: "getLogs",
-    address: ADDRESSES.primarySale,
-    topic0: BUY_EVENT_TOPIC0,
-    topic0_3_opr: "and",
-    topic3: topic3,
+    fromBlock: "6000000", // On remonte assez loin sur Sepolia
+    toBlock: "latest",
+    address: ADDRESSES.usdc,
+    topic0: TRANSFER_EVENT_TOPIC0,
+    topic1: topic1,
+    topic2: topic2,
     page: "1",
     offset: "1000",
     apikey: apiKey,
@@ -53,8 +56,8 @@ export async function fetchIssuerBuyLogsEtherscan(
 
   const rows = Array.isArray(json.result) ? json.result : [];
   return rows.map((r: { topics: string[]; data: `0x${string}`; transactionHash: string; timeStamp: string; blockNumber: string }) => {
-    // Topic 1 = buyer
-    const buyer = `0x${r.topics[1].slice(26)}` as `0x${string}`;
+    // Topic 2 = to (issuer)
+    const buyer = `0x${r.topics[1].slice(26)}` as `0x${string}`; // Show 'from' if needed, but primarySale is the payer
     // Data = amountUsdc (uint256)
     const amountRaw = hexToBigInt(r.data);
     const amountUsdc = Number(amountRaw) / 10 ** USDC_DECIMALS;

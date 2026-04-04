@@ -77,8 +77,8 @@ export default function BentoGrid() {
 
       {/* Newcomer intro — one sentence that frames everything */}
       <p className="font-grotesk text-body-sm text-text-secondary max-w-[600px] mb-lg border-l border-border-visible pl-sm leading-relaxed">
-        YSM turns a protocol's future fee revenue into tradeable tokens.
-        Here's what makes that{" "}
+        YSM turns a protocol&apos;s future fee revenue into tradeable tokens.
+        Here&apos;s what makes that{" "}
         <span className="text-text-primary">safe</span>,{" "}
         <span className="text-text-primary">fairly priced</span>, and{" "}
         <span className="text-text-primary">liquid</span>.

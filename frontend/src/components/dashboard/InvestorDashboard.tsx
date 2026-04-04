@@ -41,10 +41,10 @@ export default function InvestorDashboard() {
               Portfolio · Arc Vaults
             </h1>
             <p className="font-mono text-caption text-text-disabled mt-sm max-w-lg">
-              Positions YST et rewards USDC (Sepolia). Les streams dont vous êtes
-              l’émetteur sont exclus — utilisez le{" "}
+              YST positions and USDC rewards (Sepolia). Streams where you are
+              the emitter are excluded — use the{" "}
               <Link href="/dashboard/issuer" className="text-text-secondary hover:underline">
-                dashboard émetteur
+                issuer dashboard
               </Link>
               .
             </p>
@@ -105,7 +105,7 @@ export default function InvestorDashboard() {
                   ${formatNumber(Math.round(aggregates.totalStakedUsdc))}
                 </span>
                 <span className="font-mono text-[9px] text-text-disabled uppercase mt-xs block relative z-10">
-                  YST notionnel (1:1 USDC)
+                  YST notional (1:1 USDC)
                 </span>
               </div>
               <div className="border border-border p-lg rounded-technical bg-black dot-grid relative overflow-hidden">

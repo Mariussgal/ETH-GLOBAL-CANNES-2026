@@ -109,13 +109,16 @@ export default function StreamInvestView({
   }, [maxInvestUsdc, usdcRaw]);
 
   const nominalUsdc = stream.nominalRaiseCapUsdc;
-  /** En primaire, `vaultTarget` = valeur faciale ; sinon nominal vault. */
+  /** En primaire, on utilise le supply réel si disponible (Factory) ; sinon on utilise vaultTarget. */
   const TARGET_DISTRIBUTION = useMemo(() => {
+    if (stream.totalTokenSupply !== undefined && stream.totalTokenSupply > 0) {
+      return stream.totalTokenSupply;
+    }
     if (nominalUsdc !== undefined && nominalUsdc > 0) {
       return stream.vaultTarget;
     }
     return stream.vaultTarget / (1 - stream.discount / 100);
-  }, [nominalUsdc, stream.vaultTarget, stream.discount]);
+  }, [stream.totalTokenSupply, nominalUsdc, stream.vaultTarget, stream.discount]);
 
   const HISTORICAL_ANNUAL_REVENUE = useMemo(() => {
     const base =
@@ -517,8 +520,9 @@ export default function StreamInvestView({
             ) : (
               <div className="flex flex-col gap-sm font-mono text-caption">
                 <p className="font-mono text-[11px] text-text-secondary leading-relaxed normal-case">
-                  You are the issuer. This address holds minted YST for the primary sale — inventory,
-                  not a purchased investor position (no USDC principal / revenue share here).
+                  You are the issuer. This address holds minted YST for the primary sale — inventory, 
+                  not a purchased investor position. Since you sell 1:1, any surplus YST (from yield discount)
+                  remains in your wallet as retention.
                 </p>
                 <div className="flex justify-between items-baseline gap-md border-t border-border-visible pt-sm">
                   <span className="text-text-secondary uppercase">YST inventory</span>

@@ -286,10 +286,9 @@ function submitWorkflowResult(
         if (pending.executed) return;
         pending.executed = true;
 
-        uint256 projectedRevenue = pending.capitalRaised * BPS_DENOMINATOR
-            / (BPS_DENOMINATOR - pending.discountBps);
-
-        uint256 totalYST = projectedRevenue * 1e12; // scale USDC 6 dec → YST 18 dec
+        // Strict 1:1 Parity: totalYST is exactly the capital raised.
+        // The discountBps is kept as a risk/yield parameter for the metadata, not a supply multiplier.
+        uint256 totalYST = pending.capitalRaised * 1e12; // scale USDC 6 dec → YST 18 dec
 
         Vault vault = new Vault(address(usdc), address(this));
 

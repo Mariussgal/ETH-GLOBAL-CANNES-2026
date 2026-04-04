@@ -99,7 +99,7 @@ export default function FeeSplitterVisual() {
               <span className="font-mono text-[8px] bg-text-primary text-black px-1 py-[1px] absolute top-0 -translate-y-1/2 flex items-center gap-1 z-20 whitespace-nowrap">
                 <img src="/ens.png" className="h-2 brightness-0 opacity-80" alt="ens" /> ENS_IDENTITY_VERIFIED
               </span>
-              <span className="font-mono text-body-sm text-text-display tracking-widest relative z-10 mt-1">YST_SPLITTER</span>
+              <span className="font-mono text-body-sm text-text-display tracking-widest relative z-10 mt-1">ROUTER</span>
             </div>
 
             {/* Status Syncing */}
@@ -138,7 +138,7 @@ export default function FeeSplitterVisual() {
               <span className="font-mono text-body-sm text-text-display leading-none">+{displayCount}$</span>
             </div>
             <div className="w-[120px] border border-border-visible border-dashed px-3 py-1.5 flex justify-center bg-black">
-              <span className="font-mono text-[11px] text-text-secondary tracking-widest">YST_VAULT</span>
+              <span className="font-mono text-[11px] text-text-secondary tracking-widest">VAULT</span>
             </div>
             <span className="font-mono text-[10px] text-text-primary opacity-100 font-bold ml-2">10%</span>
           </div>

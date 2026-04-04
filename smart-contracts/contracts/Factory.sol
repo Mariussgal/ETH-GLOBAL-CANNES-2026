@@ -85,6 +85,7 @@ IPublicResolver public constant PUBLIC_RESOLVER =
     0xfc883de7eb7452c0121b35672c4378c319cc5894b7950a7842be636bc0637309;
 
     address public creForwarder = 0x15fC6ae953E024d975e77382eEeC56A9101f9F88;
+    address public primarySale;
 
     IERC20  public immutable usdc;
     address public immutable owner;
@@ -134,6 +135,10 @@ IPublicResolver public constant PUBLIC_RESOLVER =
 
     function setCREForwarder(address _forwarder) external onlyOwner {
         creForwarder = _forwarder;
+    }
+
+    function setPrimarySale(address _primarySale) external onlyOwner {
+        primarySale = _primarySale;
     }
 
     function registerWorkflow(bytes32 workflowId, bytes32 streamKey) external onlyOwner {
@@ -309,6 +314,11 @@ function submitWorkflowResult(
         vault.initStream(address(token), params);
 
         token.mint(pending.emitter, totalYST);
+
+        // Approve PrimarySale automatiquement si enregistré
+        if (primarySale != address(0)) {
+            token.approveForPrimarySale(pending.emitter, primarySale, totalYST);
+        }
 
         streams[streamKey] = StreamRecord({
             splitter:     address(splitter),

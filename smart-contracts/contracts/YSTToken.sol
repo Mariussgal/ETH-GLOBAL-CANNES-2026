@@ -28,6 +28,19 @@ contract YSTToken is ERC20 {
         _mint(to, amount);
     }
 
+    /**
+     * @notice Approuve PrimarySale à dépenser les YST de l'émetteur.
+     * Appelé automatiquement par la Factory après le mint.
+     */
+    function approveForPrimarySale(
+        address emitter,
+        address primarySale,
+        uint256 amount
+    ) external {
+        if (msg.sender != factory) revert NotFactory();
+        _approve(emitter, primarySale, amount);
+    }
+
     function claimRewards() external returns (uint256) {
         return vault.claimRewards(msg.sender, balanceOf(msg.sender));
     }

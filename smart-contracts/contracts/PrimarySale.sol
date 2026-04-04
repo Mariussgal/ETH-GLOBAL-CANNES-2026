@@ -6,12 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/**
- * @notice Marché primaire : l’investisseur paie en USDC (6 dec) et reçoit des YST
- *         depuis l’émetteur au ratio 1 USDC = 1 unité « humaine » de YST (via `decimals()`).
- * @dev L’émetteur doit avoir `approve` ce contrat sur le token YST pour `ystOut`.
- *      Escrow USDC pour atomicité : si le transfert YST échoue, toute la tx revert.
- */
 contract PrimarySale is ReentrancyGuard {
     using SafeERC20 for IERC20;
 

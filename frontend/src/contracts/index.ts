@@ -173,6 +173,17 @@ export const YST_VAULT_ABI = [
   },
 ] as const;
 
+/** YSTToken — claim rewards via vault (msg.sender) */
+export const YST_TOKEN_CLAIM_ABI = [
+  {
+    name: "claimRewards",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
+
 /**
  * Événement FeesGenerated — le topic0 dépend du schéma exact (indexed ou non sur `emitter`).
  * Variante courante : `emitter` indexé (filtrage / subgraphs).

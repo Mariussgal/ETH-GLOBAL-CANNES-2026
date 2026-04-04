@@ -6,7 +6,8 @@ import ArcSourceBadge from "@/components/ArcSourceBadge";
 const SEPOLIA_TX_URL = "https://sepolia.etherscan.io/tx/";
 
 export type ArcActivityItem = {
-  id: number;
+  /** Clé stable (ex. txHash-logIndex) pour déduplication et hydratation on-chain */
+  id: string;
   time: string;
   amount: number;
   protocol: string;

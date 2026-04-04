@@ -6,19 +6,11 @@ import type { StreamData } from "@/components/StreamCard";
 import { formatNumber } from "@/lib/format";
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
-import { formatUnits } from "viem";
+import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import ArcConsolidationHub from "./ArcConsolidationHub";
 import ArcActivityFeed from "./ArcActivityFeed";
-import { useArcSepoliaSync, type FeeActivityPayload } from "@/hooks/useArcSepoliaSync";
-import {
-  FEED_PERSIST_MAX,
-  loadFeedFromStorage,
-  nextFeedIdAfterHydration,
-  saveFeedToStorage,
-  type PersistedFeedItem,
-} from "@/lib/arcFeedPersistence";
+import { useArcSepoliaSync } from "@/hooks/useArcSepoliaSync";
 
 interface StreamInvestViewProps {
   stream: StreamData;
@@ -52,47 +44,9 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
     [stream.ensName]
   );
 
-  const [feedItems, setFeedItems] = useState<PersistedFeedItem[]>([]);
-  const [feedHydrated, setFeedHydrated] = useState(false);
-  const feedCounterRef = useRef(0);
-
-  useEffect(() => {
-    const stored = loadFeedFromStorage(stream.id);
-    if (stored && stored.length > 0) {
-      setFeedItems(stored);
-      feedCounterRef.current = nextFeedIdAfterHydration(stored);
-    } else {
-      setFeedItems([]);
-      feedCounterRef.current = 0;
-    }
-    setFeedHydrated(true);
-  }, [stream.id]);
-
-  useEffect(() => {
-    if (!feedHydrated) return;
-    saveFeedToStorage(stream.id, feedItems);
-  }, [feedHydrated, stream.id, feedItems]);
-
-  const onFeeActivity = useCallback((payload: FeeActivityPayload) => {
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-    const amountNum = parseFloat(formatUnits(payload.amount, 6));
-    setFeedItems((prev) => {
-      const newItem: PersistedFeedItem = {
-        id: feedCounterRef.current++,
-        time: timeStr,
-        amount: amountNum,
-        protocol: protocolShort,
-        chainLabel: payload.chainLabel,
-        txHash: payload.txHash,
-      };
-      return [newItem, ...prev].slice(0, FEED_PERSIST_MAX);
-    });
-  }, [protocolShort]);
-
   const arc = useArcSepoliaSync({
     enabled: isLive,
-    onFeeActivity: isLive ? onFeeActivity : undefined,
+    fallbackProtocolLabel: protocolShort,
   });
 
   const yieldNum =
@@ -174,7 +128,7 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                   </div>
                 </section>
 
-                <ArcActivityFeed items={feedItems} />
+                <ArcActivityFeed items={arc.feedItems} />
                 
                 {/* Multi-Chain Hub */}
                 <div className="mt-xl">

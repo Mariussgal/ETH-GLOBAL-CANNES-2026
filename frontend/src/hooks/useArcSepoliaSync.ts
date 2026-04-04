@@ -1,22 +1,58 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useEffect } from "react";
-import { useAccount, useChainId, useReadContract, useWatchContractEvent } from "wagmi";
-import { decodeEventLog, formatUnits } from "viem";
+import { useCallback, useMemo, useRef, useEffect, useState } from "react";
+import {
+  useAccount,
+  useChainId,
+  usePublicClient,
+  useReadContract,
+  useWatchContractEvent,
+} from "wagmi";
+import {
+  createPublicClient,
+  decodeEventLog,
+  formatUnits,
+  http,
+  type Log,
+  type PublicClient,
+} from "viem";
+import { sepolia } from "wagmi/chains";
 import { ADDRESSES, ERC20_ABI, SEPOLIA_CHAIN_ID, YST_VAULT_ABI } from "@/contracts";
 import { formatNumber } from "@/lib/format";
+import {
+  deserializeLog,
+  fetchFeesGeneratedLogsEtherscan,
+  getSepoliaBlockNumberEtherscan,
+  TOTAL_HISTORY_LOOKBACK_BLOCKS,
+  type SerializedLog,
+} from "@/lib/etherscanFeesLogs";
+import type { ArcActivityItem } from "@/components/invest/ArcActivityFeed";
 
 const USDC_DECIMALS = 6;
+const FEED_MAX = 10;
+/**
+ * Alchemy **gratuit** : eth_getLogs limité à **10 blocs** par requête (doc / erreur API).
+ * On aligne tous les RPC sur cette taille de tranche (les nœuds publics l’acceptent aussi).
+ */
+const MAX_ETH_GETLOGS_BLOCKS_INCLUSIVE = BigInt(10);
+/**
+ * Pause entre chaque eth_getLogs (10 blocs). Trop bas → erreur Alchemy « compute units per second ».
+ * ~200 ms ≈ ≤5 req/s, compatible free tier.
+ */
+const BETWEEN_LOG_CHUNKS_MS = 200;
+/** Polling eth_getLogs : 2 watchers × intervalle — garder large pour éviter les 429 sur RPC publics */
+const EVENT_POLLING_MS = 12_000;
 
 const LOG_PREFIX = "[useArcSepoliaSync]";
 
-/** ABI minimal local — évite tout conflit avec les exports globaux ; aligné sur le déploiement Sepolia */
+/** ABI alignée sur les mocks Sepolia (MockQuickswapBase / MockQuickswapPolygon) */
 const STRICT_ABI = [
   {
     type: "event",
     name: "FeesGenerated",
     inputs: [
-      { name: "emitter", type: "address", indexed: true },
+      { name: "chainLabel", type: "string", indexed: false },
+      { name: "protocol", type: "string", indexed: false },
       { name: "amount", type: "uint256", indexed: false },
       { name: "timestamp", type: "uint256", indexed: false },
     ],
@@ -30,25 +66,112 @@ const STRICT_ABI = [
   },
 ] as const;
 
-export type FeeActivityPayload = {
+type FeedRow = ArcActivityItem & { sortTs: bigint };
+
+function formatClockFromUnix(ts: bigint): string {
+  const d = new Date(Number(ts) * 1000);
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
+}
+
+function dedupeKeyFromLog(log: Pick<Log, "transactionHash" | "logIndex">): string {
+  return `${log.transactionHash}-${String(log.logIndex ?? 0)}`;
+}
+
+function isAlchemyThroughputError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return (
+    msg.includes("compute units per second") ||
+    msg.includes("CU") && msg.includes("capacity") ||
+    msg.includes("exceeded its compute units") ||
+    msg.includes("Throughput") ||
+    msg.includes("429")
+  );
+}
+
+/** Découpe en tranches ≤10 blocs inclus (Alchemy Free + compatibilité max des RPC) */
+async function getFeesGeneratedEventsChunked(
+  publicClient: Pick<PublicClient, "getContractEvents">,
+  contractAddress: `0x${string}`,
+  fromBlock: bigint,
+  toBlock: bigint
+) {
+  const out: Log[] = [];
+  let chunkStart = fromBlock;
+  const maxInclusiveSpan = MAX_ETH_GETLOGS_BLOCKS_INCLUSIVE - BigInt(1);
+
+  while (chunkStart <= toBlock) {
+    const chunkEnd =
+      chunkStart + maxInclusiveSpan <= toBlock ? chunkStart + maxInclusiveSpan : toBlock;
+
+    let part: Log[] = [];
+    let attempt = 0;
+    const maxAttempts = 6;
+    while (true) {
+      try {
+        part = await publicClient.getContractEvents({
+          address: contractAddress,
+          abi: STRICT_ABI,
+          eventName: "FeesGenerated",
+          fromBlock: chunkStart,
+          toBlock: chunkEnd,
+        });
+        break;
+      } catch (e) {
+        if (attempt < maxAttempts && isAlchemyThroughputError(e)) {
+          attempt += 1;
+          const backoffMs = Math.min(900 * attempt ** 2, 8000);
+          await new Promise((r) => setTimeout(r, backoffMs));
+          continue;
+        }
+        throw e;
+      }
+    }
+
+    out.push(...part);
+    chunkStart = chunkEnd + BigInt(1);
+    if (chunkStart <= toBlock && BETWEEN_LOG_CHUNKS_MS > 0) {
+      const jitter = Math.floor(Math.random() * 40);
+      await new Promise((r) => setTimeout(r, BETWEEN_LOG_CHUNKS_MS + jitter));
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Historique : préférence [Etherscan API V2 getLogs](https://docs.etherscan.io/api-reference/endpoint/getlogs-address-topics.md)
+ * si `NEXT_PUBLIC_ETHERSCAN_API_KEY` est défini (pas de limite 10 blocs / eth_getLogs Alchemy).
+ * Sinon repli sur le RPC (tranches 10 blocs).
+ */
+async function fetchFeesHistoryForContract(
+  rpcClient: Pick<PublicClient, "getContractEvents"> | null,
+  contractAddress: `0x${string}`,
+  latest: bigint,
+  etherscanApiKey: string | undefined
+): Promise<Log[]> {
+  const fromBlock =
+    latest > TOTAL_HISTORY_LOOKBACK_BLOCKS ? latest - TOTAL_HISTORY_LOOKBACK_BLOCKS : BigInt(0);
+
+  if (etherscanApiKey) {
+    try {
+      return await fetchFeesGeneratedLogsEtherscan(etherscanApiKey, contractAddress, fromBlock, latest);
+    } catch (e) {
+      console.warn(`${LOG_PREFIX} Etherscan getLogs failed`, e);
+    }
+  }
+
+  if (!rpcClient) {
+    console.warn(`${LOG_PREFIX} pas de client RPC pour le repli historique`);
+    return [];
+  }
+  return getFeesGeneratedEventsChunked(rpcClient, contractAddress, fromBlock, latest);
+}
+
+function decodeFeesLogStrict(log: Log): {
   amount: bigint;
   chainLabel: string;
   protocol: string;
-  emitter?: `0x${string}`;
-  timestamp?: bigint;
-  txHash?: `0x${string}`;
-};
-
-type LogLike = {
-  data: `0x${string}`;
-  topics: readonly `0x${string}`[];
-  transactionHash?: `0x${string}`;
-};
-
-function decodeFeesLogStrict(log: LogLike): {
-  amount: bigint;
-  emitter?: `0x${string}`;
-  timestamp?: bigint;
+  timestamp: bigint;
 } | null {
   try {
     const decoded = decodeEventLog({
@@ -58,13 +181,15 @@ function decodeFeesLogStrict(log: LogLike): {
     });
     if (decoded.eventName !== "FeesGenerated") return null;
     const a = decoded.args as {
-      emitter: `0x${string}`;
+      chainLabel: string;
+      protocol: string;
       amount: bigint;
       timestamp: bigint;
     };
     return {
       amount: a.amount,
-      emitter: a.emitter,
+      chainLabel: a.chainLabel,
+      protocol: a.protocol,
       timestamp: a.timestamp,
     };
   } catch (e) {
@@ -75,21 +200,72 @@ function decodeFeesLogStrict(log: LogLike): {
 
 export function useArcSepoliaSync(options: {
   enabled?: boolean;
-  onFeeActivity?: (payload: FeeActivityPayload) => void;
+  /** Libellé protocol pour les entrées synthétiques (delta yield), pas les événements on-chain */
+  fallbackProtocolLabel?: string;
 }) {
-  const { enabled = true, onFeeActivity } = options;
-  const onFeeActivityRef = useRef(onFeeActivity);
-
-  useEffect(() => {
-    onFeeActivityRef.current = onFeeActivity;
-  }, [onFeeActivity]);
+  const { enabled = true, fallbackProtocolLabel = "Arc" } = options;
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
+  const publicClient = usePublicClient({ chainId: SEPOLIA_CHAIN_ID });
+
+  /** Client dédié Alchemy pour l’historique : évite le fallback Wagmi (1rpc, etc.) qui faisait échouer eth_getLogs alors que les eth_call passent */
+  const explicitHistoryClient = useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL?.trim();
+    if (!url?.startsWith("http")) return null;
+    return createPublicClient({
+      chain: sepolia,
+      transport: http(url, {
+        batch: false,
+        retryCount: 6,
+        retryDelay: 400,
+        timeout: 60_000,
+      }),
+    });
+  }, []);
+
+  const clientForHistory = explicitHistoryClient ?? publicClient;
+
+  const etherscanApiKey = useMemo(() => process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY?.trim(), []);
 
   const liveSync = Boolean(isConnected && chainId === SEPOLIA_CHAIN_ID);
 
   const readEnabled = enabled;
+
+  const feedRowsRef = useRef<Map<string, FeedRow>>(new Map());
+  const [feedItems, setFeedItems] = useState<ArcActivityItem[]>([]);
+  const syntheticCounterRef = useRef(0);
+
+  useEffect(() => {
+    if (!readEnabled) {
+      feedRowsRef.current.clear();
+      setFeedItems([]);
+    }
+  }, [readEnabled]);
+
+  const commitFeedFromRef = useCallback(() => {
+    const next = Array.from(feedRowsRef.current.values())
+      .sort((a, b) => {
+        if (a.sortTs > b.sortTs) return -1;
+        if (a.sortTs < b.sortTs) return 1;
+        return 0;
+      })
+      .slice(0, FEED_MAX)
+      .map((row) => {
+        const { sortTs, ...item } = row;
+        void sortTs;
+        return item;
+      });
+    setFeedItems(next);
+  }, []);
+
+  const upsertFeedRow = useCallback(
+    (dedupeKey: string, sortTs: bigint, item: Omit<ArcActivityItem, "id">) => {
+      feedRowsRef.current.set(dedupeKey, { ...item, id: dedupeKey, sortTs });
+      commitFeedFromRef();
+    },
+    [commitFeedFromRef]
+  );
 
   const lastWatcherLogAtRef = useRef(0);
   const prevYieldRef = useRef<bigint | undefined>(undefined);
@@ -108,8 +284,8 @@ export function useArcSepoliaSync(options: {
       mockBase: ADDRESSES.mockBase,
       mockPolygon: ADDRESSES.mockPolygon,
       chainId: SEPOLIA_CHAIN_ID,
-      syncConnectedChain: true,
-      pollingInterval: 4_000,
+      syncConnectedChain: false,
+      pollingInterval: EVENT_POLLING_MS,
     });
   }, [readEnabled, address]);
 
@@ -121,7 +297,7 @@ export function useArcSepoliaSync(options: {
     chainId: SEPOLIA_CHAIN_ID,
     query: {
       enabled: readEnabled && liveSync && Boolean(address),
-      refetchInterval: 12_000,
+      refetchInterval: 20_000,
     },
   });
 
@@ -145,78 +321,160 @@ export function useArcSepoliaSync(options: {
     chainId: SEPOLIA_CHAIN_ID,
     query: {
       enabled: readEnabled,
-      refetchInterval: 15_000,
+      refetchInterval: 30_000,
     },
   });
 
-  const { data: baseFeesRaw, refetch: refetchBaseFees } = useReadContract({
+  const { data: baseFeesRaw } = useReadContract({
     address: ADDRESSES.mockBase,
     abi: STRICT_ABI,
     functionName: "totalFeesGenerated",
     chainId: SEPOLIA_CHAIN_ID,
     query: {
       enabled: readEnabled,
-      refetchInterval: 20_000,
+      refetchInterval: 30_000,
     },
   });
 
-  const { data: polygonFeesRaw, refetch: refetchPolygonFees } = useReadContract({
+  const { data: polygonFeesRaw } = useReadContract({
     address: ADDRESSES.mockPolygon,
     abi: STRICT_ABI,
     functionName: "totalFeesGenerated",
     chainId: SEPOLIA_CHAIN_ID,
     query: {
       enabled: readEnabled,
-      refetchInterval: 20_000,
+      refetchInterval: 30_000,
     },
   });
 
+  /** Historique : d’abord `/api/arc-feed-history` (clé lue côté serveur), sinon Etherscan client puis RPC */
+  useEffect(() => {
+    if (!readEnabled) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        let baseLogs: Log[] = [];
+        let polyLogs: Log[] = [];
+
+        const apiRes = await fetch("/api/arc-feed-history", { cache: "no-store" });
+        const apiJson = (await apiRes.json()) as {
+          ok: boolean;
+          baseLogs?: SerializedLog[];
+          polyLogs?: SerializedLog[];
+          error?: string;
+        };
+
+        if (apiJson.ok && apiJson.baseLogs && apiJson.polyLogs) {
+          baseLogs = apiJson.baseLogs.map(deserializeLog);
+          polyLogs = apiJson.polyLogs.map(deserializeLog);
+        } else {
+          if (!clientForHistory && !etherscanApiKey) return;
+
+          const latest = clientForHistory
+            ? await clientForHistory.getBlockNumber()
+            : await getSepoliaBlockNumberEtherscan(etherscanApiKey!);
+
+          baseLogs = await fetchFeesHistoryForContract(
+            clientForHistory ?? null,
+            ADDRESSES.mockBase,
+            latest,
+            etherscanApiKey
+          );
+
+          await new Promise((r) => setTimeout(r, 600));
+          if (cancelled) return;
+
+          polyLogs = await fetchFeesHistoryForContract(
+            clientForHistory ?? null,
+            ADDRESSES.mockPolygon,
+            latest,
+            etherscanApiKey
+          );
+        }
+
+        if (cancelled) return;
+
+        for (const log of baseLogs) {
+          const parsed = decodeFeesLogStrict(log);
+          if (!parsed) continue;
+          const key = dedupeKeyFromLog(log);
+          const amountNum = parseFloat(formatUnits(parsed.amount, USDC_DECIMALS));
+          upsertFeedRow(key, parsed.timestamp, {
+            time: formatClockFromUnix(parsed.timestamp),
+            amount: amountNum,
+            protocol: parsed.protocol,
+            chainLabel: parsed.chainLabel,
+            txHash: log.transactionHash ?? undefined,
+          });
+        }
+
+        for (const log of polyLogs) {
+          const parsed = decodeFeesLogStrict(log);
+          if (!parsed) continue;
+          const key = dedupeKeyFromLog(log);
+          const amountNum = parseFloat(formatUnits(parsed.amount, USDC_DECIMALS));
+          upsertFeedRow(key, parsed.timestamp, {
+            time: formatClockFromUnix(parsed.timestamp),
+            amount: amountNum,
+            protocol: parsed.protocol,
+            chainLabel: parsed.chainLabel,
+            txHash: log.transactionHash ?? undefined,
+          });
+        }
+      } catch (e) {
+        console.warn(`${LOG_PREFIX} historical feed fetch failed`, e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [readEnabled, clientForHistory, etherscanApiKey, upsertFeedRow]);
+
   const emitFeeFromLogs = useCallback(
-    (source: "mockBase" | "mockPolygon", logs: readonly LogLike[]) => {
-      console.log(`${LOG_PREFIX} onLogs batch`, source, { count: logs.length });
+    (logs: readonly Log[]) => {
+      console.log(`${LOG_PREFIX} onLogs batch`, { count: logs.length });
       console.dir(logs, { depth: null });
 
       lastWatcherLogAtRef.current = Date.now();
-
-      void refetchBaseFees();
-      void refetchPolygonFees();
 
       for (const log of logs) {
         console.dir(log, { depth: null });
 
         const parsed = decodeFeesLogStrict(log);
         if (!parsed) {
-          console.warn(`${LOG_PREFIX} skip log (decode null)`, source);
+          console.warn(`${LOG_PREFIX} skip log (decode null)`);
           continue;
         }
 
-        const chainLabel = source === "mockBase" ? "Base" : "Polygon";
-        const payload: FeeActivityPayload = {
-          amount: parsed.amount,
-          chainLabel,
-          protocol: "QuickswapV3",
-          emitter: parsed.emitter,
-          timestamp: parsed.timestamp,
-          txHash: log.transactionHash,
-        };
+        const key = dedupeKeyFromLog(log);
+        const amountNum = parseFloat(formatUnits(parsed.amount, USDC_DECIMALS));
+        upsertFeedRow(key, parsed.timestamp, {
+          time: formatClockFromUnix(parsed.timestamp),
+          amount: amountNum,
+          protocol: parsed.protocol,
+          chainLabel: parsed.chainLabel,
+          txHash: log.transactionHash ?? undefined,
+        });
 
-        console.log(`${LOG_PREFIX} FeesDecoded → onFeeActivity`, source, payload);
-        onFeeActivityRef.current?.(payload);
+        console.log(`${LOG_PREFIX} FeesDecoded → feed`, parsed);
       }
     },
-    [refetchBaseFees, refetchPolygonFees]
+    [upsertFeedRow]
   );
 
   const onBaseLogs = useCallback(
-    (logs: readonly LogLike[]) => {
-      emitFeeFromLogs("mockBase", logs);
+    (logs: readonly Log[]) => {
+      emitFeeFromLogs(logs);
     },
     [emitFeeFromLogs]
   );
 
   const onPolygonLogs = useCallback(
-    (logs: readonly LogLike[]) => {
-      emitFeeFromLogs("mockPolygon", logs);
+    (logs: readonly Log[]) => {
+      emitFeeFromLogs(logs);
     },
     [emitFeeFromLogs]
   );
@@ -226,8 +484,9 @@ export function useArcSepoliaSync(options: {
     eventName: "FeesGenerated" as const,
     chainId: SEPOLIA_CHAIN_ID,
     enabled: readEnabled,
-    syncConnectedChain: true as const,
-    pollingInterval: 4_000,
+    /** Si true, aucun poll Sepolia tant que le wallet n’est pas sur Sepolia — les eth_call passent quand même via chainId */
+    syncConnectedChain: false as const,
+    pollingInterval: EVENT_POLLING_MS,
   };
 
   useWatchContractEvent({
@@ -271,7 +530,7 @@ export function useArcSepoliaSync(options: {
     }
 
     const deltaEarned = earned - prev;
-    const now = Date.now();
+    const nowSec = BigInt(Math.floor(Date.now() / 1000));
 
     if (deltaEarned > BigInt(0)) {
       const prevB = prevBaseFeesRef.current ?? BigInt(0);
@@ -283,15 +542,16 @@ export function useArcSepoliaSync(options: {
       if (dPoly > dBase) chainLabel = "Polygon";
       else if (dBase === BigInt(0) && dPoly === BigInt(0)) chainLabel = "Arc";
 
-      const payload: FeeActivityPayload = {
-        amount: deltaEarned,
+      const amountNum = parseFloat(formatUnits(deltaEarned, USDC_DECIMALS));
+      const sk = `yield-${syntheticCounterRef.current++}-${nowSec.toString()}`;
+      upsertFeedRow(sk, nowSec, {
+        time: formatClockFromUnix(nowSec),
+        amount: amountNum,
+        protocol: `${fallbackProtocolLabel} · YIELD_DELTA`,
         chainLabel,
-        protocol: "YIELD_DELTA_SYNC",
-        timestamp: BigInt(Math.floor(now / 1000)),
-      };
+      });
 
-      console.log(`${LOG_PREFIX} fallback onFeeActivity (earned ↑, immédiat)`, payload);
-      onFeeActivityRef.current?.(payload);
+      console.log(`${LOG_PREFIX} fallback feed row (earned ↑, immédiat)`, { chainLabel, amountNum });
     }
 
     prevYieldRef.current = earned;
@@ -304,6 +564,8 @@ export function useArcSepoliaSync(options: {
     earnedRaw,
     baseFeesRaw,
     polygonFeesRaw,
+    fallbackProtocolLabel,
+    upsertFeedRow,
   ]);
 
   const totalBaseRevenue = useMemo(() => {
@@ -339,5 +601,6 @@ export function useArcSepoliaSync(options: {
     vaultLiquidityUsdcDisplay,
     routingStatusActive,
     loadingVaultLiquidity: readEnabled && loadingVaultLiquidity,
+    feedItems,
   };
 }

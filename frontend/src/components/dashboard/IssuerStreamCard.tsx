@@ -23,7 +23,7 @@ export default function IssuerStreamCard({ row }: Props) {
   );
   const { chainlinkAutomationActive } = useCreAutomationStatus(streamKey);
 
-  /** Levée primaire : `vaultFill` = USDC réels ; `vaultTarget` sur StreamData = valeur faciale (ne pas utiliser ici). */
+  /** Primary raise: `vaultFill` = actual USDC collected; `vaultTarget` on StreamData = face value (do not use here). */
   const targetUsdc = nominalCapUsdc;
   const raisedUsdc = stream.vaultFill;
   const pct =
@@ -74,7 +74,7 @@ export default function IssuerStreamCard({ row }: Props) {
             variant="blocks"
           />
           <span className="font-mono text-[9px] text-text-disabled uppercase mt-xs block">
-            Objectif nominal (USDC) · YST sorti du wallet émetteur
+            Nominal target (USDC) · YST issued from emitter wallet
           </span>
         </div>
 

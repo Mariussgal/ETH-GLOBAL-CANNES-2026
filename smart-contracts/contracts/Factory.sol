@@ -140,23 +140,30 @@ contract Factory is IReceiver {
         emit StreamRequested(streamKey, msg.sender, protocolSlug);
     }
 
- function onReport(
+/**
+ * @notice Callback CRE — format (uint8 workflowType, bytes payload)
+ * workflowType 1 = décote (discount)
+ * workflowType 2 = gate
+ */
+function onReport(
     bytes calldata metadata,
     bytes calldata report
 ) external onlyCREForwarder {
-    bytes32 workflowId;
+    (uint8 workflowType, bytes memory payload) = abi.decode(report, (uint8, bytes));
+    
+    // Extraire le streamKey depuis metadata (32 premiers bytes)
+    bytes32 streamKey;
     assembly {
-        workflowId := calldataload(metadata.offset)
+        streamKey := calldataload(metadata.offset)
     }
 
-    bytes32 streamKey = workflowToStream[workflowId];
     PendingStream storage pending = pendingStreams[streamKey];
     if (pending.emitter == address(0)) return;
 
-    uint256 value = abi.decode(report, (uint256));
-
-    if (!pending.gateValidated) {
-        if (value == 0) {
+    if (workflowType == 2) {
+        // ── Gate ──────────────────────────────────────────────────────────
+        uint256 gateResult = abi.decode(payload, (uint256));
+        if (gateResult == 0) {
             emit GateRejected(streamKey, "Insufficient protocol revenue");
             emit GateValidated(streamKey, false);
             _refundCollateral(streamKey);
@@ -165,8 +172,9 @@ contract Factory is IReceiver {
         pending.gateValidated = true;
         emit GateValidated(streamKey, true);
 
-    } else if (!pending.discountReceived) {
-        uint256 discountBps = value;
+    } else if (workflowType == 1) {
+        // ── Discount ──────────────────────────────────────────────────────
+        uint256 discountBps = abi.decode(payload, (uint256));
         if (discountBps < MIN_DISCOUNT_BPS) discountBps = MIN_DISCOUNT_BPS;
         if (discountBps > MAX_DISCOUNT_BPS) discountBps = MAX_DISCOUNT_BPS;
 

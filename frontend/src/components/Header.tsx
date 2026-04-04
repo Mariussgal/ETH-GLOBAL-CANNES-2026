@@ -7,10 +7,7 @@ export default function Header() {
     <header className="flex items-center justify-between px-xl py-md">
       {/* Wordmark */}
       <div className="flex items-center gap-md">
-        <h1 className="font-grotesk text-heading text-text-display font-medium tracking-snug">
-          YSM
-        </h1>
-
+        <img src="/logoYSM.png" alt="YSM" className="h-12 w-auto" />
       </div>
 
       {/* System status + RainbowKit (UI type bouton d’origine) */}

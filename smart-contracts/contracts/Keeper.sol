@@ -25,18 +25,51 @@ contract Keeper is AutomationCompatibleInterface {
 
     IFactory public immutable factory;
     address public immutable owner;
+    address public creForwarder;
 
     uint256 public settlementInterval;
 
     event SettlementTriggered(address indexed vault, uint256 timestamp);
     event IntervalUpdated(uint256 newInterval);
+    event SettlementTriggeredByCRE(uint256 timestamp);
 
     error NotOwner();
+    error NotCREForwarder();
+
+    modifier onlyCREForwarder() {
+        if (msg.sender != creForwarder) revert NotCREForwarder();
+        _;
+    }
 
     constructor(address _factory, uint256 _settlementInterval) {
         factory            = IFactory(_factory);
         owner              = msg.sender;
         settlementInterval = _settlementInterval;
+        creForwarder       = 0x15fC6ae953E024d975e77382eEeC56A9101f9F88;
+    }
+
+    /**
+     * @notice Appelé par CRE Workflow #3 (trigger temporel).
+     * Déclenche performUpkeep() directement.
+     */
+    function onReport(
+        bytes calldata /* metadata */,
+        bytes calldata /* report */
+    ) external onlyCREForwarder {
+        // Récupère tous les vaults à settler
+        (, bytes memory performData) = this.checkUpkeep("");
+        if (performData.length > 0) {
+            this.performUpkeep(performData);
+        }
+        emit SettlementTriggeredByCRE(block.timestamp);
+    }
+
+    /**
+     * @notice Met à jour le CRE Forwarder autorisé
+     */
+    function setCREForwarder(address _forwarder) external {
+        if (msg.sender != owner) revert NotOwner();
+        creForwarder = _forwarder;
     }
 
     function setSettlementInterval(uint256 _interval) external {

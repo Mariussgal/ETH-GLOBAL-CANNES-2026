@@ -18,7 +18,7 @@ import {
   type PublicClient,
 } from "viem";
 import { sepolia } from "wagmi/chains";
-import { ADDRESSES, ERC20_ABI, SEPOLIA_CHAIN_ID, YST_VAULT_ABI } from "@/contracts";
+import { ADDRESSES, ARC_STREAM_ROUTER, ERC20_ABI, ROUTER_ABI, SEPOLIA_CHAIN_ID, YST_VAULT_ABI } from "@/contracts";
 import { formatNumber } from "@/lib/format";
 import {
   deserializeLog,
@@ -581,6 +581,50 @@ export function useArcSepoliaSync(options: {
     onLogs: onPolygonLogs,
   });
 
+  /** Arc: listen for `FeesReceived` on the Sepolia YSM Router (after `flushBalance()`). */
+  const [totalArcRevenue, setTotalArcRevenue] = useState(0);
+
+  const onArcRouterLogs = useCallback(
+    (logs: readonly Log[]) => {
+      for (const log of logs) {
+        try {
+          const decoded = (log as { args?: { vaultAmount?: bigint } }).args;
+          const vaultAmount = decoded?.vaultAmount ?? BigInt(0);
+          const amountNum = parseFloat(formatUnits(vaultAmount, USDC_DECIMALS));
+          if (amountNum <= 0) continue;
+
+          setTotalArcRevenue((prev) => prev + amountNum);
+
+          const nowSec = BigInt(Math.floor(Date.now() / 1000));
+          const key = dedupeKeyFromLog(log);
+          upsertFeedRow(key, nowSec, {
+            time: formatClockFromUnix(nowSec),
+            amount: amountNum,
+            protocol: feedProtocolLabel?.trim() ? `${feedProtocolLabel.trim()} · Arc` : "YSM · Arc",
+            chainLabel: "Arc",
+            txHash: log.transactionHash ?? undefined,
+          });
+
+          console.log(`${LOG_PREFIX} Arc FeesReceived → feed`, { amountNum });
+        } catch (e) {
+          console.warn(`${LOG_PREFIX} Arc FeesReceived decode failed`, e);
+        }
+      }
+    },
+    [upsertFeedRow, feedProtocolLabel]
+  );
+
+  useWatchContractEvent({
+    abi: ROUTER_ABI,
+    eventName: "FeesReceived" as const,
+    address: ARC_STREAM_ROUTER,
+    chainId: SEPOLIA_CHAIN_ID,
+    enabled: readEnabled && feedHeavySyncEnabled,
+    syncConnectedChain: false as const,
+    pollingInterval: EVENT_POLLING_MS,
+    onLogs: onArcRouterLogs,
+  });
+
   /** Fallback: when `earned` increases (e.g. 24.90 → 29.90 USDC), push a line to the feed without waiting for events or a delay */
   useEffect(() => {
     const yieldValue = earnedRaw;
@@ -678,6 +722,7 @@ export function useArcSepoliaSync(options: {
     loadingEarned: readEnabled && liveSync && Boolean(address) && loadingEarned,
     totalBaseRevenue,
     totalPolygonRevenue,
+    totalArcRevenue,
     vaultLiquidityUsdcDisplay,
     routingStatusActive,
     loadingVaultLiquidity: readEnabled && loadingVaultLiquidity,

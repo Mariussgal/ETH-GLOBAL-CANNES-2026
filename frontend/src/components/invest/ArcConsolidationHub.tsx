@@ -7,6 +7,7 @@ import { SEPOLIA_CHAIN_ID } from "@/contracts";
 interface ArcConsolidationHubProps {
   totalBaseRevenue: number;
   totalPolygonRevenue: number;
+  totalArcRevenue?: number;
   /** Badge LIVE_SYNC vert lorsque `isConnected && chainId === 11155111` (Sepolia) */
   liveSync?: boolean;
   /** Badge CHAINLINK_AUTOMATION vert lorsque l'automation est active. */
@@ -16,13 +17,15 @@ interface ArcConsolidationHubProps {
 export default function ArcConsolidationHub({
   totalBaseRevenue,
   totalPolygonRevenue,
+  totalArcRevenue = 0,
   liveSync = false,
   chainlinkAutomationActive = false,
 }: ArcConsolidationHubProps) {
   // Calculate flow distributions
-  const total = totalBaseRevenue + totalPolygonRevenue;
+  const total = totalBaseRevenue + totalPolygonRevenue + totalArcRevenue;
   const baseFlow = total > 0 ? Math.round((totalBaseRevenue / total) * 100) : 0;
   const polygonFlow = total > 0 ? Math.round((totalPolygonRevenue / total) * 100) : 0;
+  const arcFlow = total > 0 ? Math.round((totalArcRevenue / total) * 100) : 0;
 
   return (
     <section className="border border-border p-xl sm:p-2xl rounded-technical bg-black flex flex-col items-center justify-center relative overflow-hidden dot-grid">
@@ -92,9 +95,9 @@ export default function ArcConsolidationHub({
         </div>
       </div>
 
-      {/* Two Progress Bars side by side */}
-      <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2xl relative z-10 pt-lg border-t border-border-visible">
-        
+      {/* Three Progress Bars side by side */}
+      <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2xl relative z-10 pt-lg border-t border-border-visible">
+
         {/* Base Flow */}
         <div className="flex flex-col items-center p-md">
           <span className="font-mono text-caption uppercase mb-sm tracking-widest text-[#0052FF]" style={{ textShadow: "0 0 5px rgba(0,82,255,0.3)" }}>
@@ -104,14 +107,14 @@ export default function ArcConsolidationHub({
             {baseFlow}%
           </span>
           <div className="w-full">
-            <SegmentedProgress 
-              value={baseFlow} 
-              max={100} 
-              segments={20} 
-              status="neutral" 
-              size="standard" 
-              variant="blocks" 
-              animated={true} 
+            <SegmentedProgress
+              value={baseFlow}
+              max={100}
+              segments={20}
+              status="neutral"
+              size="standard"
+              variant="blocks"
+              animated={true}
             />
           </div>
           <div className="flex justify-between w-full mt-sm">
@@ -129,19 +132,44 @@ export default function ArcConsolidationHub({
             {polygonFlow}%
           </span>
           <div className="w-full">
-            <SegmentedProgress 
-              value={polygonFlow} 
-              max={100} 
-              segments={20} 
-              status="neutral" 
-              size="standard" 
-              variant="blocks" 
-              animated={true} 
+            <SegmentedProgress
+              value={polygonFlow}
+              max={100}
+              segments={20}
+              status="neutral"
+              size="standard"
+              variant="blocks"
+              animated={true}
             />
           </div>
           <div className="flex justify-between w-full mt-sm">
              <span className="font-mono text-[10px] text-text-disabled uppercase">Yield Asset</span>
              <span className="font-mono text-[10px] text-[#8247E5] uppercase">NATIVE_USDC</span>
+          </div>
+        </div>
+
+        {/* Arc Flow */}
+        <div className="flex flex-col items-center p-md">
+          <span className="font-mono text-caption uppercase mb-sm tracking-widest text-[#F5A623]" style={{ textShadow: "0 0 5px rgba(245,166,35,0.3)" }}>
+            ARC_FLOW
+          </span>
+          <span className="font-mono text-[24px] text-text-display tabular-nums leading-none mb-xl">
+            {arcFlow}%
+          </span>
+          <div className="w-full">
+            <SegmentedProgress
+              value={arcFlow}
+              max={100}
+              segments={20}
+              status="neutral"
+              size="standard"
+              variant="blocks"
+              animated={true}
+            />
+          </div>
+          <div className="flex justify-between w-full mt-sm">
+            <span className="font-mono text-[10px] text-text-disabled uppercase">Yield Asset</span>
+            <span className="font-mono text-[10px] text-[#F5A623] uppercase">NATIVE_USDC</span>
           </div>
         </div>
 

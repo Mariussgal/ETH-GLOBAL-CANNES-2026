@@ -129,6 +129,39 @@ body {
   animation: steppyDrop 2s steps(8, end) infinite;
 }
 
+/* ── Synchronized Split Output Animations ── */
+@keyframes splitDrop {
+  0% { top: 0%; opacity: 0; }
+  5% { opacity: 1; }
+  45% { opacity: 1; }
+  50% { top: 100%; opacity: 0; }
+  100% { top: 100%; opacity: 0; }
+}
+@keyframes splitFlowVault {
+  0% { left: 0%; opacity: 0; }
+  25% { left: 0%; opacity: 0; }
+  30% { opacity: 1; }
+  70% { opacity: 1; }
+  75% { left: 100%; opacity: 0; }
+  100% { left: 100%; opacity: 0; }
+}
+@keyframes splitFlowTreasury {
+  0% { left: 0%; opacity: 0; }
+  50% { left: 0%; opacity: 0; }
+  55% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+.animate-split-drop {
+  animation: splitDrop 4s steps(16, end) infinite;
+}
+.animate-split-flow-vault {
+  animation: splitFlowVault 4s steps(16, end) infinite;
+}
+.animate-split-flow-treasury {
+  animation: splitFlowTreasury 4s steps(16, end) infinite;
+}
+
 .animation-delay-500 {
   animation-delay: 500ms;
 }

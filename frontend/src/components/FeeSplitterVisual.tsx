@@ -11,11 +11,11 @@ export default function FeeSplitterVisual() {
   useEffect(() => {
     const interval = setInterval(() => {
       setVaultCount((prev) => prev + Math.floor(Math.random() * 5) + 2);
-      
+
       // Generate a fake hex tx hash
       const hash = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
-      const newLog = `0x${hash.slice(0,3)}...${hash.slice(-2)} (SYNCED)`;
-      
+      const newLog = `0x${hash.slice(0, 3)}...${hash.slice(-2)} (SYNCED)`;
+
       setTxLogs(prev => {
         const next = [...prev, newLog];
         if (next.length > 4) next.shift();
@@ -56,18 +56,18 @@ export default function FeeSplitterVisual() {
 
       {/* Main Diagram Area */}
       <div className="relative w-full max-w-[420px] h-full flex flex-col justify-center gap-10">
-        
+
         {/* Entry Nodes (Dual Source) */}
         <div className="flex justify-between items-center w-full">
-          <div className="flex flex-col gap-8 relative">
+          <div className="flex flex-col gap-8 relative -translate-y-7">
             <span className="absolute -top-[28px] font-mono text-[10px] text-text-disabled tracking-widest flex items-center gap-1.5"><img src="/arc_logo_final.png" alt="Arc" className="h-3 brightness-0 invert opacity-40 inline-block" /> CONSOLIDATION</span>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-[180px] justify-between">
               <span className="font-mono text-[10px] text-text-disabled uppercase">BASE_SOURCE</span>
               <div className="relative w-16 h-[2px] bg-border-visible overflow-hidden">
                 <div className="absolute top-0 left-0 w-2 h-full bg-text-display animate-steppy-flow" style={{ animationDuration: '0.45s' }} />
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-[180px] justify-between">
               <span className="font-mono text-[10px] text-text-disabled uppercase">POLYGON_SOURCE</span>
               <div className="relative w-16 h-[2px] bg-border-visible overflow-hidden">
                 <div className="absolute top-0 left-0 w-2 h-full bg-text-secondary animate-steppy-flow animation-delay-500" style={{ animationDuration: '0.45s' }} />
@@ -84,7 +84,7 @@ export default function FeeSplitterVisual() {
                 <span className="font-mono text-[11px] tracking-widest text-text-disabled uppercase">CL_CRE_AUTOMATION</span>
               </div>
               <div className="h-16 w-[1px] border-r border-dashed border-border-visible relative overflow-hidden">
-                 <div className="absolute top-0 -left-[3px] w-2 h-2 bg-text-secondary animate-steppy-drop" />
+                <div className="absolute top-0 -left-[3px] w-2 h-2 bg-text-secondary animate-steppy-drop" />
               </div>
             </div>
 
@@ -109,7 +109,7 @@ export default function FeeSplitterVisual() {
                 <span className="font-mono text-[10px] text-success/80 tracking-widest uppercase">Syncing</span>
               </div>
               <span className="font-mono text-[8px] text-text-disabled mt-1 uppercase text-center">
-                ISSUER: quickswap.ens <br/> STATUS: RESOLVED
+                ISSUER: quickswap.ens <br /> STATUS: RESOLVED
               </span>
             </div>
           </div>
@@ -120,18 +120,15 @@ export default function FeeSplitterVisual() {
         {/* Output paths */}
         <div className="flex flex-col gap-8 w-full justify-end items-end relative">
           {/* Path lines */}
-          <div className="absolute right-[140px] top-[-32px] w-[2px] h-[72px] bg-border-visible">
-            <div className="absolute w-full h-2 bg-text-secondary animate-steppy-drop" />
-          </div>
           <div className="absolute right-[140px] top-[-32px] w-[2px] h-[150px] bg-border-visible">
-            <div className="absolute w-full h-2 bg-text-display animate-steppy-drop-long" />
+            <div className="absolute w-full h-2 bg-text-display animate-split-drop" />
           </div>
-          
+
           <div className="absolute right-0 top-[38px] w-[140px] h-[2px] bg-border-visible">
-            <div className="absolute h-full w-2 bg-text-secondary animate-steppy-flow" style={{ animationDuration: '4.5s' }} />
+            <div className="absolute h-full w-2 bg-text-display animate-split-flow-vault" />
           </div>
           <div className="absolute right-0 top-[116px] w-[140px] h-[2px] bg-border-visible">
-            <div className="absolute h-full w-2 bg-text-display animate-steppy-flow" style={{ animationDuration: '0.5s' }} />
+            <div className="absolute h-full w-2 bg-text-display animate-split-flow-treasury" />
           </div>
 
           {/* YST Vault Node */}

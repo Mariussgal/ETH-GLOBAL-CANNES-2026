@@ -2689,6 +2689,13 @@ function bootEnumDescriptorProto(init) {
 function messageDesc(file, path, ...paths) {
   return paths.reduce((acc, cur) => acc.nestedMessages[cur], file.messages[path]);
 }
+function enumDesc(file, path, ...paths) {
+  if (paths.length == 0) {
+    return file.enums[path];
+  }
+  const e = paths.pop();
+  return paths.reduce((acc, cur) => acc.nestedMessages[cur], file.messages[path]).nestedEnums[e];
+}
 var file_google_protobuf_descriptor = /* @__PURE__ */ boot({ name: "google/protobuf/descriptor.proto", package: "google.protobuf", messageType: [{ name: "FileDescriptorSet", field: [{ name: "file", number: 1, type: 11, label: 3, typeName: ".google.protobuf.FileDescriptorProto" }], extensionRange: [{ start: 536000000, end: 536000001 }] }, { name: "FileDescriptorProto", field: [{ name: "name", number: 1, type: 9, label: 1 }, { name: "package", number: 2, type: 9, label: 1 }, { name: "dependency", number: 3, type: 9, label: 3 }, { name: "public_dependency", number: 10, type: 5, label: 3 }, { name: "weak_dependency", number: 11, type: 5, label: 3 }, { name: "option_dependency", number: 15, type: 9, label: 3 }, { name: "message_type", number: 4, type: 11, label: 3, typeName: ".google.protobuf.DescriptorProto" }, { name: "enum_type", number: 5, type: 11, label: 3, typeName: ".google.protobuf.EnumDescriptorProto" }, { name: "service", number: 6, type: 11, label: 3, typeName: ".google.protobuf.ServiceDescriptorProto" }, { name: "extension", number: 7, type: 11, label: 3, typeName: ".google.protobuf.FieldDescriptorProto" }, { name: "options", number: 8, type: 11, label: 1, typeName: ".google.protobuf.FileOptions" }, { name: "source_code_info", number: 9, type: 11, label: 1, typeName: ".google.protobuf.SourceCodeInfo" }, { name: "syntax", number: 12, type: 9, label: 1 }, { name: "edition", number: 14, type: 14, label: 1, typeName: ".google.protobuf.Edition" }] }, { name: "DescriptorProto", field: [{ name: "name", number: 1, type: 9, label: 1 }, { name: "field", number: 2, type: 11, label: 3, typeName: ".google.protobuf.FieldDescriptorProto" }, { name: "extension", number: 6, type: 11, label: 3, typeName: ".google.protobuf.FieldDescriptorProto" }, { name: "nested_type", number: 3, type: 11, label: 3, typeName: ".google.protobuf.DescriptorProto" }, { name: "enum_type", number: 4, type: 11, label: 3, typeName: ".google.protobuf.EnumDescriptorProto" }, { name: "extension_range", number: 5, type: 11, label: 3, typeName: ".google.protobuf.DescriptorProto.ExtensionRange" }, { name: "oneof_decl", number: 8, type: 11, label: 3, typeName: ".google.protobuf.OneofDescriptorProto" }, { name: "options", number: 7, type: 11, label: 1, typeName: ".google.protobuf.MessageOptions" }, { name: "reserved_range", number: 9, type: 11, label: 3, typeName: ".google.protobuf.DescriptorProto.ReservedRange" }, { name: "reserved_name", number: 10, type: 9, label: 3 }, { name: "visibility", number: 11, type: 14, label: 1, typeName: ".google.protobuf.SymbolVisibility" }], nestedType: [{ name: "ExtensionRange", field: [{ name: "start", number: 1, type: 5, label: 1 }, { name: "end", number: 2, type: 5, label: 1 }, { name: "options", number: 3, type: 11, label: 1, typeName: ".google.protobuf.ExtensionRangeOptions" }] }, { name: "ReservedRange", field: [{ name: "start", number: 1, type: 5, label: 1 }, { name: "end", number: 2, type: 5, label: 1 }] }] }, { name: "ExtensionRangeOptions", field: [{ name: "uninterpreted_option", number: 999, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption" }, { name: "declaration", number: 2, type: 11, label: 3, typeName: ".google.protobuf.ExtensionRangeOptions.Declaration", options: { retention: 2 } }, { name: "features", number: 50, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "verification", number: 3, type: 14, label: 1, typeName: ".google.protobuf.ExtensionRangeOptions.VerificationState", defaultValue: "UNVERIFIED", options: { retention: 2 } }], nestedType: [{ name: "Declaration", field: [{ name: "number", number: 1, type: 5, label: 1 }, { name: "full_name", number: 2, type: 9, label: 1 }, { name: "type", number: 3, type: 9, label: 1 }, { name: "reserved", number: 5, type: 8, label: 1 }, { name: "repeated", number: 6, type: 8, label: 1 }] }], enumType: [{ name: "VerificationState", value: [{ name: "DECLARATION", number: 0 }, { name: "UNVERIFIED", number: 1 }] }], extensionRange: [{ start: 1000, end: 536870912 }] }, { name: "FieldDescriptorProto", field: [{ name: "name", number: 1, type: 9, label: 1 }, { name: "number", number: 3, type: 5, label: 1 }, { name: "label", number: 4, type: 14, label: 1, typeName: ".google.protobuf.FieldDescriptorProto.Label" }, { name: "type", number: 5, type: 14, label: 1, typeName: ".google.protobuf.FieldDescriptorProto.Type" }, { name: "type_name", number: 6, type: 9, label: 1 }, { name: "extendee", number: 2, type: 9, label: 1 }, { name: "default_value", number: 7, type: 9, label: 1 }, { name: "oneof_index", number: 9, type: 5, label: 1 }, { name: "json_name", number: 10, type: 9, label: 1 }, { name: "options", number: 8, type: 11, label: 1, typeName: ".google.protobuf.FieldOptions" }, { name: "proto3_optional", number: 17, type: 8, label: 1 }], enumType: [{ name: "Type", value: [{ name: "TYPE_DOUBLE", number: 1 }, { name: "TYPE_FLOAT", number: 2 }, { name: "TYPE_INT64", number: 3 }, { name: "TYPE_UINT64", number: 4 }, { name: "TYPE_INT32", number: 5 }, { name: "TYPE_FIXED64", number: 6 }, { name: "TYPE_FIXED32", number: 7 }, { name: "TYPE_BOOL", number: 8 }, { name: "TYPE_STRING", number: 9 }, { name: "TYPE_GROUP", number: 10 }, { name: "TYPE_MESSAGE", number: 11 }, { name: "TYPE_BYTES", number: 12 }, { name: "TYPE_UINT32", number: 13 }, { name: "TYPE_ENUM", number: 14 }, { name: "TYPE_SFIXED32", number: 15 }, { name: "TYPE_SFIXED64", number: 16 }, { name: "TYPE_SINT32", number: 17 }, { name: "TYPE_SINT64", number: 18 }] }, { name: "Label", value: [{ name: "LABEL_OPTIONAL", number: 1 }, { name: "LABEL_REPEATED", number: 3 }, { name: "LABEL_REQUIRED", number: 2 }] }] }, { name: "OneofDescriptorProto", field: [{ name: "name", number: 1, type: 9, label: 1 }, { name: "options", number: 2, type: 11, label: 1, typeName: ".google.protobuf.OneofOptions" }] }, { name: "EnumDescriptorProto", field: [{ name: "name", number: 1, type: 9, label: 1 }, { name: "value", number: 2, type: 11, label: 3, typeName: ".google.protobuf.EnumValueDescriptorProto" }, { name: "options", number: 3, type: 11, label: 1, typeName: ".google.protobuf.EnumOptions" }, { name: "reserved_range", number: 4, type: 11, label: 3, typeName: ".google.protobuf.EnumDescriptorProto.EnumReservedRange" }, { name: "reserved_name", number: 5, type: 9, label: 3 }, { name: "visibility", number: 6, type: 14, label: 1, typeName: ".google.protobuf.SymbolVisibility" }], nestedType: [{ name: "EnumReservedRange", field: [{ name: "start", number: 1, type: 5, label: 1 }, { name: "end", number: 2, type: 5, label: 1 }] }] }, { name: "EnumValueDescriptorProto", field: [{ name: "name", number: 1, type: 9, label: 1 }, { name: "number", number: 2, type: 5, label: 1 }, { name: "options", number: 3, type: 11, label: 1, typeName: ".google.protobuf.EnumValueOptions" }] }, { name: "ServiceDescriptorProto", field: [{ name: "name", number: 1, type: 9, label: 1 }, { name: "method", number: 2, type: 11, label: 3, typeName: ".google.protobuf.MethodDescriptorProto" }, { name: "options", number: 3, type: 11, label: 1, typeName: ".google.protobuf.ServiceOptions" }] }, { name: "MethodDescriptorProto", field: [{ name: "name", number: 1, type: 9, label: 1 }, { name: "input_type", number: 2, type: 9, label: 1 }, { name: "output_type", number: 3, type: 9, label: 1 }, { name: "options", number: 4, type: 11, label: 1, typeName: ".google.protobuf.MethodOptions" }, { name: "client_streaming", number: 5, type: 8, label: 1, defaultValue: "false" }, { name: "server_streaming", number: 6, type: 8, label: 1, defaultValue: "false" }] }, { name: "FileOptions", field: [{ name: "java_package", number: 1, type: 9, label: 1 }, { name: "java_outer_classname", number: 8, type: 9, label: 1 }, { name: "java_multiple_files", number: 10, type: 8, label: 1, defaultValue: "false" }, { name: "java_generate_equals_and_hash", number: 20, type: 8, label: 1, options: { deprecated: true } }, { name: "java_string_check_utf8", number: 27, type: 8, label: 1, defaultValue: "false" }, { name: "optimize_for", number: 9, type: 14, label: 1, typeName: ".google.protobuf.FileOptions.OptimizeMode", defaultValue: "SPEED" }, { name: "go_package", number: 11, type: 9, label: 1 }, { name: "cc_generic_services", number: 16, type: 8, label: 1, defaultValue: "false" }, { name: "java_generic_services", number: 17, type: 8, label: 1, defaultValue: "false" }, { name: "py_generic_services", number: 18, type: 8, label: 1, defaultValue: "false" }, { name: "deprecated", number: 23, type: 8, label: 1, defaultValue: "false" }, { name: "cc_enable_arenas", number: 31, type: 8, label: 1, defaultValue: "true" }, { name: "objc_class_prefix", number: 36, type: 9, label: 1 }, { name: "csharp_namespace", number: 37, type: 9, label: 1 }, { name: "swift_prefix", number: 39, type: 9, label: 1 }, { name: "php_class_prefix", number: 40, type: 9, label: 1 }, { name: "php_namespace", number: 41, type: 9, label: 1 }, { name: "php_metadata_namespace", number: 44, type: 9, label: 1 }, { name: "ruby_package", number: 45, type: 9, label: 1 }, { name: "features", number: 50, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "uninterpreted_option", number: 999, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption" }], enumType: [{ name: "OptimizeMode", value: [{ name: "SPEED", number: 1 }, { name: "CODE_SIZE", number: 2 }, { name: "LITE_RUNTIME", number: 3 }] }], extensionRange: [{ start: 1000, end: 536870912 }] }, { name: "MessageOptions", field: [{ name: "message_set_wire_format", number: 1, type: 8, label: 1, defaultValue: "false" }, { name: "no_standard_descriptor_accessor", number: 2, type: 8, label: 1, defaultValue: "false" }, { name: "deprecated", number: 3, type: 8, label: 1, defaultValue: "false" }, { name: "map_entry", number: 7, type: 8, label: 1 }, { name: "deprecated_legacy_json_field_conflicts", number: 11, type: 8, label: 1, options: { deprecated: true } }, { name: "features", number: 12, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "uninterpreted_option", number: 999, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption" }], extensionRange: [{ start: 1000, end: 536870912 }] }, { name: "FieldOptions", field: [{ name: "ctype", number: 1, type: 14, label: 1, typeName: ".google.protobuf.FieldOptions.CType", defaultValue: "STRING" }, { name: "packed", number: 2, type: 8, label: 1 }, { name: "jstype", number: 6, type: 14, label: 1, typeName: ".google.protobuf.FieldOptions.JSType", defaultValue: "JS_NORMAL" }, { name: "lazy", number: 5, type: 8, label: 1, defaultValue: "false" }, { name: "unverified_lazy", number: 15, type: 8, label: 1, defaultValue: "false" }, { name: "deprecated", number: 3, type: 8, label: 1, defaultValue: "false" }, { name: "weak", number: 10, type: 8, label: 1, defaultValue: "false" }, { name: "debug_redact", number: 16, type: 8, label: 1, defaultValue: "false" }, { name: "retention", number: 17, type: 14, label: 1, typeName: ".google.protobuf.FieldOptions.OptionRetention" }, { name: "targets", number: 19, type: 14, label: 3, typeName: ".google.protobuf.FieldOptions.OptionTargetType" }, { name: "edition_defaults", number: 20, type: 11, label: 3, typeName: ".google.protobuf.FieldOptions.EditionDefault" }, { name: "features", number: 21, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "feature_support", number: 22, type: 11, label: 1, typeName: ".google.protobuf.FieldOptions.FeatureSupport" }, { name: "uninterpreted_option", number: 999, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption" }], nestedType: [{ name: "EditionDefault", field: [{ name: "edition", number: 3, type: 14, label: 1, typeName: ".google.protobuf.Edition" }, { name: "value", number: 2, type: 9, label: 1 }] }, { name: "FeatureSupport", field: [{ name: "edition_introduced", number: 1, type: 14, label: 1, typeName: ".google.protobuf.Edition" }, { name: "edition_deprecated", number: 2, type: 14, label: 1, typeName: ".google.protobuf.Edition" }, { name: "deprecation_warning", number: 3, type: 9, label: 1 }, { name: "edition_removed", number: 4, type: 14, label: 1, typeName: ".google.protobuf.Edition" }] }], enumType: [{ name: "CType", value: [{ name: "STRING", number: 0 }, { name: "CORD", number: 1 }, { name: "STRING_PIECE", number: 2 }] }, { name: "JSType", value: [{ name: "JS_NORMAL", number: 0 }, { name: "JS_STRING", number: 1 }, { name: "JS_NUMBER", number: 2 }] }, { name: "OptionRetention", value: [{ name: "RETENTION_UNKNOWN", number: 0 }, { name: "RETENTION_RUNTIME", number: 1 }, { name: "RETENTION_SOURCE", number: 2 }] }, { name: "OptionTargetType", value: [{ name: "TARGET_TYPE_UNKNOWN", number: 0 }, { name: "TARGET_TYPE_FILE", number: 1 }, { name: "TARGET_TYPE_EXTENSION_RANGE", number: 2 }, { name: "TARGET_TYPE_MESSAGE", number: 3 }, { name: "TARGET_TYPE_FIELD", number: 4 }, { name: "TARGET_TYPE_ONEOF", number: 5 }, { name: "TARGET_TYPE_ENUM", number: 6 }, { name: "TARGET_TYPE_ENUM_ENTRY", number: 7 }, { name: "TARGET_TYPE_SERVICE", number: 8 }, { name: "TARGET_TYPE_METHOD", number: 9 }] }], extensionRange: [{ start: 1000, end: 536870912 }] }, { name: "OneofOptions", field: [{ name: "features", number: 1, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "uninterpreted_option", number: 999, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption" }], extensionRange: [{ start: 1000, end: 536870912 }] }, { name: "EnumOptions", field: [{ name: "allow_alias", number: 2, type: 8, label: 1 }, { name: "deprecated", number: 3, type: 8, label: 1, defaultValue: "false" }, { name: "deprecated_legacy_json_field_conflicts", number: 6, type: 8, label: 1, options: { deprecated: true } }, { name: "features", number: 7, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "uninterpreted_option", number: 999, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption" }], extensionRange: [{ start: 1000, end: 536870912 }] }, { name: "EnumValueOptions", field: [{ name: "deprecated", number: 1, type: 8, label: 1, defaultValue: "false" }, { name: "features", number: 2, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "debug_redact", number: 3, type: 8, label: 1, defaultValue: "false" }, { name: "feature_support", number: 4, type: 11, label: 1, typeName: ".google.protobuf.FieldOptions.FeatureSupport" }, { name: "uninterpreted_option", number: 999, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption" }], extensionRange: [{ start: 1000, end: 536870912 }] }, { name: "ServiceOptions", field: [{ name: "features", number: 34, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "deprecated", number: 33, type: 8, label: 1, defaultValue: "false" }, { name: "uninterpreted_option", number: 999, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption" }], extensionRange: [{ start: 1000, end: 536870912 }] }, { name: "MethodOptions", field: [{ name: "deprecated", number: 33, type: 8, label: 1, defaultValue: "false" }, { name: "idempotency_level", number: 34, type: 14, label: 1, typeName: ".google.protobuf.MethodOptions.IdempotencyLevel", defaultValue: "IDEMPOTENCY_UNKNOWN" }, { name: "features", number: 35, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "uninterpreted_option", number: 999, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption" }], enumType: [{ name: "IdempotencyLevel", value: [{ name: "IDEMPOTENCY_UNKNOWN", number: 0 }, { name: "NO_SIDE_EFFECTS", number: 1 }, { name: "IDEMPOTENT", number: 2 }] }], extensionRange: [{ start: 1000, end: 536870912 }] }, { name: "UninterpretedOption", field: [{ name: "name", number: 2, type: 11, label: 3, typeName: ".google.protobuf.UninterpretedOption.NamePart" }, { name: "identifier_value", number: 3, type: 9, label: 1 }, { name: "positive_int_value", number: 4, type: 4, label: 1 }, { name: "negative_int_value", number: 5, type: 3, label: 1 }, { name: "double_value", number: 6, type: 1, label: 1 }, { name: "string_value", number: 7, type: 12, label: 1 }, { name: "aggregate_value", number: 8, type: 9, label: 1 }], nestedType: [{ name: "NamePart", field: [{ name: "name_part", number: 1, type: 9, label: 2 }, { name: "is_extension", number: 2, type: 8, label: 2 }] }] }, { name: "FeatureSet", field: [{ name: "field_presence", number: 1, type: 14, label: 1, typeName: ".google.protobuf.FeatureSet.FieldPresence", options: { retention: 1, targets: [4, 1], editionDefaults: [{ value: "EXPLICIT", edition: 900 }, { value: "IMPLICIT", edition: 999 }, { value: "EXPLICIT", edition: 1000 }] } }, { name: "enum_type", number: 2, type: 14, label: 1, typeName: ".google.protobuf.FeatureSet.EnumType", options: { retention: 1, targets: [6, 1], editionDefaults: [{ value: "CLOSED", edition: 900 }, { value: "OPEN", edition: 999 }] } }, { name: "repeated_field_encoding", number: 3, type: 14, label: 1, typeName: ".google.protobuf.FeatureSet.RepeatedFieldEncoding", options: { retention: 1, targets: [4, 1], editionDefaults: [{ value: "EXPANDED", edition: 900 }, { value: "PACKED", edition: 999 }] } }, { name: "utf8_validation", number: 4, type: 14, label: 1, typeName: ".google.protobuf.FeatureSet.Utf8Validation", options: { retention: 1, targets: [4, 1], editionDefaults: [{ value: "NONE", edition: 900 }, { value: "VERIFY", edition: 999 }] } }, { name: "message_encoding", number: 5, type: 14, label: 1, typeName: ".google.protobuf.FeatureSet.MessageEncoding", options: { retention: 1, targets: [4, 1], editionDefaults: [{ value: "LENGTH_PREFIXED", edition: 900 }] } }, { name: "json_format", number: 6, type: 14, label: 1, typeName: ".google.protobuf.FeatureSet.JsonFormat", options: { retention: 1, targets: [3, 6, 1], editionDefaults: [{ value: "LEGACY_BEST_EFFORT", edition: 900 }, { value: "ALLOW", edition: 999 }] } }, { name: "enforce_naming_style", number: 7, type: 14, label: 1, typeName: ".google.protobuf.FeatureSet.EnforceNamingStyle", options: { retention: 2, targets: [1, 2, 3, 4, 5, 6, 7, 8, 9], editionDefaults: [{ value: "STYLE_LEGACY", edition: 900 }, { value: "STYLE2024", edition: 1001 }] } }, { name: "default_symbol_visibility", number: 8, type: 14, label: 1, typeName: ".google.protobuf.FeatureSet.VisibilityFeature.DefaultSymbolVisibility", options: { retention: 2, targets: [1], editionDefaults: [{ value: "EXPORT_ALL", edition: 900 }, { value: "EXPORT_TOP_LEVEL", edition: 1001 }] } }], nestedType: [{ name: "VisibilityFeature", enumType: [{ name: "DefaultSymbolVisibility", value: [{ name: "DEFAULT_SYMBOL_VISIBILITY_UNKNOWN", number: 0 }, { name: "EXPORT_ALL", number: 1 }, { name: "EXPORT_TOP_LEVEL", number: 2 }, { name: "LOCAL_ALL", number: 3 }, { name: "STRICT", number: 4 }] }] }], enumType: [{ name: "FieldPresence", value: [{ name: "FIELD_PRESENCE_UNKNOWN", number: 0 }, { name: "EXPLICIT", number: 1 }, { name: "IMPLICIT", number: 2 }, { name: "LEGACY_REQUIRED", number: 3 }] }, { name: "EnumType", value: [{ name: "ENUM_TYPE_UNKNOWN", number: 0 }, { name: "OPEN", number: 1 }, { name: "CLOSED", number: 2 }] }, { name: "RepeatedFieldEncoding", value: [{ name: "REPEATED_FIELD_ENCODING_UNKNOWN", number: 0 }, { name: "PACKED", number: 1 }, { name: "EXPANDED", number: 2 }] }, { name: "Utf8Validation", value: [{ name: "UTF8_VALIDATION_UNKNOWN", number: 0 }, { name: "VERIFY", number: 2 }, { name: "NONE", number: 3 }] }, { name: "MessageEncoding", value: [{ name: "MESSAGE_ENCODING_UNKNOWN", number: 0 }, { name: "LENGTH_PREFIXED", number: 1 }, { name: "DELIMITED", number: 2 }] }, { name: "JsonFormat", value: [{ name: "JSON_FORMAT_UNKNOWN", number: 0 }, { name: "ALLOW", number: 1 }, { name: "LEGACY_BEST_EFFORT", number: 2 }] }, { name: "EnforceNamingStyle", value: [{ name: "ENFORCE_NAMING_STYLE_UNKNOWN", number: 0 }, { name: "STYLE2024", number: 1 }, { name: "STYLE_LEGACY", number: 2 }] }], extensionRange: [{ start: 1000, end: 9995 }, { start: 9995, end: 1e4 }, { start: 1e4, end: 10001 }] }, { name: "FeatureSetDefaults", field: [{ name: "defaults", number: 1, type: 11, label: 3, typeName: ".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault" }, { name: "minimum_edition", number: 4, type: 14, label: 1, typeName: ".google.protobuf.Edition" }, { name: "maximum_edition", number: 5, type: 14, label: 1, typeName: ".google.protobuf.Edition" }], nestedType: [{ name: "FeatureSetEditionDefault", field: [{ name: "edition", number: 3, type: 14, label: 1, typeName: ".google.protobuf.Edition" }, { name: "overridable_features", number: 4, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }, { name: "fixed_features", number: 5, type: 11, label: 1, typeName: ".google.protobuf.FeatureSet" }] }] }, { name: "SourceCodeInfo", field: [{ name: "location", number: 1, type: 11, label: 3, typeName: ".google.protobuf.SourceCodeInfo.Location" }], nestedType: [{ name: "Location", field: [{ name: "path", number: 1, type: 5, label: 3, options: { packed: true } }, { name: "span", number: 2, type: 5, label: 3, options: { packed: true } }, { name: "leading_comments", number: 3, type: 9, label: 1 }, { name: "trailing_comments", number: 4, type: 9, label: 1 }, { name: "leading_detached_comments", number: 6, type: 9, label: 3 }] }], extensionRange: [{ start: 536000000, end: 536000001 }] }, { name: "GeneratedCodeInfo", field: [{ name: "annotation", number: 1, type: 11, label: 3, typeName: ".google.protobuf.GeneratedCodeInfo.Annotation" }], nestedType: [{ name: "Annotation", field: [{ name: "path", number: 1, type: 5, label: 3, options: { packed: true } }, { name: "source_file", number: 2, type: 9, label: 1 }, { name: "begin", number: 3, type: 5, label: 1 }, { name: "end", number: 4, type: 5, label: 1 }, { name: "semantic", number: 5, type: 14, label: 1, typeName: ".google.protobuf.GeneratedCodeInfo.Annotation.Semantic" }], enumType: [{ name: "Semantic", value: [{ name: "NONE", number: 0 }, { name: "SET", number: 1 }, { name: "ALIAS", number: 2 }] }] }] }], enumType: [{ name: "Edition", value: [{ name: "EDITION_UNKNOWN", number: 0 }, { name: "EDITION_LEGACY", number: 900 }, { name: "EDITION_PROTO2", number: 998 }, { name: "EDITION_PROTO3", number: 999 }, { name: "EDITION_2023", number: 1000 }, { name: "EDITION_2024", number: 1001 }, { name: "EDITION_1_TEST_ONLY", number: 1 }, { name: "EDITION_2_TEST_ONLY", number: 2 }, { name: "EDITION_99997_TEST_ONLY", number: 99997 }, { name: "EDITION_99998_TEST_ONLY", number: 99998 }, { name: "EDITION_99999_TEST_ONLY", number: 99999 }, { name: "EDITION_MAX", number: 2147483647 }] }, { name: "SymbolVisibility", value: [{ name: "VISIBILITY_UNSET", number: 0 }, { name: "VISIBILITY_LOCAL", number: 1 }, { name: "VISIBILITY_EXPORT", number: 2 }] }] });
 var FileDescriptorProtoSchema = /* @__PURE__ */ messageDesc(file_google_protobuf_descriptor, 1);
 var ExtensionRangeOptions_VerificationState;
@@ -3778,6 +3785,37 @@ function listValueFromJson(listValue, json) {
     listValue.values.push(value);
   }
 }
+var exports_sdk_pb = {};
+__export(exports_sdk_pb, {
+  file_sdk_v1alpha_sdk: () => file_sdk_v1alpha_sdk,
+  TriggerSubscriptionSchema: () => TriggerSubscriptionSchema,
+  TriggerSubscriptionRequestSchema: () => TriggerSubscriptionRequestSchema,
+  TriggerSchema: () => TriggerSchema,
+  SimpleConsensusInputsSchema: () => SimpleConsensusInputsSchema,
+  SecretSchema: () => SecretSchema,
+  SecretResponsesSchema: () => SecretResponsesSchema,
+  SecretResponseSchema: () => SecretResponseSchema,
+  SecretRequestSchema: () => SecretRequestSchema,
+  SecretErrorSchema: () => SecretErrorSchema,
+  ReportResponseSchema: () => ReportResponseSchema,
+  ReportRequestSchema: () => ReportRequestSchema,
+  ModeSchema: () => ModeSchema,
+  Mode: () => Mode,
+  GetSecretsRequestSchema: () => GetSecretsRequestSchema,
+  FieldsMapSchema: () => FieldsMapSchema,
+  ExecutionResultSchema: () => ExecutionResultSchema,
+  ExecuteRequestSchema: () => ExecuteRequestSchema,
+  ConsensusDescriptorSchema: () => ConsensusDescriptorSchema,
+  CapabilityResponseSchema: () => CapabilityResponseSchema,
+  CapabilityRequestSchema: () => CapabilityRequestSchema,
+  AwaitSecretsResponseSchema: () => AwaitSecretsResponseSchema,
+  AwaitSecretsRequestSchema: () => AwaitSecretsRequestSchema,
+  AwaitCapabilitiesResponseSchema: () => AwaitCapabilitiesResponseSchema,
+  AwaitCapabilitiesRequestSchema: () => AwaitCapabilitiesRequestSchema,
+  AttributedSignatureSchema: () => AttributedSignatureSchema,
+  AggregationTypeSchema: () => AggregationTypeSchema,
+  AggregationType: () => AggregationType
+});
 var file_values_v1_values = /* @__PURE__ */ fileDesc("ChZ2YWx1ZXMvdjEvdmFsdWVzLnByb3RvEgl2YWx1ZXMudjEigQMKBVZhbHVlEhYKDHN0cmluZ192YWx1ZRgBIAEoCUgAEhQKCmJvb2xfdmFsdWUYAiABKAhIABIVCgtieXRlc192YWx1ZRgDIAEoDEgAEiMKCW1hcF92YWx1ZRgEIAEoCzIOLnZhbHVlcy52MS5NYXBIABIlCgpsaXN0X3ZhbHVlGAUgASgLMg8udmFsdWVzLnYxLkxpc3RIABIrCg1kZWNpbWFsX3ZhbHVlGAYgASgLMhIudmFsdWVzLnYxLkRlY2ltYWxIABIZCgtpbnQ2NF92YWx1ZRgHIAEoA0ICMABIABIpCgxiaWdpbnRfdmFsdWUYCSABKAsyES52YWx1ZXMudjEuQmlnSW50SAASMAoKdGltZV92YWx1ZRgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIABIXCg1mbG9hdDY0X3ZhbHVlGAsgASgBSAASGgoMdWludDY0X3ZhbHVlGAwgASgEQgIwAEgAQgcKBXZhbHVlSgQICBAJIisKBkJpZ0ludBIPCgdhYnNfdmFsGAEgASgMEhAKBHNpZ24YAiABKANCAjAAInIKA01hcBIqCgZmaWVsZHMYASADKAsyGi52YWx1ZXMudjEuTWFwLkZpZWxkc0VudHJ5Gj8KC0ZpZWxkc0VudHJ5EgsKA2tleRgBIAEoCRIfCgV2YWx1ZRgCIAEoCzIQLnZhbHVlcy52MS5WYWx1ZToCOAEiKAoETGlzdBIgCgZmaWVsZHMYAiADKAsyEC52YWx1ZXMudjEuVmFsdWUiQwoHRGVjaW1hbBImCgtjb2VmZmljaWVudBgBIAEoCzIRLnZhbHVlcy52MS5CaWdJbnQSEAoIZXhwb25lbnQYAiABKAVCYQoNY29tLnZhbHVlcy52MUILVmFsdWVzUHJvdG9QAaICA1ZYWKoCCVZhbHVlcy5WMcoCCVZhbHVlc1xWMeICFVZhbHVlc1xWMVxHUEJNZXRhZGF0YeoCClZhbHVlczo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 var ValueSchema2 = /* @__PURE__ */ messageDesc(file_values_v1_values, 0);
 var BigIntSchema = /* @__PURE__ */ messageDesc(file_values_v1_values, 1);
@@ -3786,11 +3824,16 @@ var ListSchema = /* @__PURE__ */ messageDesc(file_values_v1_values, 3);
 var DecimalSchema = /* @__PURE__ */ messageDesc(file_values_v1_values, 4);
 var file_sdk_v1alpha_sdk = /* @__PURE__ */ fileDesc("ChVzZGsvdjFhbHBoYS9zZGsucHJvdG8SC3Nkay52MWFscGhhIrQBChVTaW1wbGVDb25zZW5zdXNJbnB1dHMSIQoFdmFsdWUYASABKAsyEC52YWx1ZXMudjEuVmFsdWVIABIPCgVlcnJvchgCIAEoCUgAEjUKC2Rlc2NyaXB0b3JzGAMgASgLMiAuc2RrLnYxYWxwaGEuQ29uc2Vuc3VzRGVzY3JpcHRvchIhCgdkZWZhdWx0GAQgASgLMhAudmFsdWVzLnYxLlZhbHVlQg0KC29ic2VydmF0aW9uIpABCglGaWVsZHNNYXASMgoGZmllbGRzGAEgAygLMiIuc2RrLnYxYWxwaGEuRmllbGRzTWFwLkZpZWxkc0VudHJ5Gk8KC0ZpZWxkc0VudHJ5EgsKA2tleRgBIAEoCRIvCgV2YWx1ZRgCIAEoCzIgLnNkay52MWFscGhhLkNvbnNlbnN1c0Rlc2NyaXB0b3I6AjgBIoYBChNDb25zZW5zdXNEZXNjcmlwdG9yEjMKC2FnZ3JlZ2F0aW9uGAEgASgOMhwuc2RrLnYxYWxwaGEuQWdncmVnYXRpb25UeXBlSAASLAoKZmllbGRzX21hcBgCIAEoCzIWLnNkay52MWFscGhhLkZpZWxkc01hcEgAQgwKCmRlc2NyaXB0b3IiagoNUmVwb3J0UmVxdWVzdBIXCg9lbmNvZGVkX3BheWxvYWQYASABKAwSFAoMZW5jb2Rlcl9uYW1lGAIgASgJEhQKDHNpZ25pbmdfYWxnbxgDIAEoCRIUCgxoYXNoaW5nX2FsZ28YBCABKAkilwEKDlJlcG9ydFJlc3BvbnNlEhUKDWNvbmZpZ19kaWdlc3QYASABKAwSEgoGc2VxX25yGAIgASgEQgIwABIWCg5yZXBvcnRfY29udGV4dBgDIAEoDBISCgpyYXdfcmVwb3J0GAQgASgMEi4KBHNpZ3MYBSADKAsyIC5zZGsudjFhbHBoYS5BdHRyaWJ1dGVkU2lnbmF0dXJlIjsKE0F0dHJpYnV0ZWRTaWduYXR1cmUSEQoJc2lnbmF0dXJlGAEgASgMEhEKCXNpZ25lcl9pZBgCIAEoDSJrChFDYXBhYmlsaXR5UmVxdWVzdBIKCgJpZBgBIAEoCRIlCgdwYXlsb2FkGAIgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueRIOCgZtZXRob2QYAyABKAkSEwoLY2FsbGJhY2tfaWQYBCABKAUiWgoSQ2FwYWJpbGl0eVJlc3BvbnNlEicKB3BheWxvYWQYASABKAsyFC5nb29nbGUucHJvdG9idWYuQW55SAASDwoFZXJyb3IYAiABKAlIAEIKCghyZXNwb25zZSJYChNUcmlnZ2VyU3Vic2NyaXB0aW9uEgoKAmlkGAEgASgJEiUKB3BheWxvYWQYAiABKAsyFC5nb29nbGUucHJvdG9idWYuQW55Eg4KBm1ldGhvZBgDIAEoCSJVChpUcmlnZ2VyU3Vic2NyaXB0aW9uUmVxdWVzdBI3Cg1zdWJzY3JpcHRpb25zGAEgAygLMiAuc2RrLnYxYWxwaGEuVHJpZ2dlclN1YnNjcmlwdGlvbiJACgdUcmlnZ2VyEg4KAmlkGAEgASgEQgIwABIlCgdwYXlsb2FkGAIgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueSInChhBd2FpdENhcGFiaWxpdGllc1JlcXVlc3QSCwoDaWRzGAEgAygFIrgBChlBd2FpdENhcGFiaWxpdGllc1Jlc3BvbnNlEkgKCXJlc3BvbnNlcxgBIAMoCzI1LnNkay52MWFscGhhLkF3YWl0Q2FwYWJpbGl0aWVzUmVzcG9uc2UuUmVzcG9uc2VzRW50cnkaUQoOUmVzcG9uc2VzRW50cnkSCwoDa2V5GAEgASgFEi4KBXZhbHVlGAIgASgLMh8uc2RrLnYxYWxwaGEuQ2FwYWJpbGl0eVJlc3BvbnNlOgI4ASKgAQoORXhlY3V0ZVJlcXVlc3QSDgoGY29uZmlnGAEgASgMEisKCXN1YnNjcmliZRgCIAEoCzIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eUgAEicKB3RyaWdnZXIYAyABKAsyFC5zZGsudjFhbHBoYS5UcmlnZ2VySAASHQoRbWF4X3Jlc3BvbnNlX3NpemUYBCABKARCAjAAQgkKB3JlcXVlc3QimQEKD0V4ZWN1dGlvblJlc3VsdBIhCgV2YWx1ZRgBIAEoCzIQLnZhbHVlcy52MS5WYWx1ZUgAEg8KBWVycm9yGAIgASgJSAASSAoVdHJpZ2dlcl9zdWJzY3JpcHRpb25zGAMgASgLMicuc2RrLnYxYWxwaGEuVHJpZ2dlclN1YnNjcmlwdGlvblJlcXVlc3RIAEIICgZyZXN1bHQiVgoRR2V0U2VjcmV0c1JlcXVlc3QSLAoIcmVxdWVzdHMYASADKAsyGi5zZGsudjFhbHBoYS5TZWNyZXRSZXF1ZXN0EhMKC2NhbGxiYWNrX2lkGAIgASgFIiIKE0F3YWl0U2VjcmV0c1JlcXVlc3QSCwoDaWRzGAEgAygFIqsBChRBd2FpdFNlY3JldHNSZXNwb25zZRJDCglyZXNwb25zZXMYASADKAsyMC5zZGsudjFhbHBoYS5Bd2FpdFNlY3JldHNSZXNwb25zZS5SZXNwb25zZXNFbnRyeRpOCg5SZXNwb25zZXNFbnRyeRILCgNrZXkYASABKAUSKwoFdmFsdWUYAiABKAsyHC5zZGsudjFhbHBoYS5TZWNyZXRSZXNwb25zZXM6AjgBIi4KDVNlY3JldFJlcXVlc3QSCgoCaWQYASABKAkSEQoJbmFtZXNwYWNlGAIgASgJIkUKBlNlY3JldBIKCgJpZBgBIAEoCRIRCgluYW1lc3BhY2UYAiABKAkSDQoFb3duZXIYAyABKAkSDQoFdmFsdWUYBCABKAkiSgoLU2VjcmV0RXJyb3ISCgoCaWQYASABKAkSEQoJbmFtZXNwYWNlGAIgASgJEg0KBW93bmVyGAMgASgJEg0KBWVycm9yGAQgASgJIm4KDlNlY3JldFJlc3BvbnNlEiUKBnNlY3JldBgBIAEoCzITLnNkay52MWFscGhhLlNlY3JldEgAEikKBWVycm9yGAIgASgLMhguc2RrLnYxYWxwaGEuU2VjcmV0RXJyb3JIAEIKCghyZXNwb25zZSJBCg9TZWNyZXRSZXNwb25zZXMSLgoJcmVzcG9uc2VzGAEgAygLMhsuc2RrLnYxYWxwaGEuU2VjcmV0UmVzcG9uc2UquAEKD0FnZ3JlZ2F0aW9uVHlwZRIgChxBR0dSRUdBVElPTl9UWVBFX1VOU1BFQ0lGSUVEEAASGwoXQUdHUkVHQVRJT05fVFlQRV9NRURJQU4QARIeChpBR0dSRUdBVElPTl9UWVBFX0lERU5USUNBTBACEiIKHkFHR1JFR0FUSU9OX1RZUEVfQ09NTU9OX1BSRUZJWBADEiIKHkFHR1JFR0FUSU9OX1RZUEVfQ09NTU9OX1NVRkZJWBAEKjkKBE1vZGUSFAoQTU9ERV9VTlNQRUNJRklFRBAAEgwKCE1PREVfRE9OEAESDQoJTU9ERV9OT0RFEAJCaAoPY29tLnNkay52MWFscGhhQghTZGtQcm90b1ABogIDU1hYqgILU2RrLlYxYWxwaGHKAgtTZGtcVjFhbHBoYeICF1Nka1xWMWFscGhhXEdQQk1ldGFkYXRh6gIMU2RrOjpWMWFscGhhYgZwcm90bzM", [file_google_protobuf_any, file_google_protobuf_empty, file_values_v1_values]);
 var SimpleConsensusInputsSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 0);
+var FieldsMapSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 1);
 var ConsensusDescriptorSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 2);
 var ReportRequestSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 3);
 var ReportResponseSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 4);
+var AttributedSignatureSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 5);
 var CapabilityRequestSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 6);
+var CapabilityResponseSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 7);
+var TriggerSubscriptionSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 8);
 var TriggerSubscriptionRequestSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 9);
+var TriggerSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 10);
 var AwaitCapabilitiesRequestSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 11);
 var AwaitCapabilitiesResponseSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 12);
 var ExecuteRequestSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 13);
@@ -3799,6 +3842,10 @@ var GetSecretsRequestSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 
 var AwaitSecretsRequestSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 16);
 var AwaitSecretsResponseSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 17);
 var SecretRequestSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 18);
+var SecretSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 19);
+var SecretErrorSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 20);
+var SecretResponseSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 21);
+var SecretResponsesSchema = /* @__PURE__ */ messageDesc(file_sdk_v1alpha_sdk, 22);
 var AggregationType;
 (function(AggregationType2) {
   AggregationType2[AggregationType2["UNSPECIFIED"] = 0] = "UNSPECIFIED";
@@ -3807,12 +3854,14 @@ var AggregationType;
   AggregationType2[AggregationType2["COMMON_PREFIX"] = 3] = "COMMON_PREFIX";
   AggregationType2[AggregationType2["COMMON_SUFFIX"] = 4] = "COMMON_SUFFIX";
 })(AggregationType || (AggregationType = {}));
+var AggregationTypeSchema = /* @__PURE__ */ enumDesc(file_sdk_v1alpha_sdk, 0);
 var Mode;
 (function(Mode2) {
   Mode2[Mode2["UNSPECIFIED"] = 0] = "UNSPECIFIED";
   Mode2[Mode2["DON"] = 1] = "DON";
   Mode2[Mode2["NODE"] = 2] = "NODE";
 })(Mode || (Mode = {}));
+var ModeSchema = /* @__PURE__ */ enumDesc(file_sdk_v1alpha_sdk, 1);
 var file_tools_generator_v1alpha_cre_metadata = /* @__PURE__ */ fileDesc("Cip0b29scy9nZW5lcmF0b3IvdjFhbHBoYS9jcmVfbWV0YWRhdGEucHJvdG8SF3Rvb2xzLmdlbmVyYXRvci52MWFscGhhIoQBCgtTdHJpbmdMYWJlbBJECghkZWZhdWx0cxgBIAMoCzIyLnRvb2xzLmdlbmVyYXRvci52MWFscGhhLlN0cmluZ0xhYmVsLkRlZmF1bHRzRW50cnkaLwoNRGVmYXVsdHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIogBCgtVaW50NjRMYWJlbBJECghkZWZhdWx0cxgBIAMoCzIyLnRvb2xzLmdlbmVyYXRvci52MWFscGhhLlVpbnQ2NExhYmVsLkRlZmF1bHRzRW50cnkaMwoNRGVmYXVsdHNFbnRyeRILCgNrZXkYASABKAkSEQoFdmFsdWUYAiABKARCAjAAOgI4ASKEAQoLVWludDMyTGFiZWwSRAoIZGVmYXVsdHMYASADKAsyMi50b29scy5nZW5lcmF0b3IudjFhbHBoYS5VaW50MzJMYWJlbC5EZWZhdWx0c0VudHJ5Gi8KDURlZmF1bHRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgNOgI4ASKGAQoKSW50NjRMYWJlbBJDCghkZWZhdWx0cxgBIAMoCzIxLnRvb2xzLmdlbmVyYXRvci52MWFscGhhLkludDY0TGFiZWwuRGVmYXVsdHNFbnRyeRozCg1EZWZhdWx0c0VudHJ5EgsKA2tleRgBIAEoCRIRCgV2YWx1ZRgCIAEoA0ICMAA6AjgBIoIBCgpJbnQzMkxhYmVsEkMKCGRlZmF1bHRzGAEgAygLMjEudG9vbHMuZ2VuZXJhdG9yLnYxYWxwaGEuSW50MzJMYWJlbC5EZWZhdWx0c0VudHJ5Gi8KDURlZmF1bHRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgFOgI4ASLBAgoFTGFiZWwSPAoMc3RyaW5nX2xhYmVsGAEgASgLMiQudG9vbHMuZ2VuZXJhdG9yLnYxYWxwaGEuU3RyaW5nTGFiZWxIABI8Cgx1aW50NjRfbGFiZWwYAiABKAsyJC50b29scy5nZW5lcmF0b3IudjFhbHBoYS5VaW50NjRMYWJlbEgAEjoKC2ludDY0X2xhYmVsGAMgASgLMiMudG9vbHMuZ2VuZXJhdG9yLnYxYWxwaGEuSW50NjRMYWJlbEgAEjwKDHVpbnQzMl9sYWJlbBgEIAEoCzIkLnRvb2xzLmdlbmVyYXRvci52MWFscGhhLlVpbnQzMkxhYmVsSAASOgoLaW50MzJfbGFiZWwYBSABKAsyIy50b29scy5nZW5lcmF0b3IudjFhbHBoYS5JbnQzMkxhYmVsSABCBgoEa2luZCLkAQoSQ2FwYWJpbGl0eU1ldGFkYXRhEh8KBG1vZGUYASABKA4yES5zZGsudjFhbHBoYS5Nb2RlEhUKDWNhcGFiaWxpdHlfaWQYAiABKAkSRwoGbGFiZWxzGAMgAygLMjcudG9vbHMuZ2VuZXJhdG9yLnYxYWxwaGEuQ2FwYWJpbGl0eU1ldGFkYXRhLkxhYmVsc0VudHJ5Gk0KC0xhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRItCgV2YWx1ZRgCIAEoCzIeLnRvb2xzLmdlbmVyYXRvci52MWFscGhhLkxhYmVsOgI4ASI2ChhDYXBhYmlsaXR5TWV0aG9kTWV0YWRhdGESGgoSbWFwX3RvX3VudHlwZWRfYXBpGAEgASgIOm4KCmNhcGFiaWxpdHkSHy5nb29nbGUucHJvdG9idWYuU2VydmljZU9wdGlvbnMY0IYDIAEoCzIrLnRvb2xzLmdlbmVyYXRvci52MWFscGhhLkNhcGFiaWxpdHlNZXRhZGF0YVIKY2FwYWJpbGl0eTprCgZtZXRob2QSHi5nb29nbGUucHJvdG9idWYuTWV0aG9kT3B0aW9ucxjRhgMgASgLMjEudG9vbHMuZ2VuZXJhdG9yLnYxYWxwaGEuQ2FwYWJpbGl0eU1ldGhvZE1ldGFkYXRhUgZtZXRob2RCrwEKG2NvbS50b29scy5nZW5lcmF0b3IudjFhbHBoYUIQQ3JlTWV0YWRhdGFQcm90b1ABogIDVEdYqgIXVG9vbHMuR2VuZXJhdG9yLlYxYWxwaGHKAhhUb29sc1xHZW5lcmF0b3JfXFYxYWxwaGHiAiRUb29sc1xHZW5lcmF0b3JfXFYxYWxwaGFcR1BCTWV0YWRhdGHqAhlUb29sczo6R2VuZXJhdG9yOjpWMWFscGhhYgZwcm90bzM", [file_google_protobuf_descriptor, file_sdk_v1alpha_sdk]);
 var file_capabilities_blockchain_evm_v1alpha_client = /* @__PURE__ */ fileDesc("CjBjYXBhYmlsaXRpZXMvYmxvY2tjaGFpbi9ldm0vdjFhbHBoYS9jbGllbnQucHJvdG8SI2NhcGFiaWxpdGllcy5ibG9ja2NoYWluLmV2bS52MWFscGhhIh0KC1RvcGljVmFsdWVzEg4KBnZhbHVlcxgBIAMoDCK4AQoXRmlsdGVyTG9nVHJpZ2dlclJlcXVlc3QSEQoJYWRkcmVzc2VzGAEgAygMEkAKBnRvcGljcxgCIAMoCzIwLmNhcGFiaWxpdGllcy5ibG9ja2NoYWluLmV2bS52MWFscGhhLlRvcGljVmFsdWVzEkgKCmNvbmZpZGVuY2UYAyABKA4yNC5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5Db25maWRlbmNlTGV2ZWwiegoTQ2FsbENvbnRyYWN0UmVxdWVzdBI6CgRjYWxsGAEgASgLMiwuY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuQ2FsbE1zZxInCgxibG9ja19udW1iZXIYAiABKAsyES52YWx1ZXMudjEuQmlnSW50IiEKEUNhbGxDb250cmFjdFJlcGx5EgwKBGRhdGEYASABKAwiWwoRRmlsdGVyTG9nc1JlcXVlc3QSRgoMZmlsdGVyX3F1ZXJ5GAEgASgLMjAuY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuRmlsdGVyUXVlcnkiSQoPRmlsdGVyTG9nc1JlcGx5EjYKBGxvZ3MYASADKAsyKC5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5Mb2cixwEKA0xvZxIPCgdhZGRyZXNzGAEgASgMEg4KBnRvcGljcxgCIAMoDBIPCgd0eF9oYXNoGAMgASgMEhIKCmJsb2NrX2hhc2gYBCABKAwSDAoEZGF0YRgFIAEoDBIRCglldmVudF9zaWcYBiABKAwSJwoMYmxvY2tfbnVtYmVyGAcgASgLMhEudmFsdWVzLnYxLkJpZ0ludBIQCgh0eF9pbmRleBgIIAEoDRINCgVpbmRleBgJIAEoDRIPCgdyZW1vdmVkGAogASgIIjEKB0NhbGxNc2cSDAoEZnJvbRgBIAEoDBIKCgJ0bxgCIAEoDBIMCgRkYXRhGAMgASgMIr0BCgtGaWx0ZXJRdWVyeRISCgpibG9ja19oYXNoGAEgASgMEiUKCmZyb21fYmxvY2sYAiABKAsyES52YWx1ZXMudjEuQmlnSW50EiMKCHRvX2Jsb2NrGAMgASgLMhEudmFsdWVzLnYxLkJpZ0ludBIRCglhZGRyZXNzZXMYBCADKAwSOwoGdG9waWNzGAUgAygLMisuY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuVG9waWNzIhcKBlRvcGljcxINCgV0b3BpYxgBIAMoDCJMChBCYWxhbmNlQXRSZXF1ZXN0Eg8KB2FjY291bnQYASABKAwSJwoMYmxvY2tfbnVtYmVyGAIgASgLMhEudmFsdWVzLnYxLkJpZ0ludCI0Cg5CYWxhbmNlQXRSZXBseRIiCgdiYWxhbmNlGAEgASgLMhEudmFsdWVzLnYxLkJpZ0ludCJPChJFc3RpbWF0ZUdhc1JlcXVlc3QSOQoDbXNnGAEgASgLMiwuY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuQ2FsbE1zZyIjChBFc3RpbWF0ZUdhc1JlcGx5Eg8KA2dhcxgBIAEoBEICMAAiKwobR2V0VHJhbnNhY3Rpb25CeUhhc2hSZXF1ZXN0EgwKBGhhc2gYASABKAwiYgoZR2V0VHJhbnNhY3Rpb25CeUhhc2hSZXBseRJFCgt0cmFuc2FjdGlvbhgBIAEoCzIwLmNhcGFiaWxpdGllcy5ibG9ja2NoYWluLmV2bS52MWFscGhhLlRyYW5zYWN0aW9uIqEBCgtUcmFuc2FjdGlvbhIRCgVub25jZRgBIAEoBEICMAASDwoDZ2FzGAIgASgEQgIwABIKCgJ0bxgDIAEoDBIMCgRkYXRhGAQgASgMEgwKBGhhc2gYBSABKAwSIAoFdmFsdWUYBiABKAsyES52YWx1ZXMudjEuQmlnSW50EiQKCWdhc19wcmljZRgHIAEoCzIRLnZhbHVlcy52MS5CaWdJbnQiLAocR2V0VHJhbnNhY3Rpb25SZWNlaXB0UmVxdWVzdBIMCgRoYXNoGAEgASgMIlsKGkdldFRyYW5zYWN0aW9uUmVjZWlwdFJlcGx5Ej0KB3JlY2VpcHQYASABKAsyLC5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5SZWNlaXB0IpkCCgdSZWNlaXB0EhIKBnN0YXR1cxgBIAEoBEICMAASFAoIZ2FzX3VzZWQYAiABKARCAjAAEhQKCHR4X2luZGV4GAMgASgEQgIwABISCgpibG9ja19oYXNoGAQgASgMEjYKBGxvZ3MYBiADKAsyKC5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5Mb2cSDwoHdHhfaGFzaBgHIAEoDBIuChNlZmZlY3RpdmVfZ2FzX3ByaWNlGAggASgLMhEudmFsdWVzLnYxLkJpZ0ludBInCgxibG9ja19udW1iZXIYCSABKAsyES52YWx1ZXMudjEuQmlnSW50EhgKEGNvbnRyYWN0X2FkZHJlc3MYCiABKAwiQAoVSGVhZGVyQnlOdW1iZXJSZXF1ZXN0EicKDGJsb2NrX251bWJlchgBIAEoCzIRLnZhbHVlcy52MS5CaWdJbnQiUgoTSGVhZGVyQnlOdW1iZXJSZXBseRI7CgZoZWFkZXIYASABKAsyKy5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5IZWFkZXIiawoGSGVhZGVyEhUKCXRpbWVzdGFtcBgBIAEoBEICMAASJwoMYmxvY2tfbnVtYmVyGAIgASgLMhEudmFsdWVzLnYxLkJpZ0ludBIMCgRoYXNoGAMgASgMEhMKC3BhcmVudF9oYXNoGAQgASgMIqsBChJXcml0ZVJlcG9ydFJlcXVlc3QSEAoIcmVjZWl2ZXIYASABKAwSKwoGcmVwb3J0GAIgASgLMhsuc2RrLnYxYWxwaGEuUmVwb3J0UmVzcG9uc2USRwoKZ2FzX2NvbmZpZxgDIAEoCzIuLmNhcGFiaWxpdGllcy5ibG9ja2NoYWluLmV2bS52MWFscGhhLkdhc0NvbmZpZ0gAiAEBQg0KC19nYXNfY29uZmlnIiIKCUdhc0NvbmZpZxIVCglnYXNfbGltaXQYASABKARCAjAAIocDChBXcml0ZVJlcG9ydFJlcGx5EkAKCXR4X3N0YXR1cxgBIAEoDjItLmNhcGFiaWxpdGllcy5ibG9ja2NoYWluLmV2bS52MWFscGhhLlR4U3RhdHVzEnUKInJlY2VpdmVyX2NvbnRyYWN0X2V4ZWN1dGlvbl9zdGF0dXMYAiABKA4yRC5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5SZWNlaXZlckNvbnRyYWN0RXhlY3V0aW9uU3RhdHVzSACIAQESFAoHdHhfaGFzaBgDIAEoDEgBiAEBEi8KD3RyYW5zYWN0aW9uX2ZlZRgEIAEoCzIRLnZhbHVlcy52MS5CaWdJbnRIAogBARIaCg1lcnJvcl9tZXNzYWdlGAUgASgJSAOIAQFCJQojX3JlY2VpdmVyX2NvbnRyYWN0X2V4ZWN1dGlvbl9zdGF0dXNCCgoIX3R4X2hhc2hCEgoQX3RyYW5zYWN0aW9uX2ZlZUIQCg5fZXJyb3JfbWVzc2FnZSppCg9Db25maWRlbmNlTGV2ZWwSGQoVQ09ORklERU5DRV9MRVZFTF9TQUZFEAASGwoXQ09ORklERU5DRV9MRVZFTF9MQVRFU1QQARIeChpDT05GSURFTkNFX0xFVkVMX0ZJTkFMSVpFRBACKoIBCh9SZWNlaXZlckNvbnRyYWN0RXhlY3V0aW9uU3RhdHVzEi4KKlJFQ0VJVkVSX0NPTlRSQUNUX0VYRUNVVElPTl9TVEFUVVNfU1VDQ0VTUxAAEi8KK1JFQ0VJVkVSX0NPTlRSQUNUX0VYRUNVVElPTl9TVEFUVVNfUkVWRVJURUQQASpOCghUeFN0YXR1cxITCg9UWF9TVEFUVVNfRkFUQUwQABIWChJUWF9TVEFUVVNfUkVWRVJURUQQARIVChFUWF9TVEFUVVNfU1VDQ0VTUxACMoUYCgZDbGllbnQSgAEKDENhbGxDb250cmFjdBI4LmNhcGFiaWxpdGllcy5ibG9ja2NoYWluLmV2bS52MWFscGhhLkNhbGxDb250cmFjdFJlcXVlc3QaNi5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5DYWxsQ29udHJhY3RSZXBseRJ6CgpGaWx0ZXJMb2dzEjYuY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuRmlsdGVyTG9nc1JlcXVlc3QaNC5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5GaWx0ZXJMb2dzUmVwbHkSdwoJQmFsYW5jZUF0EjUuY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuQmFsYW5jZUF0UmVxdWVzdBozLmNhcGFiaWxpdGllcy5ibG9ja2NoYWluLmV2bS52MWFscGhhLkJhbGFuY2VBdFJlcGx5En0KC0VzdGltYXRlR2FzEjcuY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuRXN0aW1hdGVHYXNSZXF1ZXN0GjUuY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuRXN0aW1hdGVHYXNSZXBseRKYAQoUR2V0VHJhbnNhY3Rpb25CeUhhc2gSQC5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5HZXRUcmFuc2FjdGlvbkJ5SGFzaFJlcXVlc3QaPi5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5HZXRUcmFuc2FjdGlvbkJ5SGFzaFJlcGx5EpsBChVHZXRUcmFuc2FjdGlvblJlY2VpcHQSQS5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5HZXRUcmFuc2FjdGlvblJlY2VpcHRSZXF1ZXN0Gj8uY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuR2V0VHJhbnNhY3Rpb25SZWNlaXB0UmVwbHkShgEKDkhlYWRlckJ5TnVtYmVyEjouY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuSGVhZGVyQnlOdW1iZXJSZXF1ZXN0GjguY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuSGVhZGVyQnlOdW1iZXJSZXBseRJ2CgpMb2dUcmlnZ2VyEjwuY2FwYWJpbGl0aWVzLmJsb2NrY2hhaW4uZXZtLnYxYWxwaGEuRmlsdGVyTG9nVHJpZ2dlclJlcXVlc3QaKC5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYS5Mb2cwARJ9CgtXcml0ZVJlcG9ydBI3LmNhcGFiaWxpdGllcy5ibG9ja2NoYWluLmV2bS52MWFscGhhLldyaXRlUmVwb3J0UmVxdWVzdBo1LmNhcGFiaWxpdGllcy5ibG9ja2NoYWluLmV2bS52MWFscGhhLldyaXRlUmVwb3J0UmVwbHkayg6CtRjFDggBEglldm1AMS4wLjAatQ4KDUNoYWluU2VsZWN0b3ISow4SoA4KJAoXYXBlY2hhaW4tdGVzdG5ldC1jdXJ0aXMQwcO0+I3EkrKJAQoXCgthcmMtdGVzdG5ldBDnxoye19fQjSoKHQoRYXZhbGFuY2hlLW1haW5uZXQQ1eeKwOHVmKRZCiMKFmF2YWxhbmNoZS10ZXN0bmV0LWZ1amkQm/n8kKLjqPjMAQooChtiaW5hbmNlX3NtYXJ0X2NoYWluLW1haW5uZXQQz/eU8djtlbidAQooChtiaW5hbmNlX3NtYXJ0X2NoYWluLXRlc3RuZXQQ+62+nICu5Iq4AQoYCgxjZWxvLW1haW5uZXQQhtTo2IaTiNcSChoKDmNyb25vcy10ZXN0bmV0EP3Z7q3g3trIKQoiChVkdGNjLXRlc3RuZXQtYW5kZXNpdGUQ0oPj0JmW5aTXAQocChBldGhlcmV1bS1tYWlubmV0EJX28eTPsqbCRQonChtldGhlcmV1bS1tYWlubmV0LWFyYml0cnVtLTEQxOiNzY6boddECiQKF2V0aGVyZXVtLW1haW5uZXQtYmFzZS0xEIL/q6L+uZDT3QEKIgoWZXRoZXJldW0tbWFpbm5ldC1pbmstMRCgsKbpt+aqhDAKJAoYZXRoZXJldW0tbWFpbm5ldC1saW5lYS0xELa66ZjLvbCbQAolChlldGhlcmV1bS1tYWlubmV0LW1hbnRsZS0xEIrntJXnsIPMFQonChtldGhlcmV1bS1tYWlubmV0LW9wdGltaXNtLTEQuJWPw/f+0OkzCiYKGWV0aGVyZXVtLW1haW5uZXQtc2Nyb2xsLTEQuLzk68S+yJ+3AQopCh1ldGhlcmV1bS1tYWlubmV0LXdvcmxkY2hhaW4tMRCH77q3xbbCuBwKJQoZZXRoZXJldW0tbWFpbm5ldC14bGF5ZXItMRCWpfycpqjv7SkKJQoZZXRoZXJldW0tbWFpbm5ldC16a3N5bmMtMRCU7pfZ7bSx1xUKJQoYZXRoZXJldW0tdGVzdG5ldC1zZXBvbGlhENm15M78ye6g3gEKLwojZXRoZXJldW0tdGVzdG5ldC1zZXBvbGlhLWFyYml0cnVtLTEQ6s7u/+q2hKMwCiwKH2V0aGVyZXVtLXRlc3RuZXQtc2Vwb2xpYS1iYXNlLTEQuMq57/aQrsiPAQosCiBldGhlcmV1bS10ZXN0bmV0LXNlcG9saWEtbGluZWEtMRDrqtT+gvnmr08KLQohZXRoZXJldW0tdGVzdG5ldC1zZXBvbGlhLW1hbnRsZS0xENXGuO7N9vKmcgovCiNldGhlcmV1bS10ZXN0bmV0LXNlcG9saWEtb3B0aW1pc20tMRCfhsWhvtjDwEgKLQohZXRoZXJldW0tdGVzdG5ldC1zZXBvbGlhLXNjcm9sbC0xEIvptL7buu3RHwowCiNldGhlcmV1bS10ZXN0bmV0LXNlcG9saWEtdW5pY2hhaW4tMRC03v7g7JeplsQBCjEKJWV0aGVyZXVtLXRlc3RuZXQtc2Vwb2xpYS13b3JsZGNoYWluLTEQut/gxcep88VJCi0KIWV0aGVyZXVtLXRlc3RuZXQtc2Vwb2xpYS16a3N5bmMtMRC3wfz98sSA3l8KIAoUZ25vc2lzX2NoYWluLW1haW5uZXQQ9JKt2vKirroGCicKG2dub3Npc19jaGFpbi10ZXN0bmV0LWNoaWFkbxCzsYLQm6WPj3sKHwoTaHlwZXJsaXF1aWQtbWFpbm5ldBCns/jdztHp8iEKHwoTaHlwZXJsaXF1aWQtdGVzdG5ldBCIzt3Il+DJvTsKIAoTaW5rLXRlc3RuZXQtc2Vwb2xpYRDo9Kel8+aWwIcBChkKDWpvdmF5LW1haW5uZXQQtcPEmqGA35IVChkKDWpvdmF5LXRlc3RuZXQQ5M+KhN6y3o4NChsKD21lZ2FldGgtbWFpbm5ldBDqlbbIvOSmyFQKHgoRbWVnYWV0aC10ZXN0bmV0LTIQ443eiLGP/ZP9AQokChdwaGFyb3MtYXRsYW50aWMtdGVzdG5ldBDMme3gzryvtN8BChoKDnBoYXJvcy1tYWlubmV0EMjBh571782hbAobCg5wbGFzbWEtbWFpbm5ldBD4m/HR2snVxoEBChoKDnBsYXNtYS10ZXN0bmV0ENWbv6XDtJmHNwobCg9wb2x5Z29uLW1haW5uZXQQsavk8JqShp04CiEKFHBvbHlnb24tdGVzdG5ldC1hbW95EM2P1t/xx5D64QEKJAoYcHJpdmF0ZS10ZXN0bmV0LWFuZGVzaXRlENSmmKXBj9z8XwoZCg1zb25pYy1tYWlubmV0ENGy5e3ZoLKdFwoZCg1zb25pYy10ZXN0bmV0EMiI+9S0xvq8GAoYCgt0YWMtdGVzdG5ldBDV243j+5+T14MBChsKDnhsYXllci10ZXN0bmV0EMm+obStzLzdjQFC5QEKJ2NvbS5jYXBhYmlsaXRpZXMuYmxvY2tjaGFpbi5ldm0udjFhbHBoYUILQ2xpZW50UHJvdG9QAaICA0NCRaoCI0NhcGFiaWxpdGllcy5CbG9ja2NoYWluLkV2bS5WMWFscGhhygIjQ2FwYWJpbGl0aWVzXEJsb2NrY2hhaW5cRXZtXFYxYWxwaGHiAi9DYXBhYmlsaXRpZXNcQmxvY2tjaGFpblxFdm1cVjFhbHBoYVxHUEJNZXRhZGF0YeoCJkNhcGFiaWxpdGllczo6QmxvY2tjaGFpbjo6RXZtOjpWMWFscGhhYgZwcm90bzM", [file_sdk_v1alpha_sdk, file_tools_generator_v1alpha_cre_metadata, file_values_v1_values]);
 var FilterLogTriggerRequestSchema = /* @__PURE__ */ messageDesc(file_capabilities_blockchain_evm_v1alpha_client, 1);
@@ -15056,24 +15105,68 @@ var sendErrorResponse = (error) => {
   }
   hostBindings.sendResponse(payload);
 };
-var KEEPER_ADDRESS = "aad4F938F75A14015E84D7f1aFA81F8A53ad79B7";
-var FACTORY_ADDRESS = "1F62a1dc839A1b308a0AB7fa617F0d23dbf07EBf";
-var CRE_FORWARDER = "15fc6ae953e024d975e77382eeec56a9101f9f88";
-var PERFORM_UPKEEP_SELECTOR = "4585e33b";
-var CHECK_UPKEEP_SELECTOR = "6e04d938";
-var abiEncodeUint256 = (value2) => {
-  return value2.toString(16).padStart(64, "0");
-};
+var STREAM_FACTORY_ADDRESS = "1Bc1135c04Ad7236C56b8EBc1F3b25A8A0ecb5D6";
+var MASTER_SETTLER_ADDRESS = "2F3dd4718A8e8f709d82aC37840565ABCEddA780";
 var PROXY_URL = "http://ysm-defilama-proxy.ysm-market-proxy.workers.dev/fees/";
+var encodeUint256 = (value2) => BigInt(value2).toString(16).padStart(64, "0");
+var encodeUint8 = (value2) => value2.toString(16).padStart(64, "0");
+var encodeBool = (value2) => (value2 ? 1 : 0).toString(16).padStart(64, "0");
+var encodeBytesPayload = (hexData) => {
+  const len2 = hexData.length / 2;
+  const lenHex = len2.toString(16).padStart(64, "0");
+  const paddedLen = Math.ceil(len2 / 32) * 64;
+  const padded = hexData.padEnd(paddedLen, "0");
+  return lenHex + padded;
+};
+var encodeReport = (workflowType, innerPayloadHex) => {
+  const typeSlot = encodeUint8(workflowType);
+  const offsetSlot = encodeUint256(64);
+  const payloadBody = encodeBytesPayload(innerPayloadHex);
+  const fullHex = typeSlot + offsetSlot + payloadBody;
+  const bytes = new Uint8Array(fullHex.length / 2);
+  for (let i2 = 0;i2 < bytes.length; i2++) {
+    bytes[i2] = parseInt(fullHex.slice(i2 * 2, i2 * 2 + 2), 16);
+  }
+  return bytes;
+};
+var makeReport = (rawReportBytes) => {
+  const reportResponse = create(exports_sdk_pb.ReportResponseSchema, {
+    rawReport: rawReportBytes
+  });
+  return new Report(reportResponse);
+};
+var decodeLatestAnswerUsd = (data) => {
+  if (!data || data.length < 32)
+    return null;
+  const slice = data.subarray(data.length - 32);
+  let hex = "";
+  for (let i2 = 0;i2 < 32; i2++) {
+    hex += slice[i2].toString(16).padStart(2, "0");
+  }
+  const unsigned = BigInt("0x" + hex);
+  const signBit = 1n << 255n;
+  const signed = unsigned >= signBit ? unsigned - (1n << 256n) : unsigned;
+  const usd = Number(signed) / 1e8;
+  return Number.isFinite(usd) && usd > 0 ? usd : null;
+};
+var fetchEthSpotBinanceApi = (sendRequester, url) => {
+  try {
+    const response = sendRequester.sendRequest({ url, method: "GET" }).result();
+    const data = JSON.parse(new TextDecoder().decode(response.body));
+    const p = parseFloat(data.price);
+    return Number.isFinite(p) && p > 0 ? p : 3500;
+  } catch {
+    return 3500;
+  }
+};
 var fetchEthPrice30dApi = (sendRequester, url) => {
   try {
     const response = sendRequester.sendRequest({ url, method: "GET" }).result();
     const data = JSON.parse(new TextDecoder().decode(response.body));
-    if (data && data[0] && data[0][4]) {
+    if (data && data[0] && data[0][4])
       return parseFloat(data[0][4]);
-    }
     return 3200;
-  } catch (e) {
+  } catch {
     return 3200;
   }
 };
@@ -15086,214 +15179,144 @@ var fetchProxyStatsApi = (sendRequester, url) => {
   }
 };
 var onDecoteTrigger = async (runtime2, payload) => {
-  let protocolSlug = "quickswap";
+  let slug = "quickswap";
   try {
     const body = decodeJson(payload.input);
-    if (body && body.slug)
-      protocolSlug = body.slug;
-  } catch (e) {}
-  runtime2.log(`[WORKFLOW #1] Calcul décote pour : ${protocolSlug}`);
-  let ethUsdPriceNow = 0;
+    if (body?.slug)
+      slug = body.slug;
+  } catch {}
+  runtime2.log(`[WORKFLOW #1] Calcul décote pour slug : ${slug}`);
+  const httpClient = new ClientCapability3;
+  let ethUsdPriceNow = 3500;
+  const spotUrl = "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT";
   try {
     const evm = new ClientCapability(ClientCapability.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
-    const callPayload = {
-      from: Buffer.from("0000000000000000000000000000000000000000", "hex").toString("base64"),
-      to: Buffer.from("694AA1769357215DE4FAC081bf1f309aDC325306", "hex").toString("base64"),
-      data: Buffer.from("50d25bcd", "hex").toString("base64")
-    };
-    const reply = evm.callContract(runtime2, { call: callPayload }).result();
-    let dataHex = "";
-    for (let i2 = 0;i2 < reply.data.length; i2++) {
-      dataHex += reply.data[i2].toString(16).padStart(2, "0");
+    const reply = evm.callContract(runtime2, {
+      call: {
+        to: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+        data: "0x50d25bcd"
+      }
+    }).result();
+    const fromFeed = decodeLatestAnswerUsd(reply.data);
+    if (fromFeed != null) {
+      ethUsdPriceNow = fromFeed;
+      runtime2.log(`[WORKFLOW #1] ETH/USD actuel (Chainlink) : $${ethUsdPriceNow.toFixed(2)}`);
+    } else {
+      ethUsdPriceNow = httpClient.sendRequest(runtime2, fetchEthSpotBinanceApi, consensusMedianAggregation())(spotUrl).result();
+      runtime2.log(`[WORKFLOW #1] ETH/USD actuel (Binance, feed vide en simu) : $${ethUsdPriceNow.toFixed(2)}`);
     }
-    ethUsdPriceNow = parseInt(dataHex, 16) / 1e8;
-    runtime2.log(`[WORKFLOW #1] Prix ETH/USD (Chainlink Sepolia) : $${ethUsdPriceNow}`);
-  } catch (err) {
-    runtime2.log(`[WORKFLOW #1] ERREUR Price Feed : ${err.message}`);
+  } catch (e) {
+    try {
+      ethUsdPriceNow = httpClient.sendRequest(runtime2, fetchEthSpotBinanceApi, consensusMedianAggregation())(spotUrl).result();
+      runtime2.log(`[WORKFLOW #1] ETH/USD actuel (Binance, feed erreur) : $${ethUsdPriceNow.toFixed(2)} — ${e.message}`);
+    } catch {
+      runtime2.log(`[WORKFLOW #1] Prix spot indisponible, fallback $${ethUsdPriceNow} : ${e.message}`);
+    }
   }
-  const httpClient = new ClientCapability3;
   let ethUsdPrice30d = 3200;
   try {
-    const thirtyDaysAgoMs = Math.floor(Date.now() / 86400000) * 86400000 - 30 * 24 * 60 * 60 * 1000;
-    const binanceUrl = `https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=1d&limit=1&endTime=${thirtyDaysAgoMs}`;
-    const getEth30d = httpClient.sendRequest(runtime2, fetchEthPrice30dApi, consensusMedianAggregation());
-    ethUsdPrice30d = getEth30d(binanceUrl).result();
-    runtime2.log(`[WORKFLOW #1] Prix ETH/USD il y a 30j (Binance) : $${ethUsdPrice30d}`);
-  } catch (err) {
-    runtime2.log(`[WORKFLOW #1] ERREUR Binance : ${err.message}`);
+    const t30j = Math.floor(Date.now() / 86400000) * 86400000 - 30 * 24 * 3600 * 1000;
+    const url = `https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=1d&limit=1&endTime=${t30j}`;
+    ethUsdPrice30d = httpClient.sendRequest(runtime2, fetchEthPrice30dApi, consensusMedianAggregation())(url).result();
+    runtime2.log(`[WORKFLOW #1] ETH/USD il y a 30j : $${ethUsdPrice30d}`);
+  } catch (e) {
+    runtime2.log(`[WORKFLOW #1] Binance indisponible, fallback $${ethUsdPrice30d} : ${e.message}`);
   }
   let rScore = 0.8;
   try {
-    const getStats = httpClient.sendRequest(runtime2, fetchProxyStatsApi, consensusIdenticalAggregation());
-    const statsJson = getStats(`${PROXY_URL}${protocolSlug}`).result();
+    const statsJson = httpClient.sendRequest(runtime2, fetchProxyStatsApi, consensusIdenticalAggregation())(`${PROXY_URL}${slug}`).result();
     const stats = JSON.parse(statsJson);
     if (stats && !stats.error) {
       rScore = stats.rScore ?? 0.8;
-      runtime2.log(`[WORKFLOW #1] rScore (Proxy) : ${rScore}`);
-    } else {
-      runtime2.log(`[WORKFLOW #1] Proxy error: ${stats.error || "unknown"}`);
+      runtime2.log(`[WORKFLOW #1] rScore proxy : ${rScore}`);
     }
-  } catch (err) {
-    runtime2.log(`[WORKFLOW #1] ERREUR Proxy rScore : ${err.message}`);
-  }
-  let marketRisk = 0;
-  if (ethUsdPriceNow > 0 && ethUsdPrice30d > 0 && ethUsdPriceNow < ethUsdPrice30d) {
-    marketRisk = 1 - ethUsdPriceNow / ethUsdPrice30d;
+  } catch (e) {
+    runtime2.log(`[WORKFLOW #1] Proxy indisponible, fallback rScore=${rScore} : ${e.message}`);
   }
   const sigma = 0.165;
+  const marketRisk = ethUsdPriceNow < ethUsdPrice30d ? 1 - ethUsdPriceNow / ethUsdPrice30d : 0;
   let decote = 0.25 * (sigma * 3.46) + 0.35 * (1 - rScore) + 0.4 * marketRisk;
   decote = Math.min(Math.max(decote, 0.1), 0.5);
-  const decoteInt = Math.floor(decote * 100);
-  const discountBps = decoteInt * 100;
-  runtime2.log(`[WORKFLOW #1] Décote finale : ${decoteInt}% = ${discountBps} bps (marketRisk=${marketRisk.toFixed(3)}, rScore=${rScore})`);
-  const encodedResult = abiEncodeUint256(discountBps);
+  const discountBps = Math.floor(decote * 100) * 100;
+  runtime2.log(`[WORKFLOW #1] Décote : ${Math.floor(decote * 100)}% = ${discountBps} bps (marketRisk=${marketRisk.toFixed(3)}, rScore=${rScore})`);
+  const innerPayload = encodeUint256(discountBps);
+  const reportBytes = encodeReport(1, innerPayload);
+  let reportHex = "0x";
+  for (let i2 = 0;i2 < reportBytes.length; i2++)
+    reportHex += reportBytes[i2].toString(16).padStart(2, "0");
+  runtime2.log(`[WORKFLOW #1] REPORT_HEX=${reportHex}`);
   try {
     const evm = new ClientCapability(ClientCapability.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
-    const receiverBytes = Buffer.from(FACTORY_ADDRESS, "hex");
-    evm.writeReport(runtime2, { receiver: receiverBytes }).result();
-    runtime2.log(`[WORKFLOW #1] ✅ writeReport envoyé à Factory (${discountBps} bps)`);
-  } catch (err) {
-    runtime2.log(`[WORKFLOW #1] ⚠️ writeReport non exécuté en simulation (normal) : ${err.message}`);
+    evm.writeReport(runtime2, {
+      receiver: "0x" + STREAM_FACTORY_ADDRESS,
+      report: makeReport(reportBytes)
+    }).result();
+    runtime2.log(`[WORKFLOW #1] ✅ writeReport envoyé → StreamFactory (${discountBps} bps)`);
+  } catch (e) {
+    runtime2.log(`[WORKFLOW #1] ⚠️ writeReport non exécuté (normal en simulation) : ${e.message}`);
   }
-  return encodedResult;
+  return "OK";
 };
 var onGateTrigger = async (runtime2, payload) => {
-  let protocolSlug = "quickswap";
+  let slug = "quickswap";
   try {
     const body = decodeJson(payload.input);
-    if (body && body.slug)
-      protocolSlug = body.slug;
-  } catch (e) {}
-  runtime2.log(`[WORKFLOW #2] Évaluation Gate pour : ${protocolSlug}`);
+    if (body?.slug)
+      slug = body.slug;
+  } catch {}
+  runtime2.log(`[WORKFLOW #2] Évaluation Gate pour : ${slug}`);
   const httpClient = new ClientCapability3;
-  let avg30 = 0;
-  let rScore = 0.5;
-  let daysOfData = 0;
+  let avg30 = 0, rScore = 0.5, daysOfData = 0;
   try {
-    const getStats = httpClient.sendRequest(runtime2, fetchProxyStatsApi, consensusIdenticalAggregation());
-    const statsJson = getStats(`${PROXY_URL}${protocolSlug}`).result();
+    const statsJson = httpClient.sendRequest(runtime2, fetchProxyStatsApi, consensusIdenticalAggregation())(`${PROXY_URL}${slug}`).result();
     const stats = JSON.parse(statsJson);
     if (stats && !stats.error) {
       avg30 = stats.avg30 ?? 0;
       rScore = stats.rScore ?? 0.5;
       daysOfData = stats.daysOfData ?? 0;
-      runtime2.log(`[WORKFLOW #2] Stats Proxy : avg30=${avg30}, rScore=${rScore}, days=${daysOfData}`);
-    } else {
-      runtime2.log(`[WORKFLOW #2] Proxy error: ${stats.error || "unknown"}`);
+      runtime2.log(`[WORKFLOW #2] Stats proxy : avg30=$${avg30.toFixed(0)}/j, rScore=${rScore}, days=${daysOfData}`);
     }
-  } catch (err) {
-    runtime2.log(`[WORKFLOW #2] ERREUR Proxy stats : ${err.message}`);
+  } catch (e) {
+    runtime2.log(`[WORKFLOW #2] Proxy indisponible : ${e.message}`);
   }
-  const SEUIL_FEES_DAY = 1000;
-  const critere1 = avg30 >= SEUIL_FEES_DAY;
-  runtime2.log(`[WORKFLOW #2] Critère 1 - Revenus moyens 30j: $${avg30.toFixed(0)}/jour (seuil: $${SEUIL_FEES_DAY}) → ${critere1 ? "✓ PASS" : "✗ FAIL"}`);
-  const SEUIL_RSCORE = 0.5;
-  const critere2 = rScore >= SEUIL_RSCORE;
-  runtime2.log(`[WORKFLOW #2] Critère 2 - rScore momentum: ${rScore} (seuil: ${SEUIL_RSCORE}) → ${critere2 ? "✓ PASS" : "✗ FAIL"}`);
-  const SEUIL_DAYS = 90;
-  const critere3 = daysOfData >= SEUIL_DAYS;
-  runtime2.log(`[WORKFLOW #2] Critère 3 - Historique: ${daysOfData} jours (seuil: ${SEUIL_DAYS}) → ${critere3 ? "✓ PASS" : "✗ FAIL"}`);
-  const isAccepted = critere1 && critere2 && critere3;
-  const reason = !critere1 ? "Revenus insuffisants (<$1k/jour)" : !critere2 ? "Momentum en chute (rScore<0.5)" : !critere3 ? "Historique trop court (<90j)" : "OK";
-  runtime2.log(`[WORKFLOW #2] Décision finale : ${isAccepted ? "✅ ACCEPTÉ" : "❌ REFUSÉ"} (${reason})`);
-  runtime2.log(`[WORKFLOW #2] avg30dFees=$${Math.round(avg30)}/j | rScore=${rScore} | daysOfData=${daysOfData}`);
-  const gateResult = abiEncodeUint256(isAccepted ? 1 : 0);
+  const approved = avg30 >= 1000 && rScore >= 0.5 && daysOfData >= 90;
+  runtime2.log(`[WORKFLOW #2] Critère revenus avg30=$${avg30.toFixed(0)} ≥ $1000 → ${avg30 >= 1000 ? "✓" : "✗"}`);
+  runtime2.log(`[WORKFLOW #2] Critère rScore ${rScore} ≥ 0.5 → ${rScore >= 0.5 ? "✓" : "✗"}`);
+  runtime2.log(`[WORKFLOW #2] Critère ancienneté ${daysOfData}j ≥ 90j → ${daysOfData >= 90 ? "✓" : "✗"}`);
+  runtime2.log(`[WORKFLOW #2] Gate ${slug} : ${approved ? "ACCEPTÉ ✅" : "REFUSÉ ❌"}`);
+  const innerPayload = encodeBool(approved);
+  const reportBytes = encodeReport(2, innerPayload);
+  let reportHex = "0x";
+  for (let i2 = 0;i2 < reportBytes.length; i2++)
+    reportHex += reportBytes[i2].toString(16).padStart(2, "0");
+  runtime2.log(`[WORKFLOW #2] REPORT_HEX=${reportHex}`);
   try {
     const evm = new ClientCapability(ClientCapability.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
-    const receiverBytes = Buffer.from(FACTORY_ADDRESS, "hex");
-    evm.writeReport(runtime2, { receiver: receiverBytes }).result();
-    runtime2.log(`[WORKFLOW #2] ✅ writeReport envoyé à Factory (gate=${isAccepted ? 1 : 0})`);
-  } catch (err) {
-    runtime2.log(`[WORKFLOW #2] ⚠️ writeReport non exécuté en simulation (normal) : ${err.message}`);
+    evm.writeReport(runtime2, {
+      receiver: "0x" + STREAM_FACTORY_ADDRESS,
+      report: makeReport(reportBytes)
+    }).result();
+    runtime2.log(`[WORKFLOW #2] ✅ writeReport envoyé → StreamFactory (approved=${approved})`);
+  } catch (e) {
+    runtime2.log(`[WORKFLOW #2] ⚠️ writeReport non exécuté (normal en simulation) : ${e.message}`);
   }
-  return gateResult;
+  return "OK";
 };
-var onSettlementTrigger = async (runtime2, payload) => {
-  runtime2.log(`[WORKFLOW #3] ⏰ Settlement daily déclenché`);
-  let protocolSlug = "quickswap";
-  try {
-    const body = decodeJson(payload.input);
-    if (body && body.slug)
-      protocolSlug = body.slug;
-  } catch (e) {}
-  const httpClient = new ClientCapability3;
-  let yesterdayFees = 0;
-  try {
-    const getStats = httpClient.sendRequest(runtime2, fetchProxyStatsApi, consensusIdenticalAggregation());
-    const statsJson = getStats(`${PROXY_URL}${protocolSlug}`).result();
-    const stats = JSON.parse(statsJson);
-    yesterdayFees = stats.yesterdayFees || 0;
-    runtime2.log(`[WORKFLOW #3] Fees Proxy hier pour ${protocolSlug} : $${yesterdayFees.toFixed(2)}`);
-  } catch (err) {
-    runtime2.log(`[WORKFLOW #3] ERREUR Proxy settlement : ${err.message}`);
-  }
-  const distributableUSDC = yesterdayFees;
-  runtime2.log(`[WORKFLOW #3] Montant USDC estimé pour la démo : $${distributableUSDC.toFixed(2)} USDC`);
+var onSettlementTrigger = async (runtime2, _payload) => {
+  runtime2.log(`[WORKFLOW #3] Settlement déclenché`);
   try {
     const evm = new ClientCapability(ClientCapability.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
-    const checkCallData = CHECK_UPKEEP_SELECTOR + "0000000000000000000000000000000000000000000000000000000000000020" + "0000000000000000000000000000000000000000000000000000000000000000";
-    const checkPayload = {
-      from: Buffer.from("0000000000000000000000000000000000000000", "hex").toString("base64"),
-      to: Buffer.from(KEEPER_ADDRESS, "hex").toString("base64"),
-      data: Buffer.from(checkCallData, "hex").toString("base64")
-    };
-    const checkResult = evm.callContract(runtime2, { call: checkPayload }).result();
-    let checkHex = "";
-    for (let i2 = 0;i2 < checkResult.data.length; i2++) {
-      checkHex += checkResult.data[i2].toString(16).padStart(2, "0");
-    }
-    runtime2.log(`[WORKFLOW #3] checkUpkeep réponse hex (${checkHex.length} chars): ${checkHex.slice(0, 64)}...`);
-    const upkeepNeeded = parseInt(checkHex.slice(0, 64), 16) !== 0;
-    runtime2.log(`[WORKFLOW #3] upkeepNeeded : ${upkeepNeeded}`);
-    if (!upkeepNeeded) {
-      runtime2.log(`[WORKFLOW #3] Aucun vault à settler — passage à la prochaine exécution`);
-      return JSON.stringify({
-        action: "settlement",
-        protocol: protocolSlug,
-        status: "no_vaults_pending",
-        data: { yesterdayFees_USD: Math.round(yesterdayFees), upkeepNeeded: false }
-      }, null, 2);
-    }
-    const performDataOffset = parseInt(checkHex.slice(64, 128), 16) * 2;
-    const performDataLen = parseInt(checkHex.slice(128, 192), 16);
-    const performDataHex = checkHex.slice(192, 192 + performDataLen * 2);
-    runtime2.log(`[WORKFLOW #3] performData extrait (${performDataLen} bytes): 0x${performDataHex.slice(0, 40)}...`);
-    const performCallData = PERFORM_UPKEEP_SELECTOR + "0000000000000000000000000000000000000000000000000000000000000020" + performDataLen.toString(16).padStart(64, "0") + performDataHex.padEnd(Math.ceil(performDataLen / 32) * 64, "0");
-    const performPayload = {
-      from: Buffer.from(CRE_FORWARDER, "hex").toString("base64"),
-      to: Buffer.from(KEEPER_ADDRESS, "hex").toString("base64"),
-      data: Buffer.from(performCallData, "hex").toString("base64")
-    };
-    const performResult = evm.callContract(runtime2, { call: performPayload }).result();
-    runtime2.log(`[WORKFLOW #3] ✅ performUpkeep() envoyé avec succès au Keeper`);
-    return JSON.stringify({
-      action: "settlement",
-      protocol: protocolSlug,
-      status: "executed",
-      data: {
-        yesterdayFees_USD: Math.round(yesterdayFees),
-        distributableUSDC: Math.round(distributableUSDC),
-        upkeepNeeded: true,
-        keeper: "0x" + KEEPER_ADDRESS,
-        readyForOnChain: true
-      }
-    }, null, 2);
-  } catch (err) {
-    runtime2.log(`[WORKFLOW #3] ⚠️ Erreur on-chain (simulation normale en local) : ${err.message}`);
-    return JSON.stringify({
-      action: "settlement",
-      protocol: protocolSlug,
-      status: "computed_pending_write",
-      data: {
-        yesterdayFees_USD: Math.round(yesterdayFees),
-        distributableUSDC: Math.round(distributableUSDC),
-        keeper: "0x" + KEEPER_ADDRESS,
-        readyForOnChain: false
-      }
-    }, null, 2);
+    evm.writeReport(runtime2, {
+      receiver: "0x" + MASTER_SETTLER_ADDRESS,
+      report: makeReport(new Uint8Array(0))
+    }).result();
+    runtime2.log(`[WORKFLOW #3] ✅ writeReport envoyé → MasterSettler`);
+  } catch (e) {
+    runtime2.log(`[WORKFLOW #3] ⚠️ writeReport non exécuté (normal en simulation) : ${e.message}`);
   }
+  return "OK";
 };
-var initWorkflow = (config) => {
+var initWorkflow = (_config) => {
   const http1 = new cre.capabilities.HTTPCapability;
   const http2 = new cre.capabilities.HTTPCapability;
   const cron = new cre.capabilities.CronCapability;

@@ -59,7 +59,7 @@ export default function FeeSplitterVisual() {
 
         {/* Entry Nodes (Dual Source) */}
         <div className="flex justify-between items-center w-full">
-          <div className="flex flex-col gap-8 relative -translate-y-7">
+          <div className="flex flex-col gap-8 relative -translate-y-6 ">
             <span className="absolute -top-[28px] font-mono text-[10px] text-text-disabled tracking-widest flex items-center gap-1.5"><img src="/arc_logo_final.png" alt="Arc" className="h-3 brightness-0 invert opacity-40 inline-block" /> CONSOLIDATION</span>
             <div className="flex items-center gap-3 w-[180px] justify-between">
               <span className="font-mono text-[10px] text-text-disabled uppercase">BASE_SOURCE</span>
@@ -109,7 +109,7 @@ export default function FeeSplitterVisual() {
                 <span className="font-mono text-[10px] text-success/80 tracking-widest uppercase">Syncing</span>
               </div>
               <span className="font-mono text-[8px] text-text-disabled mt-1 uppercase text-center">
-                ISSUER: quickswap.ens <br /> STATUS: RESOLVED
+                ISSUER: quickswap.ens
               </span>
             </div>
           </div>

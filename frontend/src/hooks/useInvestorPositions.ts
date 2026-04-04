@@ -68,7 +68,7 @@ export function useInvestorPositions() {
     return out;
   }, [allRows, address]);
 
-  const { data: batchResults, isPending: batchPending } = useReadContracts({
+  const { data: batchResults, isPending: batchPending, isError: batchError } = useReadContracts({
     contracts: multicallContracts,
     query: {
       enabled: Boolean(address && multicallContracts.length > 0),
@@ -78,7 +78,7 @@ export function useInvestorPositions() {
   });
 
   const positions = useMemo((): InvestorPositionRow[] => {
-    if (!address || !batchResults?.length || allRows.length === 0) return [];
+    if (!address || !batchResults || allRows.length === 0) return [];
     const out: InvestorPositionRow[] = [];
     const n = allRows.length;
     for (let i = 0; i < n; i++) {
@@ -164,11 +164,14 @@ export function useInvestorPositions() {
     [investorPositions]
   );
 
-  const isLoading = streamsLoading || (Boolean(address) && batchPending);
+  const isLoading =
+    streamsLoading ||
+    (Boolean(address) && multicallContracts.length > 0 && batchPending && !batchError);
   const hasNoPosition =
     Boolean(address) &&
     !isLoading &&
     !streamsError &&
+    !batchError &&
     activePositions.length === 0;
 
   return {
@@ -179,7 +182,7 @@ export function useInvestorPositions() {
     activePositions,
     aggregates,
     isLoading,
-    isError: streamsError,
+    isError: streamsError || batchError,
     hasNoPosition,
     allStreamCount: allRows.length,
   };

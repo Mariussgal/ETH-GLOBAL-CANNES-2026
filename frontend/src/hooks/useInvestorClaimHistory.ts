@@ -212,7 +212,7 @@ export function useInvestorClaimHistory({
       entries: InvestorClaimLogEntry[];
       totalClaimedUsdc: number;
     }> => {
-      if (!userAddress) {
+      if (!userAddress || vaultAddresses.length === 0) {
         return { entries: [], totalClaimedUsdc: 0 };
       }
       const vaults = dedupeVaults(vaultAddresses);

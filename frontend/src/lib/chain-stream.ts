@@ -125,6 +125,11 @@ export function buildChainStreamCardData(
     }
   }
 
+  const nominalRaiseCapUsdc =
+    opts?.emitterYstBalanceWei !== undefined
+      ? Number(capitalRaised) / 1e6
+      : undefined;
+
   return {
     id: indexOneBased,
     protocol: record.protocolSlug,
@@ -135,6 +140,7 @@ export function buildChainStreamCardData(
     discount: Number(discountBps) / 100,
     vaultFill: fillUsdc,
     vaultTarget: targetUsdc,
+    nominalRaiseCapUsdc,
     priceFloor,
     sources: ["SEPOLIA"],
     defaulted: false,

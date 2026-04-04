@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 
 import FeeSplitterVisual from "./FeeSplitterVisual";
+import MonetizeRevenueLink from "./MonetizeRevenueLink";
 import { useMarketplaceSync } from "./MarketplaceSyncContext";
 import SegmentedProgress from "./SegmentedProgress";
 
@@ -61,12 +61,7 @@ export default function HeroSection() {
                 >
                   ACCESS MARKETPLACE
                 </button>
-                <Link
-                  href="/create"
-                  className="font-mono text-[13px] uppercase tracking-[0.06em] px-xl py-md border border-border-visible text-text-primary rounded-pill transition-all duration-300 ease-nothing min-h-[52px] flex items-center hover:border-transparent btn-dot-matrix-hover relative overflow-hidden z-10"
-                >
-                  <span>MONETIZE REVENUE</span>
-                </Link>
+                <MonetizeRevenueLink className="font-mono text-[13px] uppercase tracking-[0.06em] px-xl py-md border border-border-visible text-text-primary rounded-pill transition-all duration-300 ease-nothing min-h-[52px] flex items-center hover:border-transparent btn-dot-matrix-hover relative overflow-hidden z-10" />
               </div>
             </div>
 

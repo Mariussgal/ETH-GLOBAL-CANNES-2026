@@ -11,6 +11,8 @@ import { useAccount } from "wagmi";
 import ArcConsolidationHub from "./ArcConsolidationHub";
 import ArcActivityFeed from "./ArcActivityFeed";
 import { useArcSepoliaSync } from "@/hooks/useArcSepoliaSync";
+import { useDemoProtocolRevenueFeed } from "@/hooks/useDemoProtocolRevenueFeed";
+import { shouldSimulateDemoRevenue } from "@/lib/demo-revenue-protocol";
 
 interface StreamInvestViewProps {
   stream: StreamData;
@@ -37,7 +39,12 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
   const ystReceived = usdcNum > 0 ? usdcNum / pricePerUnit : 0;
   const revenueSharePct = totalYst > 0 ? (ystReceived / totalYst) * stream.feePercent : 0;
 
-  const isLive = stream.vaultFill >= stream.vaultTarget;
+  const demoRevenue = shouldSimulateDemoRevenue(stream.protocol);
+  /** Offre souscrite / vault plein — seul ce critère bascule en vue « live » (pas le mock CRE). */
+  const vaultLive = stream.vaultFill >= stream.vaultTarget;
+  const isLive = vaultLive;
+  /** Mock revenus nohem : uniquement quand le stream est déjà en mode live. */
+  const demoFeedActive = demoRevenue && vaultLive;
 
   const protocolShort = useMemo(
     () => stream.ensName.split(".")[0].toUpperCase(),
@@ -45,12 +52,25 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
   );
 
   const arc = useArcSepoliaSync({
-    enabled: isLive,
+    enabled: vaultLive && !demoRevenue,
     fallbackProtocolLabel: protocolShort,
   });
 
-  const yieldNum =
-    isLive && arc.liveSync && arc.accumulatedYieldUsdc !== null
+  const demo = useDemoProtocolRevenueFeed(stream.protocol, demoFeedActive);
+
+  const feedItems = demoFeedActive ? demo.feedItems : arc.feedItems;
+  const totalBaseRevenue = demoFeedActive ? demo.demoBaseUsdc : arc.totalBaseRevenue;
+  const totalPolygonRevenue = demoFeedActive ? demo.demoPolygonUsdc : arc.totalPolygonRevenue;
+  const hubLiveSync = demoFeedActive || arc.liveSync;
+
+  const demoYieldEstimate = useMemo(
+    () => demo.feedItems.reduce((s, i) => s + i.amount, 0) * 0.012,
+    [demo.feedItems]
+  );
+
+  const yieldNum = demoFeedActive
+    ? demoYieldEstimate
+    : vaultLive && arc.liveSync && arc.accumulatedYieldUsdc !== null
       ? parseFloat(arc.accumulatedYieldUsdc)
       : 0;
 
@@ -128,14 +148,14 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                   </div>
                 </section>
 
-                <ArcActivityFeed items={arc.feedItems} />
+                <ArcActivityFeed items={feedItems} />
                 
                 {/* Multi-Chain Hub */}
                 <div className="mt-xl">
                   <ArcConsolidationHub
-                    totalBaseRevenue={arc.totalBaseRevenue}
-                    totalPolygonRevenue={arc.totalPolygonRevenue}
-                    liveSync={arc.liveSync}
+                    totalBaseRevenue={totalBaseRevenue}
+                    totalPolygonRevenue={totalPolygonRevenue}
+                    liveSync={hubLiveSync}
                   />
                 </div>
               </>
@@ -279,6 +299,8 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                    <div className="font-mono text-display-md sm:text-[40px] text-success leading-none tabular-nums shadow-success relative z-10 mb-xl min-h-[2.5rem]" style={{ textShadow: "0 0 10px rgba(34,197,94,0.5)" }}>
                      {!address ? (
                        <span className="text-text-disabled text-body-sm tracking-wide">CONNECT WALLET</span>
+                     ) : demoFeedActive ? (
+                       <>{yieldNum.toFixed(4)} USDC</>
                      ) : !arc.liveSync ? (
                        <span className="text-text-disabled text-body-sm tracking-wide">SWITCH TO SEPOLIA</span>
                      ) : arc.loadingEarned ? (
@@ -319,7 +341,7 @@ export default function StreamInvestView({ stream }: StreamInvestViewProps) {
                    </p>
                    <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between">
                      <span>ROUTING_STATUS:</span>
-                     {arc.routingStatusActive ? (
+                     {demoFeedActive || arc.routingStatusActive ? (
                        <span className="text-success tabular-nums flex items-center gap-xs">
                          <span className="w-[6px] h-[6px] rounded-full bg-success animate-pulse" />
                          ACTIVE

@@ -1,16 +1,11 @@
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import BentoGrid from "@/components/BentoGrid";
-import StreamCard from "@/components/StreamCard";
-import { MOCK_STREAMS } from "@/lib/mock-streams";
-import { formatNumber } from "@/lib/format";
+import MarketplaceSection from "@/components/MarketplaceSection";
 import { MarketplaceSyncProvider } from "@/components/MarketplaceSyncContext";
 import Image from "next/image";
 
 export default function Home() {
-  const totalVaultValue = MOCK_STREAMS.reduce((s, v) => s + v.vaultFill, 0);
-  const activeStreams = MOCK_STREAMS.filter((s) => !s.defaulted).length;
-
   return (
     <MarketplaceSyncProvider>
       <div className="min-h-screen bg-black">
@@ -22,59 +17,8 @@ export default function Home() {
         {/* ── BENTO GRID ── */}
         <BentoGrid />
 
-        {/* ── MARKETPLACE ── */}
-        <section id="marketplace" className="px-xl py-3xl">
-          {/* Section header with hero metric */}
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-lg mb-2xl">
-            <div>
-              <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-sm">
-                MARKETPLACE
-              </span>
-              <div className="flex items-baseline gap-md flex-wrap">
-                <span className="font-mono text-display-md sm:text-display-lg text-text-display">
-                  ${formatNumber(totalVaultValue)}
-                </span>
-                <span className="font-mono text-label uppercase tracking-label text-text-secondary">
-                  TVL
-                </span>
-              </div>
-            </div>
-            <div className="flex items-baseline gap-lg">
-              <div className="flex items-baseline gap-xs">
-                <span className="font-mono text-heading text-text-display">
-                  {activeStreams}
-                </span>
-                <span className="font-mono text-label uppercase tracking-label text-text-secondary">
-                  ACTIVE
-                </span>
-              </div>
-              <div className="flex items-baseline gap-xs">
-                <span className="font-mono text-heading text-text-display">
-                  {MOCK_STREAMS.length}
-                </span>
-                <span className="font-mono text-label uppercase tracking-label text-text-secondary">
-                  TOTAL
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Stream cards grid */}
-          <div className="flex items-center justify-between mb-lg">
-            <span className="font-mono text-label uppercase tracking-label text-text-secondary">
-              ACTIVE STREAMS
-            </span>
-            <span className="font-mono text-label uppercase tracking-label text-text-disabled">
-              {MOCK_STREAMS.length} RESULTS
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
-            {MOCK_STREAMS.map((stream) => (
-              <StreamCard key={stream.id} stream={stream} />
-            ))}
-          </div>
-        </section>
+        {/* ── MARKETPLACE (on-chain + démo) ── */}
+        <MarketplaceSection />
 
         {/* ── FOOTER ── */}
         <footer className="px-xl py-2xl border-t border-border">

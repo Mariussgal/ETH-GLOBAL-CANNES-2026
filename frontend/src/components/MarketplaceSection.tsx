@@ -8,13 +8,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useEnsSubdomainStatus } from "@/hooks/useEnsSubdomainStatus";
 
-function StreamCardWithEns({
-  stream,
-  emitter: _emitter,
-}: {
-  stream: StreamData;
-  emitter: `0x${string}`;
-}) {
+function StreamCardWithEns({ stream }: { stream: StreamData }) {
   const { isDefaulted } = useEnsSubdomainStatus(stream.protocol);
 
   const resolved: StreamData = useMemo(
@@ -107,11 +101,10 @@ export default function MarketplaceSection() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
-        {onChain.map(({ stream, emitter }) => (
+        {onChain.map(({ stream }) => (
           <StreamCardWithEns
             key={`chain-${stream.id}`}
             stream={stream}
-            emitter={emitter}
           />
         ))}
         {MOCK_STREAMS.map((stream) => (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 export default function FeeSplitterVisual() {
   const [vaultCount, setVaultCount] = useState(14023);
@@ -60,7 +61,9 @@ export default function FeeSplitterVisual() {
         {/* Entry Nodes (Dual Source) */}
         <div className="flex justify-between items-center w-full">
           <div className="flex flex-col gap-8 relative -translate-y-6 ">
-            <span className="absolute -top-[28px] font-mono text-[10px] text-text-disabled tracking-widest flex items-center gap-1.5"><img src="/arc_logo_final.png" alt="Arc" className="h-3 brightness-0 invert opacity-40 inline-block" /> CONSOLIDATION</span>
+            <span className="absolute -top-[28px] font-mono text-[10px] text-text-disabled tracking-widest flex items-center gap-1.5">
+              <Image src="/arc_logo_final.png" alt="Arc" width={12} height={12} className="brightness-0 invert opacity-40 inline-block" /> CONSOLIDATION
+            </span>
             <div className="flex items-center gap-3 w-[180px] justify-between">
               <span className="font-mono text-[10px] text-text-disabled uppercase">BASE_SOURCE</span>
               <div className="relative w-16 h-[2px] bg-border-visible overflow-hidden">
@@ -80,7 +83,7 @@ export default function FeeSplitterVisual() {
             {/* Descending CL Signal */}
             <div className="absolute bottom-[calc(100%+4px)] flex flex-col items-center">
               <div className="flex items-center gap-2 mb-2">
-                <img src="/Chainlink_Logo.png" alt="Chainlink" className="h-[12px] brightness-0 invert opacity-60" />
+                <Image src="/Chainlink_Logo.png" alt="Chainlink" width={12} height={12} className="brightness-0 invert opacity-60" />
                 <span className="font-mono text-[11px] tracking-widest text-text-disabled uppercase">CL_CRE_AUTOMATION</span>
               </div>
               <div className="h-16 w-[1px] border-r border-dashed border-border-visible relative overflow-hidden">
@@ -97,7 +100,7 @@ export default function FeeSplitterVisual() {
               <div className="absolute -bottom-1 -left-1 w-1 h-1 bg-text-primary" />
               <div className="absolute -bottom-1 -right-1 w-1 h-1 bg-text-primary" />
               <span className="font-mono text-[8px] bg-text-primary text-black px-1 py-[1px] absolute top-0 -translate-y-1/2 flex items-center gap-1 z-20 whitespace-nowrap">
-                <img src="/ens.png" className="h-2 brightness-0 opacity-80" alt="ens" /> ENS_IDENTITY_VERIFIED
+                <Image src="/ens.png" width={8} height={8} className="brightness-0 opacity-80" alt="ens" /> ENS_IDENTITY_VERIFIED
               </span>
               <span className="font-mono text-body-sm text-text-display tracking-widest relative z-10 mt-1">ROUTER</span>
             </div>

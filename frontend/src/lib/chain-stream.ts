@@ -103,7 +103,6 @@ export function buildChainStreamCardData(
   const { streamBps, discountBps, startTime, endTime, capitalRaised, totalYST } = streamParams;
   const durationDays = Number((endTime - startTime) / BigInt(86400));
   const daysRemaining = endTime > now ? Number((endTime - now) / BigInt(86400)) : 0;
-  const BPS_DEN = BigInt(10000);
   const targetUsdc = Number(capitalRaised) / 1e6;
   const capForPrimary = opts?.capYstWei ?? totalYST;
   const fillUsdc =
@@ -120,10 +119,6 @@ export function buildChainStreamCardData(
     }
   }
 
-  const nominalRaiseCapUsdc =
-    opts?.emitterYstBalanceWei !== undefined
-      ? Number(capitalRaised) / 1e6
-      : undefined;
 
   return {
     id: indexOneBased,

@@ -9,12 +9,15 @@ interface ArcConsolidationHubProps {
   totalPolygonRevenue: number;
   /** Badge LIVE_SYNC vert lorsque `isConnected && chainId === 11155111` (Sepolia) */
   liveSync?: boolean;
+  /** Badge CHAINLINK_AUTOMATION vert lorsque l'automation est active. */
+  chainlinkAutomationActive?: boolean;
 }
 
 export default function ArcConsolidationHub({
   totalBaseRevenue,
   totalPolygonRevenue,
   liveSync = false,
+  chainlinkAutomationActive = false,
 }: ArcConsolidationHubProps) {
   // Calculate flow distributions
   const total = totalBaseRevenue + totalPolygonRevenue;
@@ -49,6 +52,20 @@ export default function ArcConsolidationHub({
             />
             LIVE_SYNC
           </div>
+
+          {chainlinkAutomationActive && (
+            <div
+              className="inline-flex items-center gap-xs font-mono text-[10px] uppercase tracking-widest px-sm py-[3px] border border-success/40 text-success bg-success/5 rounded-sm"
+              title="Chainlink Automation (CRE) detects protocol fees on L2s and triggers Sepolia minting."
+            >
+              <div className="flex gap-[2px]">
+                <span className="w-1 h-1 bg-success rounded-full animate-bounce" />
+                <span className="w-1 h-1 bg-success rounded-full animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1 h-1 bg-success rounded-full animate-bounce [animation-delay:-0.3s]" />
+              </div>
+              CHAINLINK_AUTOMATION
+            </div>
+          )}
         </div>
         <span className="font-mono text-[10px] text-text-disabled uppercase">
           Consolidating fragmented liquidity across EVM networks

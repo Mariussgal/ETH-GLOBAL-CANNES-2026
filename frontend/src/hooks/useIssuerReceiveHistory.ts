@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { fetchIssuerBuyLogsEtherscan, type IssuerReceiveTx } from "@/lib/etherscanIssuerReceives";

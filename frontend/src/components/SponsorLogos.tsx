@@ -28,10 +28,16 @@ export function UniswapLogo({ className = "" }: { className?: string }) {
   );
 }
 
+import Image from "next/image";
+
 export function ArcLogo({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 40 40" fill="currentColor" className={className} aria-label="Arc">
-      <path d="M20 4L4 36h6.5l3-6.4h13l3 6.4H36L20 4zm0 10.4l4.8 10.2h-9.6L20 14.4z" />
-    </svg>
+    <Image 
+      src="/logo_arc.png" 
+      alt="Arc" 
+      width={40} 
+      height={40} 
+      className={className} 
+    />
   );
 }

@@ -231,8 +231,8 @@ export default function StreamInvestView({
     return usdcHumanFromYstWei(myYstBalanceWei as bigint, ystDecimals);
   }, [chainInvest, myYstBalanceWei, ystDecimals]);
 
-  /** Total supply in human units = face value (Factory: projectedRevenue × 1e12 wei). */
-  const totalYst = TARGET_DISTRIBUTION;
+  /** Total supply in human units = aligned 1:1 with USDC raised (Factory mint). */
+  const totalYst = stream.totalTokenSupply ?? raiseCapUsdc;
   const pricePerUnit = 1.0;
 
   const ystReceived = useMemo(() => {
@@ -687,7 +687,7 @@ export default function StreamInvestView({
                     <h3 className="text-caption text-text-secondary uppercase mb-lg tracking-label">1. THE OFFERING</h3>
                     <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Protocol</span><span className="text-text-display">{stream.ensName}</span></div>
                     <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Offering</span><span className="text-text-display">{stream.feePercent}% REVENUE</span></div>
-                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Supply</span><span className="text-text-display tabular-nums">{formatNumber(totalYst)} YST</span></div>
+                    <div className="flex justify-between mb-sm"><span className="text-text-disabled uppercase">Supply</span><span className="text-text-display tabular-nums">{formatNumber(totalYst ?? 0)} YST</span></div>
                     <div className="flex justify-between"><span className="text-text-disabled uppercase">Expiry</span><span className="text-text-display">{Math.max(stream.duration - 48, 0)} DAYS</span></div>
                   </div>
                   {/* 2. 24H Protocol Revenue */}

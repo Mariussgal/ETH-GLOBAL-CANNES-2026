@@ -109,7 +109,7 @@ export default function FeeSplitterVisual() {
                 <span className="font-mono text-[10px] text-success/80 tracking-widest uppercase">Syncing</span>
               </div>
               <span className="font-mono text-[8px] text-text-disabled mt-1 uppercase text-center">
-                ISSUER: quickswap.ens
+                ISSUER: quickswap.eth
               </span>
             </div>
           </div>

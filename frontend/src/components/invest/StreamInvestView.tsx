@@ -312,7 +312,7 @@ export default function StreamInvestView({
             .join(" · ");
           throw new Error(
             msg.includes("NotOwner") || msg.includes("owner")
-              ? `${msg} — la clé MOCK_CRANK_PRIVATE_KEY doit être owner des mocks (transferOwnership).`
+              ? `${msg} — la clé PRIVATE_KEY doit être owner des mocks (transferOwnership).`
               : msg
           );
         }
@@ -382,7 +382,7 @@ export default function StreamInvestView({
           .join(" · ");
         throw new Error(
           msg.includes("NotOwner") || msg.includes("owner")
-            ? `${msg} — MOCK_CRANK_PRIVATE_KEY doit être owner des mocks.`
+            ? `${msg} — PRIVATE_KEY doit être owner des mocks.`
             : msg
         );
       }
@@ -766,10 +766,8 @@ export default function StreamInvestView({
                       </p>
                     ) : null}
                     <p className="text-text-disabled normal-case">
-                      Levée complète : le serveur appelle{" "}
-                      <code className="text-text-secondary">generateFees()</code> tant que l’interrupteur
                       est ON et que la page est ouverte (~8–15&nbsp;s). Crank :{" "}
-                      <code className="text-text-secondary">MOCK_CRANK_PRIVATE_KEY</code> + ETH Sepolia.
+                      <code className="text-text-secondary">PRIVATE_KEY</code> + ETH Sepolia.
                     </p>
                     {!feesGenerationEnabled ? (
                       <p className="text-text-secondary normal-case">

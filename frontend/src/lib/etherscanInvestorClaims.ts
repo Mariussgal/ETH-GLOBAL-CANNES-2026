@@ -21,10 +21,10 @@ export const REWARDS_CLAIMED_TOPIC0 = toEventHash(
   "RewardsClaimed(address,uint256)"
 ) as `0x${string}`;
 
-const DEFAULT_LOOKBACK = BigInt(1_500_000);
+const DEFAULT_LOOKBACK = BigInt(800_000); // ~3 mois (Sepolia 12s)
 
 /** Plage max par requête (alignée sur le feed Arc). */
-const BLOCK_SPAN = BigInt(25_000);
+const BLOCK_SPAN = BigInt(500_000);
 
 export type SerializedClaimEntry = {
   vault: `0x${string}`;

@@ -1,6 +1,6 @@
 /**
  * Active / désactive `setFeesEnabled` sur les deux mocks (owner uniquement).
- * Même auth que crank : MOCK_CRANK_PRIVATE_KEY + CRANK_SECRET optionnel.
+ * Même auth que crank : PRIVATE_KEY + CRANK_SECRET optionnel.
  *
  * POST body JSON : { "enabled": true | false }
  */
@@ -29,9 +29,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const pkRaw = process.env.MOCK_CRANK_PRIVATE_KEY?.trim();
+  const pkRaw = process.env.PRIVATE_KEY?.trim();
   if (!pkRaw) {
-    return NextResponse.json({ error: "MOCK_CRANK_PRIVATE_KEY not set" }, { status: 503 });
+    return NextResponse.json({ error: "PRIVATE_KEY not set" }, { status: 503 });
   }
 
   let body: { enabled?: boolean };
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   try {
     account = privateKeyToAccount(normalizePk(pkRaw));
   } catch {
-    return NextResponse.json({ error: "invalid MOCK_CRANK_PRIVATE_KEY" }, { status: 500 });
+    return NextResponse.json({ error: "invalid PRIVATE_KEY" }, { status: 500 });
   }
 
   const rpc =

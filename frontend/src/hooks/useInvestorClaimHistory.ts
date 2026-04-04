@@ -34,11 +34,11 @@ function dedupeVaults(addresses: readonly `0x${string}`[]): `0x${string}`[] {
 
 /** Fenêtre de blocs (repli RPC uniquement) — alignée sur `NEXT_PUBLIC_*` côté client. */
 function readLookbackBlocks(): bigint {
-  if (typeof process === "undefined") return BigInt(1_500_000);
+  if (typeof process === "undefined") return BigInt(800_000);
   const raw = process.env.NEXT_PUBLIC_INVESTOR_CLAIMS_LOOKBACK_BLOCKS?.trim();
-  if (!raw) return BigInt(1_500_000);
+  if (!raw) return BigInt(800_000);
   const n = parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 10_000) return BigInt(1_500_000);
+  if (!Number.isFinite(n) || n < 10_000) return BigInt(800_000);
   return BigInt(n);
 }
 
@@ -75,10 +75,10 @@ async function fetchRewardsClaimedLogsRpc(
   if (fromBlock > latest) fromBlock = latest;
 
   const chunkSizes = [
-    BigInt(8000),
-    BigInt(4000),
-    BigInt(2000),
-    BigInt(1000),
+    BigInt(50_000),
+    BigInt(20_000),
+    BigInt(5_000),
+    BigInt(1_000),
     BigInt(500),
     BigInt(250),
     BigInt(100),

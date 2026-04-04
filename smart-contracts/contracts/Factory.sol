@@ -217,6 +217,33 @@ function onReport(
 }
 
 
+function submitWorkflowResult(
+    bytes32 streamKey,
+    uint8 workflowType,
+    uint256 value
+) external onlyOwner {
+    PendingStream storage pending = pendingStreams[streamKey];
+    if (pending.emitter == address(0)) return;
+
+    if (workflowType == 2) {
+        if (value == 0) {
+            emit GateRejected(streamKey, "Insufficient protocol revenue");
+            emit GateValidated(streamKey, false);
+            return;
+        }
+        pending.gateValidated = true;
+        emit GateValidated(streamKey, true);
+
+    } else if (workflowType == 1) {
+        if (value < MIN_DISCOUNT_BPS) value = MIN_DISCOUNT_BPS;
+        if (value > MAX_DISCOUNT_BPS) value = MAX_DISCOUNT_BPS;
+        pending.discountBps      = value;
+        pending.discountReceived = true;
+        emit DiscountCalculated(streamKey, value);
+        _deployStream(streamKey);
+    }
+}
+
     function createStreamDirect(
         string calldata protocolSlug,
         uint256 streamBps,

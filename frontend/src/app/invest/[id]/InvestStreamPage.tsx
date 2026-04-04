@@ -1,7 +1,9 @@
 "use client";
 
 import type { StreamData } from "@/components/StreamCard";
-import StreamInvestView from "@/components/invest/StreamInvestView";
+import StreamInvestView, {
+  type StreamChainInvest,
+} from "@/components/invest/StreamInvestView";
 import { ADDRESSES, SEPOLIA_CHAIN_ID, STREAM_FACTORY_ABI, YST_VAULT_ABI } from "@/contracts";
 import { useCreAutomationStatus } from "@/hooks/useCreAutomationStatus";
 import {
@@ -131,6 +133,11 @@ export default function InvestStreamPage({ id }: { id: string }) {
     return <StreamInvestView stream={mockStream} />;
   }
 
+  const chainInvest: StreamChainInvest | undefined =
+    record?.ystToken && record?.emitter
+      ? { ystToken: record.ystToken, emitter: record.emitter }
+      : undefined;
+
   if (!chainEnabled || Number.isNaN(numericId)) {
     notFound();
   }
@@ -166,6 +173,7 @@ export default function InvestStreamPage({ id }: { id: string }) {
   return (
     <StreamInvestView
       stream={chainStream}
+      chainInvest={chainInvest}
       chainlinkAutomationActive={chainlinkAutomationActive}
     />
   );

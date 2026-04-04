@@ -64,6 +64,11 @@ contract Factory is IReceiver, ERC1155Holder {
     uint256 public constant MIN_DISCOUNT_BPS = 1_000;
     uint256 public constant MAX_DISCOUNT_BPS = 5_000;
 
+    /// @notice `capitalRaised` / `projectedRevenue` sont en plus petites unités USDC (6 dec).
+    ///         Le YST (`ERC20` OZ) utilise 18 dec : on scale pour que la supply « humaine »
+    ///         suive la valeur faciale (ex. ~33M USDC faciaux → ~33M YST affichés).
+    uint256 public constant YST_USDC_TO_WEI = 1e12;
+
     IENSRegistry public constant ENS_REGISTRY =
         IENSRegistry(0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e);
     IENSReverseRegistrar public constant ENS_REVERSE =
@@ -290,7 +295,7 @@ function submitWorkflowResult(
 
         uint256 projectedRevenue = pending.capitalRaised * BPS_DENOMINATOR
             / (BPS_DENOMINATOR - pending.discountBps);
-        uint256 totalYST = projectedRevenue;
+        uint256 totalYST = projectedRevenue * YST_USDC_TO_WEI;
 
         Vault vault = new Vault(address(usdc), address(this));
 

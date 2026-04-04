@@ -3,7 +3,7 @@
 export const SEPOLIA_CHAIN_ID = 11155111;
 
 export const ADDRESSES = {
-  streamFactory: "0xB8637430Aa69ca2b2203Da14D61c909313c40997" as `0x${string}`,
+  streamFactory: "0x9fe81bF16cf52c32636D48B9034356DC3981Ca03" as `0x${string}`,
   ystSplitter: "0x02E75407376e5FBEd0e507E8265d92CeE9279fDC" as `0x${string}`,
   /** Vault Arc / YSM — lecture `earned(user)` (yield accumulé USDC 6 décimales) */
   vault: "0xaa122Fd7940B575c8eaf8376e315002F33D9ad11" as `0x${string}`,
@@ -15,6 +15,11 @@ export const ADDRESSES = {
   ystToken: "0x343f28CEA446Cef6e8A380bFe11BcBf95f115370" as `0x${string}`,
   /** Keeper AutomationCompatible — aligné `chainlink-CRE/my-workflow/main.ts` (Sepolia). */
   keeper: "0xaad4F938F75A14015E84D7f1aFA81F8A53ad79B7" as `0x${string}`,
+  /**
+   * PrimarySale (marché primaire YST/USDC). Remplacer après déploiement Sepolia.
+   * Surcharge possible : `NEXT_PUBLIC_PRIMARY_SALE_ADDRESS` (même logique que le keeper).
+   */
+  primarySale: "0x0000000000000000000000000000000000000000" as `0x${string}`,
 } as const;
 
 /** Surcharge déploiement (Vercel). */
@@ -23,6 +28,23 @@ export function getKeeperAddress(): `0x${string}` {
   return e?.startsWith("0x") && e.length >= 42
     ? (e as `0x${string}`)
     : ADDRESSES.keeper;
+}
+
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000" as const;
+
+/** PrimarySale : priorité à l’env (Vercel / local), sinon `ADDRESSES.primarySale` si renseigné. */
+export function getPrimarySaleAddress(): `0x${string}` | undefined {
+  const e = process.env.NEXT_PUBLIC_PRIMARY_SALE_ADDRESS?.trim();
+  if (
+    e?.startsWith("0x") &&
+    e.length >= 42 &&
+    e.toLowerCase() !== ZERO_ADDR
+  ) {
+    return e as `0x${string}`;
+  }
+  const f = ADDRESSES.primarySale;
+  if (f.toLowerCase() !== ZERO_ADDR) return f;
+  return undefined;
 }
 
 export const ERC20_ABI = [
@@ -46,6 +68,46 @@ export const ERC20_ABI = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ name: "", type: "uint8" }],
+  },
+] as const;
+
+/** USDC : approve + allowance pour le marché primaire. */
+export const ERC20_APPROVE_ABI = [
+  ...ERC20_ABI,
+  {
+    name: "approve",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "allowance",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
+
+/** @see smart-contracts/contracts/PrimarySale.sol */
+export const PRIMARY_SALE_ABI = [
+  {
+    name: "buy",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "yst", type: "address" },
+      { name: "emitter", type: "address" },
+      { name: "amountUsdc", type: "uint256" },
+    ],
+    outputs: [],
   },
 ] as const;
 

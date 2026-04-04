@@ -90,16 +90,8 @@ export default function StreamCard({ stream }: StreamCardProps) {
       {/* Divider */}
       <div className="border-t border-border mb-md" />
 
-      {/* Data row: Price Floor + Discount + Duration */}
-      <div className="grid grid-cols-3 gap-md mb-md">
-        <div>
-          <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-xs">
-            UNIT PRICE
-          </span>
-          <span className="font-mono text-subheading text-text-display flex items-center">
-            $1.00
-          </span>
-        </div>
+      {/* Data row: Discount + Remaining */}
+      <div className="grid grid-cols-2 gap-md mb-md">
         <div>
           <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-xs">
             DISCOUNT

@@ -9,16 +9,13 @@ import { computeStreamKey } from "@/lib/stream-key";
 import Link from "next/link";
 import { useMemo } from "react";
 import type { Address } from "viem";
-import { formatUnits } from "viem";
-
-const USDC_DECIMALS = 6;
 
 type Props = {
   row: OnChainStreamRow;
 };
 
 export default function IssuerStreamCard({ row }: Props) {
-  const { stream, fundingRatio } = row;
+  const { stream, nominalCapUsdc } = row;
   const streamKey = useMemo(
     () =>
       computeStreamKey(stream.protocol, row.emitter as Address) as `0x${string}`,
@@ -26,10 +23,13 @@ export default function IssuerStreamCard({ row }: Props) {
   );
   const { chainlinkAutomationActive } = useCreAutomationStatus(streamKey);
 
-  const feesUsdc = Number(formatUnits(row.totalFeesWei, USDC_DECIMALS));
-  const targetUsdc = stream.vaultTarget;
-  const raisedUsdc = fundingRatio * targetUsdc;
-  const pct = Math.round(fundingRatio * 100);
+  /** Levée primaire : `vaultFill` = USDC réels ; `vaultTarget` sur StreamData = valeur faciale (ne pas utiliser ici). */
+  const targetUsdc = nominalCapUsdc;
+  const raisedUsdc = stream.vaultFill;
+  const pct =
+    targetUsdc > 0
+      ? Math.min(100, Math.round((raisedUsdc / targetUsdc) * 100))
+      : 0;
 
   return (
     <article className="flex flex-col border border-border rounded-card bg-black/80 overflow-hidden group hover:border-border-visible transition-colors duration-200 ease-nothing">
@@ -75,18 +75,6 @@ export default function IssuerStreamCard({ row }: Props) {
           />
           <span className="font-mono text-[9px] text-text-disabled uppercase mt-xs block">
             Objectif nominal (USDC) · YST sorti du wallet émetteur
-          </span>
-        </div>
-
-        <div className="border border-border-visible rounded-technical p-md bg-surface/50">
-          <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-xs">
-            REVENUE PERFORMANCE
-          </span>
-          <span className="font-mono text-display-sm text-success tabular-nums">
-            ${formatNumber(feesUsdc)}
-          </span>
-          <span className="font-mono text-[9px] text-text-disabled uppercase mt-xs block">
-            totalFeesReceived (USDC)
           </span>
         </div>
 

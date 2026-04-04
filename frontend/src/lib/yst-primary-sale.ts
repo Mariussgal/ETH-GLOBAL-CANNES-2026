@@ -17,3 +17,15 @@ export function ystHumanFromUsdc(usdcHuman: number, ystDecimals: number): number
   const wei = ystWeiFromUsdcAmount(amount, ystDecimals);
   return parseFloat(formatUnits(wei, ystDecimals));
 }
+
+/**
+ * Inverse de `ystWeiFromUsdcAmount` / `PrimarySale.buy` :
+ * `amountUsdc = (ystWei * 1e6) / 10**decimals` (USDC en unités 6 décimales).
+ */
+export function usdcHumanFromYstWei(ystWei: bigint, ystDecimals: number): number {
+  if (ystWei <= BigInt(0) || ystDecimals < 0 || ystDecimals > 77) return 0;
+  const factor = parseUnits("1", ystDecimals);
+  if (factor === BigInt(0)) return 0;
+  const usdcRaw6 = (ystWei * BigInt(1_000_000)) / factor;
+  return parseFloat(formatUnits(usdcRaw6, 6));
+}

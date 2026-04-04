@@ -8,9 +8,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { formatUnits } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { ERC20_ABI, SEPOLIA_CHAIN_ID } from "@/contracts";
-import { ystHumanFromUsdc } from "@/lib/yst-primary-sale";
+import { usdcHumanFromYstWei, ystHumanFromUsdc } from "@/lib/yst-primary-sale";
 import ArcConsolidationHub from "./ArcConsolidationHub";
 import ArcActivityFeed from "./ArcActivityFeed";
 import { useArcSepoliaSync } from "@/hooks/useArcSepoliaSync";
@@ -81,6 +82,23 @@ export default function StreamInvestView({
   const ystDecimals =
     ystDecimalsRaw !== undefined ? Number(ystDecimalsRaw) : 18;
 
+  const { data: myYstBalanceWei, isPending: myYstBalancePending } = useReadContract({
+    address: chainInvest?.ystToken,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    chainId: SEPOLIA_CHAIN_ID,
+    query: {
+      enabled: Boolean(chainInvest?.ystToken && address),
+      refetchInterval: 15_000,
+    },
+  });
+
+  const myInvestedUsdc = useMemo(() => {
+    if (!chainInvest || myYstBalanceWei === undefined) return null;
+    return usdcHumanFromYstWei(myYstBalanceWei as bigint, ystDecimals);
+  }, [chainInvest, myYstBalanceWei, ystDecimals]);
+
   /** Total supply in human units = face value (Factory: projectedRevenue × 1e12 wei). */
   const totalYst = TARGET_DISTRIBUTION;
   const pricePerUnit = 1.0;
@@ -91,6 +109,24 @@ export default function StreamInvestView({
     return usdcNum / pricePerUnit;
   }, [usdcNum, chainInvest, ystDecimals, pricePerUnit]);
   const revenueSharePct = totalYst > 0 ? (ystReceived / totalYst) * stream.feePercent : 0;
+
+  const myYstHuman = useMemo(() => {
+    if (myYstBalanceWei === undefined) return null;
+    return parseFloat(formatUnits(myYstBalanceWei as bigint, ystDecimals));
+  }, [myYstBalanceWei, ystDecimals]);
+
+  /** Part du flux de revenus protocole (même logique que « REVENUE SHARE » : (YST / supply) × fee%). */
+  const myRevenueShareOfProtocolPct = useMemo(() => {
+    if (
+      myYstHuman === null ||
+      myYstHuman <= 0 ||
+      !Number.isFinite(totalYst) ||
+      totalYst <= 0
+    ) {
+      return 0;
+    }
+    return (myYstHuman / totalYst) * stream.feePercent;
+  }, [myYstHuman, totalYst, stream.feePercent]);
 
   const demoRevenue = shouldSimulateDemoRevenue(stream.protocol);
   /** Subscribed offer / full vault — only this criterion switches to "live" view (not the CRE mock). */
@@ -154,6 +190,56 @@ export default function StreamInvestView({
     : !primarySaleConfigured
       ? "PrimarySale contract: add NEXT_PUBLIC_PRIMARY_SALE_ADDRESS."
       : null;
+
+  const myPositionBlock =
+    chainInvest ? (
+      <div className="border border-border p-md bg-black mb-xl">
+        <p className="font-mono text-caption text-text-secondary uppercase mb-md tracking-wide">
+          YOUR POSITION
+        </p>
+        {!address ? (
+          <p className="font-mono text-body-sm text-text-disabled">
+            Connect wallet to view your position.
+          </p>
+        ) : myYstBalancePending ? (
+          <p className="font-mono text-subheading text-text-disabled tabular-nums animate-pulse">
+            …
+          </p>
+        ) : (
+          <div className="flex flex-col gap-sm font-mono text-caption">
+            <div className="flex justify-between items-baseline gap-md border-b border-border-visible pb-sm">
+              <span className="text-text-secondary uppercase">USDC (principal)</span>
+              <span className="text-text-display tabular-nums">
+                {formatNumber(myInvestedUsdc ?? 0)}
+              </span>
+            </div>
+            <div className="flex justify-between items-baseline gap-md border-b border-border-visible pb-sm">
+              <span className="text-text-secondary uppercase">YST balance</span>
+              <span className="text-text-display tabular-nums">
+                {myYstHuman !== null && Number.isFinite(myYstHuman)
+                  ? myYstHuman.toLocaleString("en-US", {
+                      maximumFractionDigits: 8,
+                      minimumFractionDigits: 0,
+                    })
+                  : "0"}{" "}
+                YST
+              </span>
+            </div>
+            <div className="flex justify-between items-baseline gap-md">
+              <span className="text-text-secondary uppercase">Revenue share</span>
+              <span className="text-text-display tabular-nums">
+                {myRevenueShareOfProtocolPct > 0
+                  ? `${myRevenueShareOfProtocolPct.toFixed(4)}%`
+                  : "0%"}
+              </span>
+            </div>
+            <p className="font-mono text-[9px] text-text-disabled uppercase tracking-wide pt-xs leading-relaxed">
+              Of the {stream.feePercent}% protocol revenue stream (your YST / total supply).
+            </p>
+          </div>
+        )}
+      </div>
+    ) : null;
 
   return (
     <div className="min-h-screen bg-black text-text-primary">
@@ -408,6 +494,8 @@ export default function StreamInvestView({
                    </div>
                  </div>
 
+                 {myPositionBlock}
+
                  <div className="border border-border p-md bg-black">
                    <p className="font-mono text-caption text-text-secondary uppercase leading-relaxed flex items-center justify-between mb-sm pb-sm border-b border-border-visible">
                      <span>VAULT_LIQUIDITY:</span>
@@ -459,6 +547,7 @@ export default function StreamInvestView({
                </div>
              ) : (
                <div className="flex flex-col gap-0">
+                 {myPositionBlock}
                  <label
                    htmlFor="usdc-in"
                    className="font-mono text-label uppercase tracking-label text-text-secondary block mb-md"

@@ -11,7 +11,7 @@ type Body = {
 
 /**
  * Historique `RewardsClaimed` via [Etherscan API V2](https://docs.etherscan.io/api-reference/endpoint/getlogs-topics.md)
- * (topic0 + topic1 utilisateur, puis filtre côté serveur sur les vaults Arc).
+ * (topic0 + topic1 for the user, then server-side filter on Arc vaults).
  * Clé : `ETHERSCAN_API_KEY` ou `NEXT_PUBLIC_ETHERSCAN_API_KEY` dans `.env.local`.
  */
 export async function POST(req: Request) {

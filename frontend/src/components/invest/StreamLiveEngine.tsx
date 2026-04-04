@@ -6,7 +6,7 @@ interface StreamLiveEngineProps {
   stream: StreamData;
 }
 
-/** Moteur de flux compact — dot-matrix, frais vers le vault du stream (démo). */
+/** Compact flow engine — dot-matrix, fees towards the stream vault (demo). */
 export default function StreamLiveEngine({ stream }: StreamLiveEngineProps) {
   return (
     <div className="relative w-full min-h-[200px] border border-border bg-black overflow-hidden">

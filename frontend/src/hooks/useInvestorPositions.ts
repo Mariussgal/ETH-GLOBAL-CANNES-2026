@@ -174,7 +174,7 @@ export function useInvestorPositions() {
   return {
     address,
     positions,
-    /** Tous les streams « investisseur » (émetteur exclu), y compris soldes / rewards nuls — pour l’historique de claims. */
+    /** All "investor" streams (emitter excluded), including zero balances / rewards — for claim history. */
     investorPositions,
     activePositions,
     aggregates,

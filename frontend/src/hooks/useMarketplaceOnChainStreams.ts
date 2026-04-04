@@ -26,7 +26,7 @@ export type OnChainStreamRow = {
    * À la création tout est minté sur l’émetteur — totalSupply/cap faisait 100 % à tort.
    */
   fundingRatio: number;
-  /** Objectif de levée nominal (USDC 6 dec → humain), depuis `Vault.stream.capitalRaised`. */
+  /** Nominal raise target (USDC 6 dec → human), from `Vault.stream.capitalRaised`. */
   nominalCapUsdc: number;
   totalFeesWei: bigint;
   totalYST: bigint;

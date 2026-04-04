@@ -3,9 +3,9 @@
  *
  * POST JSON :
  * - `{ "halve": true }` — divise min/max par 2 sur chaque mock (plancher min ≥ 1 wei).
- * - `{ "minFeeUsdc": 0.05, "maxFeeUsdc": 12.5 }` — bornes explicites (nombres humains).
+ * - `{ "minFeeUsdc": 0.05, "maxFeeUsdc": 12.5 }` — explicit bounds (human numbers).
  *
- * Owner uniquement : même clé que les autres routes mock (`PRIVATE_KEY`).
+ * Owner only: same key as the other mock routes (`PRIVATE_KEY`).
  */
 
 import { NextResponse } from "next/server";

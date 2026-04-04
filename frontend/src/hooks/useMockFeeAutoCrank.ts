@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Délai aléatoire entre deux cranks (ms) : ~10 s en moyenne, souvent. */
+/** Random delay between two cranks (ms): ~10 s on average. */
 const JITTER_MIN_MS = 8_000;
 const JITTER_MAX_MS = 15_000;
 
@@ -18,15 +18,15 @@ export type MockFeeCrankStatus = {
 };
 
 type Opts = {
-  /** Levée à 100 % + stream on-chain (pas démo revenue synthétique). */
+  /** Raise at 100% + on-chain stream (not synthetic demo revenue). */
   enabled: boolean;
-  /** Si false : `feesEnabled` off-chain sur les mocks — ne pas spammer generateFees. */
+  /** If false: `feesEnabled` is off on the mocks — do not spam generateFees. */
   feesGenerationEnabled?: boolean;
 };
 
 /**
- * Appelle `POST /api/crank-mock-fees` en boucle avec délai aléatoire entre chaque tick
- * (aligné sur `minCooldown` des mocks, ex. 5 s on-chain).
+ * Calls `POST /api/crank-mock-fees` in a loop with a random delay between each tick
+ * (aligned with `minCooldown` of the mocks, e.g. 5 s on-chain).
  */
 export function useMockFeeAutoCrank(opts: Opts) {
   const { enabled, feesGenerationEnabled = true } = opts;
@@ -43,7 +43,7 @@ export function useMockFeeAutoCrank(opts: Opts) {
     };
   }, []);
 
-  /** Évite d’afficher un vieux LAST_TICK_ERR après passage interrupteur OFF → ON. */
+  /** Avoids showing a stale LAST_TICK_ERR after toggling the switch OFF → ON. */
   useEffect(() => {
     if (!feesGenerationEnabled) {
       setStatus(null);
@@ -69,12 +69,12 @@ export function useMockFeeAutoCrank(opts: Opts) {
         results?: { label: string; ok: boolean; hash?: string; error?: string }[];
         cranker?: string;
       };
-      /** Dernier tick après interrupteur OFF : le serveur renvoie 200 + allFeesDisabled. */
+      /** Last tick after switch OFF: server returns 200 + allFeesDisabled. */
       const ok = res.ok || json.allFeesDisabled === true;
       let message = "";
       if (json.allFeesDisabled) {
         message =
-          "SKIPPED — fees désactivés (interrupteur OFF) ; dernier tick sans effet.";
+          "SKIPPED — fees disabled (switch OFF); last tick had no effect.";
       } else if (json.results?.length) {
         message = json.results
           .map((r) => `${r.label}: ${r.ok ? (r.hash?.slice(0, 10) ?? "ok") : (r.error ?? "err")}`)

@@ -32,7 +32,7 @@ function dedupeVaults(addresses: readonly `0x${string}`[]): `0x${string}`[] {
   return out;
 }
 
-/** Fenêtre de blocs (repli RPC uniquement) — alignée sur `NEXT_PUBLIC_*` côté client. */
+/** Block window (RPC fallback only) — aligned with `NEXT_PUBLIC_*` on the client side. */
 function readLookbackBlocks(): bigint {
   if (typeof process === "undefined") return BigInt(800_000);
   const raw = process.env.NEXT_PUBLIC_INVESTOR_CLAIMS_LOOKBACK_BLOCKS?.trim();
@@ -52,7 +52,7 @@ function readOptionalFromBlock(): bigint | null {
 }
 
 /**
- * Repli : `eth_getLogs` découpé (certains RPC limitent la plage).
+ * Fallback: chunked `eth_getLogs` (some RPCs limit the block range).
  */
 async function fetchRewardsClaimedLogsRpc(
   publicClient: PublicClient,
@@ -113,7 +113,7 @@ async function fetchRewardsClaimedLogsRpc(
       const msg =
         lastErr instanceof Error
           ? lastErr.message
-          : "eth_getLogs a échoué (plage ou RPC).";
+          : "eth_getLogs failed (block range or RPC).";
       throw new Error(
         `${msg} — configurez ETHERSCAN_API_KEY pour l’historique via l’API Etherscan, ou changez de RPC.`
       );
@@ -180,8 +180,8 @@ async function fetchInvestorClaimsViaEtherscanApi(
 }
 
 /**
- * Somme les `RewardsClaimed(user, amount)` (montant net USDC après frais 50 bps).
- * Priorité : [API Etherscan V2](https://docs.etherscan.io/) (route serveur) ; sinon repli RPC.
+ * Sums `RewardsClaimed(user, amount)` events (net USDC amount after 50 bps fee).
+ * Priority: [Etherscan API V2](https://docs.etherscan.io/) (server route); falls back to RPC.
  */
 export function useInvestorClaimHistory({
   vaultAddresses,

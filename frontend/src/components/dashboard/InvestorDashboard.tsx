@@ -54,7 +54,7 @@ export default function InvestorDashboard() {
     return m;
   }, [investorPositions]);
 
-  /** USDC déjà retirés (net) par vault — somme des `RewardsClaimed`. */
+  /** USDC already withdrawn (net) per vault — sum of `RewardsClaimed` events. */
   const claimedUsdcByVault = useMemo(() => {
     const m = new Map<string, number>();
     for (const e of claimEntries) {
@@ -64,7 +64,7 @@ export default function InvestorDashboard() {
     return m;
   }, [claimEntries]);
 
-  /** `vault.earned` = en attente ; événements = déjà retirés (net après frais). */
+  /** `vault.earned` = pending; events = already withdrawn (net after fees). */
   const totalLifetimeEarnedUsdc = totalClaimedUsdc + aggregates.pendingRewardsUsdc;
 
   const claimableStreams = aggregates.claimableStreamCount ?? 0;
@@ -176,17 +176,17 @@ export default function InvestorDashboard() {
                       : `$${formatNumber(Math.round(totalClaimedUsdc * 10000) / 10000)}`}
                   </span>
                   {" · "}
-                  En attente{" "}
+                  Pending{" "}
                   <span className="text-text-secondary tabular-nums">
                     ${formatNumber(Math.round(aggregates.pendingRewardsUsdc * 10000) / 10000)}
                   </span>
                   {claimHistoryLoading ? (
-                    <span className="text-text-disabled"> (sync historique…)</span>
+                    <span className="text-text-disabled"> (syncing history…)</span>
                   ) : null}
                   {claimHistoryError ? (
                     <span className="text-accent block mt-1">
-                      Historique des claims indisponible (RPC). Le total ci-dessus
-                      n’inclut que l’en attente tant que les logs échouent.
+                      Claim history unavailable (RPC). The total above
+                      only includes pending until logs succeed.
                     </span>
                   ) : null}
                 </span>
@@ -218,7 +218,7 @@ export default function InvestorDashboard() {
             {claimHistoryError && !claimHistoryLoading ? (
               <div className="px-4 py-xl font-mono text-body-sm text-accent text-center leading-relaxed">
                 <p className="mb-sm">
-                  Impossible de charger les logs (limite de plage ou RPC).
+                  Failed to load logs (block range limit or RPC error).
                 </p>
                 <p className="text-[11px] text-text-secondary normal-case max-w-lg mx-auto">
                   {claimHistoryErrorMessage}
@@ -366,7 +366,7 @@ export default function InvestorDashboard() {
                               {claimHistoryLoading ? (
                                 <span className="text-text-secondary">…</span>
                               ) : claimHistoryError ? (
-                                <span title="Historique claims indisponible — montant = pending uniquement">
+                                <span title="Claim history unavailable — amount = pending only">
                                   {Number.isFinite(earnedNum)
                                     ? formatNumber(
                                         Math.round(earnedNum * 10000) / 10000
@@ -406,7 +406,7 @@ export default function InvestorDashboard() {
               <div className="border border-dashed border-border rounded-technical p-xl text-center max-w-xl mx-auto">
                 <p className="font-mono text-body-sm text-text-secondary">
                   Aucune position ouverte (YST / rewards à zéro). Les totaux ci-dessus
-                  incluent toutefois les USDC déjà retirés via l’historique on-chain.
+                  do include USDC already withdrawn via the on-chain history.
                 </p>
               </div>
             )}

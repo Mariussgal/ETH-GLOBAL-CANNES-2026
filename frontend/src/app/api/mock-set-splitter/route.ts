@@ -1,11 +1,11 @@
 /**
- * Appelle `setSplitter(address)` sur MockQuickswapBase + MockQuickswapPolygon.
- * Réservé à l’owner des mocks (souvent la même clé que `setFeesEnabled` si ownership transférée).
+ * Calls `setSplitter(address)` on MockQuickswapBase + MockQuickswapPolygon.
+ * Restricted to the mock owner (usually the same key as `setFeesEnabled` if ownership was transferred).
  *
- * POST JSON : { "splitter": "0x..." } — adresse du Router du stream (Factory `getStream`).
+ * POST JSON: { "splitter": "0x..." } — Router address of the stream (Factory `getStream`).
  *
- * Env : PRIVATE_KEY, CRANK_SECRET (optionnel),
- * SEPOLIA_RPC_URL ou NEXT_PUBLIC_SEPOLIA_RPC_URL.
+ * Env: PRIVATE_KEY, CRANK_SECRET (optional),
+ * SEPOLIA_RPC_URL or NEXT_PUBLIC_SEPOLIA_RPC_URL.
  */
 
 import { NextResponse } from "next/server";

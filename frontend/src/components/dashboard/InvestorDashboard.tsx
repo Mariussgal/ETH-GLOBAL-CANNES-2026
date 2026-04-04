@@ -9,7 +9,6 @@ import { SEPOLIA_CHAIN_ID } from "@/contracts";
 import Link from "next/link";
 import { useMemo } from "react";
 import { formatUnits } from "viem";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useChainId } from "wagmi";
 
 const SEPOLIA_TX_URL = "https://sepolia.etherscan.io/tx/";
@@ -126,7 +125,6 @@ export default function InvestorDashboard() {
             <p className="font-mono text-body-sm text-text-secondary mb-xl">
               Connect a wallet to load your Arc positions.
             </p>
-            <ConnectButton />
           </div>
         )}
 

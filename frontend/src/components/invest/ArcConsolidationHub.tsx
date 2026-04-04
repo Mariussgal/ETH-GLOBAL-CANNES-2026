@@ -9,15 +9,12 @@ interface ArcConsolidationHubProps {
   totalPolygonRevenue: number;
   /** Badge LIVE_SYNC vert lorsque `isConnected && chainId === 11155111` (Sepolia) */
   liveSync?: boolean;
-  /** Factory : CRE forwarder + mapping workflow → stream (si configuré). */
-  chainlinkAutomationActive?: boolean;
 }
 
 export default function ArcConsolidationHub({
   totalBaseRevenue,
   totalPolygonRevenue,
   liveSync = false,
-  chainlinkAutomationActive = false,
 }: ArcConsolidationHubProps) {
   // Calculate flow distributions
   const total = totalBaseRevenue + totalPolygonRevenue;
@@ -52,15 +49,6 @@ export default function ArcConsolidationHub({
             />
             LIVE_SYNC
           </div>
-          {chainlinkAutomationActive && (
-            <div
-              className="inline-flex items-center gap-xs font-mono text-[10px] uppercase tracking-widest px-sm py-[3px] border rounded-sm border-[#375BD2] text-[#9ECFFF] bg-[#375BD2]/10"
-              title="Factory : creForwarder actif et workflow CRE lié à ce stream (si NEXT_PUBLIC_CRE_WORKFLOW_ID)"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#375BD2] shadow-[0_0_6px_rgba(55,91,210,0.8)]" />
-              CHAINLINK AUTOMATION ACTIVE
-            </div>
-          )}
         </div>
         <span className="font-mono text-[10px] text-text-disabled uppercase">
           Consolidating fragmented liquidity across EVM networks

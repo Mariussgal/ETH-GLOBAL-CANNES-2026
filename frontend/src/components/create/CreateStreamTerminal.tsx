@@ -550,10 +550,10 @@ export default function CreateStreamTerminal() {
       `> ANNUAL_REV_USD (DeFiLlama avg30×365): ${feesLoading ? "…" : formatNumber(Math.round(annualRevenueUsd))}`
     );
     lines.push(
-      `> YOU_SELL (rights): ${offeringEconomics ? formatNumber(Math.round(offeringEconomics.nominalUsd)) : "—"} USDC`
+      `> YOU_SELL (supply): ${offeringEconomics ? formatNumber(Math.round(offeringEconomics.nominalUsd)) : "—"} YST`
     );
     lines.push(
-      `> YOU_RECEIVE_NET: ${offeringEconomics ? formatUsdcShort(offeringEconomics.afterDiscountUsd) : "—"} USDC`
+      `> YOU_RECEIVE_NET: ${offeringEconomics ? formatNumber(Math.round(offeringEconomics.nominalUsd)) : "—"} USDC`
     );
     lines.push(
       `> FACTORY capitalRaised (net ÷ ${DEMO_ONCHAIN_AMOUNT_DIVISOR}, min 1 USDC): ${
@@ -586,7 +586,7 @@ export default function CreateStreamTerminal() {
       lines.push("> DEPLOYMENT SUCCESSFUL. VAULT CREATED.");
       lines.push("> REDIRECTING TO INVEST VIEW…");
     } else if (awaitingReceipt) {
-      lines.push("> DEPLOYING SMART CONTRACTS ON SEPOLIA...");
+      lines.push("> DEPLOYING SMART CONTRACTS (STRICT 1:1 PARITY) ON SEPOLIA...");
       lines.push(`> TX_HASH: ${txHash}`);
     } else if (isWritePending) {
       lines.push("> AWAITING WALLET CONFIRMATION...");

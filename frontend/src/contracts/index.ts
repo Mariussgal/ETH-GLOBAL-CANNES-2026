@@ -3,7 +3,7 @@
 export const SEPOLIA_CHAIN_ID = 11155111;
 
 export const ADDRESSES = {
-  streamFactory: "0x249c8855b842Cf044De78596702471098B31B082" as `0x${string}`,
+  streamFactory: "0xCe897e27860F6c317DA7b4C7bB0252b941B2dCeC" as `0x${string}`,
   ystSplitter: "0xaCD8f042eE1E29580A84e213760D144957eec148" as `0x${string}`,
   vault: "0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8" as `0x${string}`,
   mockBase: "0x89e3dF8A6970B62564b232cbBD7376987cD093a8" as `0x${string}`,
@@ -15,7 +15,7 @@ export const ADDRESSES = {
   primarySale: "0x5161d70daCBfFc651FAd24aC63200Ac72c4A4aF3" as `0x${string}`,
 } as const;
 
-/** Surcharge déploiement (Vercel). */
+/** Deployment override (Vercel). */
 export function getKeeperAddress(): `0x${string}` {
   const e = process.env.NEXT_PUBLIC_KEEPER_ADDRESS?.trim();
   return e?.startsWith("0x") && e.length >= 42
@@ -25,7 +25,7 @@ export function getKeeperAddress(): `0x${string}` {
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000" as const;
 
-/** PrimarySale : priorité à l’env (Vercel / local), sinon `ADDRESSES.primarySale` si renseigné. */
+/** PrimarySale: priority to env (Vercel / local), otherwise `ADDRESSES.primarySale` if set. */
 export function getPrimarySaleAddress(): `0x${string}` | undefined {
   const e = process.env.NEXT_PUBLIC_PRIMARY_SALE_ADDRESS?.trim();
   if (
@@ -64,7 +64,7 @@ export const ERC20_ABI = [
   },
 ] as const;
 
-/** USDC : approve + allowance pour le marché primaire. */
+/** USDC: approve + allowance for the primary market. */
 export const ERC20_APPROVE_ABI = [
   ...ERC20_ABI,
   {
@@ -108,7 +108,7 @@ export const CHAINLINK_SUB_ID = 6399;
 
 // ── Minimal ABIs for read operations ──
 
-/** Lecture + écriture Factory — aligné sur `smart-contracts/contracts/Factory.sol` */
+/** Factory Read + Write — aligned with `smart-contracts/contracts/Factory.sol` */
 export const STREAM_FACTORY_ABI = [
   {
     type: "event",
@@ -304,7 +304,7 @@ export const MOCK_PROTOCOL_ABI = [
   },
 ] as const;
 
-/** Tous les champs en `data` (topic0 différent de la variante `emitter` indexé) */
+/** All fields in `data` (topic0 different from the indexed `emitter` variant) */
 export const MOCK_FEES_GENERATED_ALL_DATA_EVENT = {
   type: "event",
   name: "FeesGenerated",
@@ -315,7 +315,7 @@ export const MOCK_FEES_GENERATED_ALL_DATA_EVENT = {
   ],
 } as const;
 
-/** Ancien schéma (strings) — fallback de décodage */
+/** Legacy schema (strings) — decoding fallback */
 export const MOCK_FEES_GENERATED_LEGACY_EVENT = {
   type: "event",
   name: "FeesGenerated",

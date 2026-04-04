@@ -15,19 +15,19 @@ import {
 } from "@/hooks/useMarketplaceOnChainStreams";
 
 const USDC_DECIMALS = 6;
-/** YST minté par la Factory sur le même ordre de grandeur que les montants USDC (souvent 6 dec côté montant). */
+/** YST minted by the Factory on the same scale as USDC amounts (often 6 dec on amount side). */
 const DEFAULT_YST_DECIMALS = 18;
 
 export type InvestorPositionRow = {
   row: OnChainStreamRow;
   ystBalance: bigint;
   earnedUsdc: bigint;
-  /** Décimales YST lues on-chain (fallback 18). */
+  /** YST decimals read on-chain (fallback 18). */
   ystDecimals: number;
 };
 
 /**
- * Multicall : pour chaque vault Arc, balanceOf(YST) + earned(Vault) + decimals(YST).
+ * Multicall: for each Arc vault, balanceOf(YST) + earned(Vault) + decimals(YST).
  */
 export function useInvestorPositions() {
   const { address } = useAccount();
@@ -110,8 +110,8 @@ export function useInvestorPositions() {
   }, [address, batchResults, allRows]);
 
   /**
-   * Exclut les streams dont le wallet est l’émetteur : ce sont des positions « issuer »
-   * (YST minté sur l’émetteur), pas le portefeuille investisseur.
+   * Excludes streams where the wallet is the issuer: these are "issuer" positions
+   * (YST minted to the issuer), not the investor portfolio.
    */
   const investorPositions = useMemo(
     () =>
@@ -155,7 +155,7 @@ export function useInvestorPositions() {
     };
   }, [investorPositions]);
 
-  /** Lignes investisseur avec YST ou rewards (hors streams dont je suis l’émetteur). */
+  /** Investor lines with YST or rewards (excluding streams where I am the issuer). */
   const activePositions = useMemo(
     () =>
       investorPositions.filter(

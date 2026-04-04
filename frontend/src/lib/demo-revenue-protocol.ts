@@ -1,6 +1,6 @@
 /**
- * Slugs pour lesquels on injecte un flux d’activité et des totaux simulés (démo hackathon).
- * Défaut : nohemmg (stream créé côté équipe). Surcharge : NEXT_PUBLIC_DEMO_REVENUE_SLUGS=slug1,slug2
+ * Slugs for which we inject an activity stream and simulated totals (hackathon demo).
+ * Default: nohemmg (stream created on the team side). Override: NEXT_PUBLIC_DEMO_REVENUE_SLUGS=slug1,slug2
  */
 const DEFAULT_SLUGS = ["nohemmg", "nohem-mg", "nohem_mg"];
 

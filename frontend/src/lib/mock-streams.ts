@@ -17,6 +17,7 @@ export const MOCK_STREAMS: StreamData[] = [
     priceFloor: 1.15,
     sources: ["BASE", "ARBITRUM"],
     defaulted: false,
+    createdAt: 1712260800,
   },
 ];
 

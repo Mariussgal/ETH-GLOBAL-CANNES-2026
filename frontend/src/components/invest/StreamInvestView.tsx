@@ -111,30 +111,26 @@ export default function StreamInvestView({
   const nominalUsdc = stream.nominalRaiseCapUsdc;
   /** En primaire, on utilise le supply réel si disponible (Factory) ; sinon on utilise vaultTarget. */
   const TARGET_DISTRIBUTION = useMemo(() => {
-    if (stream.totalTokenSupply !== undefined && stream.totalTokenSupply > 0) {
-      return stream.totalTokenSupply;
-    }
-    if (nominalUsdc !== undefined && nominalUsdc > 0) {
-      return stream.vaultTarget;
-    }
-    return stream.vaultTarget / (1 - stream.discount / 100);
-  }, [stream.totalTokenSupply, nominalUsdc, stream.vaultTarget, stream.discount]);
+    // La target est le montant "undiscounted" que l'investisseur est censé recevoir 
+    // si les revenus se maintiennent (le rendement vient de la décote).
+    // raiseCapUsdc contient déjà la logique (nominalRaiseCapUsdc || vaultTarget).
+    if (stream.discount >= 100) return raiseCapUsdc;
+    return raiseCapUsdc / (1 - stream.discount / 100);
+  }, [raiseCapUsdc, stream.discount]);
 
   const HISTORICAL_ANNUAL_REVENUE = useMemo(() => {
-    const base =
-      nominalUsdc !== undefined && nominalUsdc > 0
-        ? nominalUsdc
-        : stream.vaultTarget;
-    return base / (stream.feePercent / 100);
-  }, [nominalUsdc, stream.vaultTarget, stream.feePercent]);
+    // Durée en années
+    const durationYears = Math.max(stream.duration / 365, 0.0001);
+    // Revenu partagé annuel projeté
+    const annualShare = TARGET_DISTRIBUTION / durationYears;
+    // Revenu protocole total annuel
+    return annualShare / (stream.feePercent / 100);
+  }, [TARGET_DISTRIBUTION, stream.duration, stream.feePercent]);
 
   const projectedYield = useMemo(() => {
-    if (nominalUsdc !== undefined && nominalUsdc > 0 && stream.vaultTarget > nominalUsdc) {
-      return ((stream.vaultTarget - nominalUsdc) / nominalUsdc) * 100;
-    }
-    if (stream.vaultTarget <= 0) return 0;
-    return ((TARGET_DISTRIBUTION - stream.vaultTarget) / stream.vaultTarget) * 100;
-  }, [nominalUsdc, stream.vaultTarget, TARGET_DISTRIBUTION]);
+    if (raiseCapUsdc <= 0) return 0;
+    return ((TARGET_DISTRIBUTION - raiseCapUsdc) / raiseCapUsdc) * 100;
+  }, [raiseCapUsdc, TARGET_DISTRIBUTION]);
 
   /** 100 % = levée nominale atteinte (primaire on-chain), pas la valeur faciale. */
   const primaryRaiseComplete = Boolean(

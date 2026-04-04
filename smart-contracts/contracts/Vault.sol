@@ -46,6 +46,7 @@ contract Vault is ReentrancyGuard {
     bool public collateralSlashed;
 
     address public emitterAddress;
+    bytes32 public ensSubnode;
 
     IENSRegistry  public constant ENS_REGISTRY =
         IENSRegistry(0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e);
@@ -118,6 +119,10 @@ contract Vault is ReentrancyGuard {
         );
     }
 
+    function setENSSubnode(bytes32 _subnode) external onlyFactory {
+        ensSubnode = _subnode;
+    }
+
     function depositFees(uint256 amount) external updateReward(address(0)) {
         if (!stream.active) revert StreamNotActive();
         if (amount == 0) revert ZeroAmount();
@@ -141,15 +146,18 @@ contract Vault is ReentrancyGuard {
     }
 
     function slashCollateral() external {
-        // désactivé pour le hackathon
+        // ── ENS DEFAULTED write sur le subdomain ─────────────────────────────────
+        if (emitterAddress != address(0)) {
+            try this._writeENSDefault(emitterAddress) {} catch {}
+        }
     }
 
-    function _writeENSDefault(address emitter) external {
+    function _writeENSDefault(address /* emitter */) external {
         require(msg.sender == address(this), "internal only");
-        bytes32 reverseNode = ENS_REVERSE.node(emitter);
-        address resolverAddr = ENS_REGISTRY.resolver(reverseNode);
+        if (ensSubnode == bytes32(0)) return;
+        address resolverAddr = ENS_REGISTRY.resolver(ensSubnode);
         if (resolverAddr == address(0)) return;
-        IENSResolver(resolverAddr).setText(reverseNode, "ysm.status", "DEFAULTED");
+        IENSResolver(resolverAddr).setText(ensSubnode, "ysm.status", "DEFAULTED");
     }
 
     function claimRewards(

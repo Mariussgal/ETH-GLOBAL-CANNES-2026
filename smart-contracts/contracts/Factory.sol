@@ -6,14 +6,33 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Router.sol";
 import "./Vault.sol";
 import "./YSTToken.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+
 
 import "./interfaces/IENS.sol";
+
+interface INameWrapper {
+    function setSubnodeRecord(
+        bytes32 parentNode,
+        string calldata label,
+        address owner,
+        address resolver,
+        uint64 ttl,
+        uint32 fuses,
+        uint64 expiry
+    ) external returns (bytes32);
+}
+
+interface IPublicResolver {
+    function setAddr(bytes32 node, address addr) external;
+    function setText(bytes32 node, string calldata key, string calldata value) external;
+}
 
 interface IReceiver {
     function onReport(bytes calldata metadata, bytes calldata report) external;
 }
 
-contract Factory is IReceiver {
+contract Factory is IReceiver, ERC1155Holder {
 
     using SafeERC20 for IERC20;
 
@@ -50,6 +69,16 @@ contract Factory is IReceiver {
     IENSReverseRegistrar public constant ENS_REVERSE =
         IENSReverseRegistrar(0xA0a1AbcDAe1a2a4A2EF8e9113Ff0e02DD81DC0C6);
 
+    // ─── ENS NameWrapper + Resolver Sepolia ──────────────────────────────────────
+    INameWrapper public constant NAME_WRAPPER =
+        INameWrapper(0x0635513f179D50A207757E05759CbD106d7dFcE8);
+IPublicResolver public constant PUBLIC_RESOLVER =
+    IPublicResolver(0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5);
+
+    /// @notice namehash de "mariusgal.eth" — parent node pour les subdomains YSM
+    bytes32 public constant MARIUSGAL_NODE =
+    0xfc883de7eb7452c0121b35672c4378c319cc5894b7950a7842be636bc0637309;
+
     address public creForwarder = 0x15fC6ae953E024d975e77382eEeC56A9101f9F88;
 
     IERC20  public immutable usdc;
@@ -74,6 +103,7 @@ contract Factory is IReceiver {
         uint256 discountBps
     );
     event GateRejected(bytes32 indexed streamKey, string reason);
+    event ENSSubdomainCreated(string label, bytes32 indexed node, address vault);
 
     error NotOwner();
     error NotCREForwarder();
@@ -273,6 +303,26 @@ function onReport(
         streamKeys.push(streamKey);
         allVaults.push(address(vault));
 
+        // ── ENS Subdomain creation ────────────────────────────────────────────────
+        // Crée protocolSlug.mariusgal.eth pointant vers le vault
+        try NAME_WRAPPER.setSubnodeRecord(
+            MARIUSGAL_NODE,
+            pending.protocolSlug,
+            address(this),           // Factory = owner du subdomain
+            address(PUBLIC_RESOLVER),
+            0,                       // TTL
+            0,                       // pas de fuses
+            uint64(block.timestamp + 365 days * 10)  // expiry 10 ans
+        ) returns (bytes32 subnode) {
+            // Pointe le subdomain vers le vault
+            try PUBLIC_RESOLVER.setAddr(subnode, address(vault)) {} catch {}
+            emit ENSSubdomainCreated(pending.protocolSlug, subnode, address(vault));
+            
+            // Stocke le subnode dans le vault pour le DEFAULTED write
+            if (subnode != bytes32(0)) {
+                try vault.setENSSubnode(subnode) {} catch {}
+            }
+        } catch {}
         emit StreamCreated(
             streamKey,
             address(splitter),

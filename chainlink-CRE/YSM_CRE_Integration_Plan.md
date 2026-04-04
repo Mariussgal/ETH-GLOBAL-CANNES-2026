@@ -26,7 +26,7 @@ Tu aides l'équipe YSM (Yield Stream Marketplace) à intégrer Chainlink CRE dan
 MockKeystoneForwarder (simulation) : 0x15fC6ae953E024d975e77382eEeC56A9101f9F88
 KeystoneForwarder (production)     : 0xF8344CFd5c43616a4366C34E3EEE75af79a74482
 
-StreamFactory déployée             : 0x281d58aeF1e47a9ac842c1558e85eb674DaAcca4
+StreamFactory déployée             : 0x0a52b6D02f55ae19Ff3973559Bf2b8129EfcC73B
 MasterSettler déployé              : 0xFE6B4a8Ae90C47dA0E19296CaeBb2FF8D313954f
 YSTSplitter (demo)                 : 0x7e07451B69dc3A92f678Df6Cc37272043178447e
 MockProtocol                       : 0x5884DE6070F71EF8e4FdC9F3D5341a941ae4c29b

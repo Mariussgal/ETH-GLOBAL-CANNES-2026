@@ -15105,7 +15105,8 @@ var sendErrorResponse = (error) => {
   }
   hostBindings.sendResponse(payload);
 };
-var STREAM_FACTORY_ADDRESS = "1Bc1135c04Ad7236C56b8EBc1F3b25A8A0ecb5D6";
+var envVar = (key) => globalThis.process?.env?.[key];
+var STREAM_FACTORY_ADDRESS = "0a52b6D02f55ae19Ff3973559Bf2b8129EfcC73B";
 var MASTER_SETTLER_ADDRESS = "2F3dd4718A8e8f709d82aC37840565ABCEddA780";
 var PROXY_URL = "http://ysm-defilama-proxy.ysm-market-proxy.workers.dev/fees/";
 var encodeUint256 = (value2) => BigInt(value2).toString(16).padStart(64, "0");
@@ -15234,11 +15235,35 @@ var onDecoteTrigger = async (runtime2, payload) => {
     runtime2.log(`[WORKFLOW #1] Proxy indisponible, fallback rScore=${rScore} : ${e.message}`);
   }
   const sigma = 0.165;
+  const trend = 1 - rScore;
   const marketRisk = ethUsdPriceNow < ethUsdPrice30d ? 1 - ethUsdPriceNow / ethUsdPrice30d : 0;
   let decote = 0.25 * (sigma * 3.46) + 0.35 * (1 - rScore) + 0.4 * marketRisk;
   decote = Math.min(Math.max(decote, 0.1), 0.5);
   const discountBps = Math.floor(decote * 100) * 100;
   runtime2.log(`[WORKFLOW #1] Décote : ${Math.floor(decote * 100)}% = ${discountBps} bps (marketRisk=${marketRisk.toFixed(3)}, rScore=${rScore})`);
+  const FACTORY_ADDRESS = envVar("FACTORY_ADDRESS") ?? "0x" + STREAM_FACTORY_ADDRESS;
+  const STREAM_KEY = envVar("STREAM_KEY") ?? "";
+  runtime2.log("");
+  runtime2.log("========================================");
+  runtime2.log("\uD83D\uDCCA RÉSULTATS WORKFLOW #1 — DÉCOTE");
+  runtime2.log("========================================");
+  runtime2.log(`sigma_mensuel  : ${sigma.toFixed(3)}`);
+  runtime2.log(`trend_penalty  : ${trend.toFixed(3)}`);
+  runtime2.log(`R_score        : ${rScore.toFixed(3)}`);
+  runtime2.log(`market_risk    : ${marketRisk.toFixed(3)}`);
+  runtime2.log(`DISCOUNT_BPS   : ${discountBps}  (= ${discountBps / 100}%)`);
+  runtime2.log("========================================");
+  runtime2.log("");
+  runtime2.log("\uD83D\uDCCB COMMANDE À DONNER À P1 :");
+  runtime2.log("");
+  runtime2.log(`cast send ${FACTORY_ADDRESS} \\`);
+  runtime2.log(`  "submitWorkflowResult(bytes32,uint8,uint256)" \\`);
+  runtime2.log(`  ${STREAM_KEY || "<STREAM_KEY>"} 1 ${discountBps} \\`);
+  runtime2.log(`  --private-key 0xTA_CLE \\`);
+  runtime2.log(`  --rpc-url https://rpc.sepolia.org`);
+  runtime2.log("");
+  runtime2.log("========================================");
+  runtime2.log("");
   const innerPayload = encodeUint256(discountBps);
   const reportBytes = encodeReport(1, innerPayload);
   let reportHex = "0x";
@@ -15266,7 +15291,7 @@ var onGateTrigger = async (runtime2, payload) => {
   } catch {}
   runtime2.log(`[WORKFLOW #2] Évaluation Gate pour : ${slug}`);
   const httpClient = new ClientCapability3;
-  let avg30 = 0, rScore = 0.5, daysOfData = 0;
+  let avg30 = 0, rScore = 0.5, daysOfData = 0, activeDays = 0;
   try {
     const statsJson = httpClient.sendRequest(runtime2, fetchProxyStatsApi, consensusIdenticalAggregation())(`${PROXY_URL}${slug}`).result();
     const stats = JSON.parse(statsJson);
@@ -15274,16 +15299,39 @@ var onGateTrigger = async (runtime2, payload) => {
       avg30 = stats.avg30 ?? 0;
       rScore = stats.rScore ?? 0.5;
       daysOfData = stats.daysOfData ?? 0;
-      runtime2.log(`[WORKFLOW #2] Stats proxy : avg30=$${avg30.toFixed(0)}/j, rScore=${rScore}, days=${daysOfData}`);
+      activeDays = stats.activeDays ?? 0;
+      runtime2.log(`[WORKFLOW #2] Stats proxy : avg30=$${avg30.toFixed(0)}/j, rScore=${rScore}, days=${daysOfData}, activeDays(90j)=${activeDays}`);
     }
   } catch (e) {
     runtime2.log(`[WORKFLOW #2] Proxy indisponible : ${e.message}`);
   }
+  const gateResult = activeDays >= 60 ? 1 : 0;
   const approved = avg30 >= 1000 && rScore >= 0.5 && daysOfData >= 90;
   runtime2.log(`[WORKFLOW #2] Critère revenus avg30=$${avg30.toFixed(0)} ≥ $1000 → ${avg30 >= 1000 ? "✓" : "✗"}`);
   runtime2.log(`[WORKFLOW #2] Critère rScore ${rScore} ≥ 0.5 → ${rScore >= 0.5 ? "✓" : "✗"}`);
   runtime2.log(`[WORKFLOW #2] Critère ancienneté ${daysOfData}j ≥ 90j → ${daysOfData >= 90 ? "✓" : "✗"}`);
   runtime2.log(`[WORKFLOW #2] Gate ${slug} : ${approved ? "ACCEPTÉ ✅" : "REFUSÉ ❌"}`);
+  const FACTORY_ADDRESS = envVar("FACTORY_ADDRESS") ?? "0x" + STREAM_FACTORY_ADDRESS;
+  const STREAM_KEY = envVar("STREAM_KEY") ?? "";
+  runtime2.log("");
+  runtime2.log("========================================");
+  runtime2.log("\uD83D\uDCCA RÉSULTATS WORKFLOW #2 — GATE");
+  runtime2.log("========================================");
+  runtime2.log(`Jours actifs   : ${activeDays}/90`);
+  runtime2.log(`Seuil requis   : 60 jours`);
+  runtime2.log(`GATE_RESULT    : ${gateResult}  (${gateResult === 1 ? "✅ APPROUVÉ" : "❌ REJETÉ"})`);
+  runtime2.log("========================================");
+  runtime2.log("");
+  runtime2.log("\uD83D\uDCCB COMMANDE À DONNER À P1 :");
+  runtime2.log("");
+  runtime2.log(`cast send ${FACTORY_ADDRESS} \\`);
+  runtime2.log(`  "submitWorkflowResult(bytes32,uint8,uint256)" \\`);
+  runtime2.log(`  ${STREAM_KEY || "<STREAM_KEY>"} 2 ${gateResult} \\`);
+  runtime2.log(`  --private-key 0xTA_CLE \\`);
+  runtime2.log(`  --rpc-url https://rpc.sepolia.org`);
+  runtime2.log("");
+  runtime2.log("========================================");
+  runtime2.log("");
   const innerPayload = encodeBool(approved);
   const reportBytes = encodeReport(2, innerPayload);
   let reportHex = "0x";

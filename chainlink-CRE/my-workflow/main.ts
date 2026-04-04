@@ -4,10 +4,13 @@ import { create } from "@bufbuild/protobuf";
 
 interface Config {}
 
+const envVar = (key: string): string | undefined =>
+  (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[key];
+
 // ============================================================
 // ADRESSES SEPOLIA — à mettre à jour après redéploiement P1
 // ============================================================
-const STREAM_FACTORY_ADDRESS = "1Bc1135c04Ad7236C56b8EBc1F3b25A8A0ecb5D6"; // TODO: confirmer avec P1
+const STREAM_FACTORY_ADDRESS = "0a52b6D02f55ae19Ff3973559Bf2b8129EfcC73B";
 const MASTER_SETTLER_ADDRESS = "2F3dd4718A8e8f709d82aC37840565ABCEddA780"; // TODO: confirmer avec P1
 const PROXY_URL = "http://ysm-defilama-proxy.ysm-market-proxy.workers.dev/fees/";
 
@@ -186,6 +189,7 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
 
   // --- Calcul décote ---
   const sigma = 0.165;
+  const trend = 1 - rScore;
   const marketRisk = ethUsdPriceNow < ethUsdPrice30d
     ? 1 - ethUsdPriceNow / ethUsdPrice30d
     : 0;
@@ -194,6 +198,31 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
   const discountBps = Math.floor(decote * 100) * 100;
 
   runtime.log(`[WORKFLOW #1] Décote : ${Math.floor(decote * 100)}% = ${discountBps} bps (marketRisk=${marketRisk.toFixed(3)}, rScore=${rScore})`);
+
+  // --- P2.2 : résumé + commande cast pour P1 ---
+  const FACTORY_ADDRESS = envVar("FACTORY_ADDRESS") ?? "0x" + STREAM_FACTORY_ADDRESS;
+  const STREAM_KEY = envVar("STREAM_KEY") ?? "";
+  runtime.log("");
+  runtime.log("========================================");
+  runtime.log("📊 RÉSULTATS WORKFLOW #1 — DÉCOTE");
+  runtime.log("========================================");
+  runtime.log(`sigma_mensuel  : ${sigma.toFixed(3)}`);
+  runtime.log(`trend_penalty  : ${trend.toFixed(3)}`);
+  runtime.log(`R_score        : ${rScore.toFixed(3)}`);
+  runtime.log(`market_risk    : ${marketRisk.toFixed(3)}`);
+  runtime.log(`DISCOUNT_BPS   : ${discountBps}  (= ${discountBps / 100}%)`);
+  runtime.log("========================================");
+  runtime.log("");
+  runtime.log("📋 COMMANDE À DONNER À P1 :");
+  runtime.log("");
+  runtime.log(`cast send ${FACTORY_ADDRESS} \\`);
+  runtime.log(`  "submitWorkflowResult(bytes32,uint8,uint256)" \\`);
+  runtime.log(`  ${STREAM_KEY || "<STREAM_KEY>"} 1 ${discountBps} \\`);
+  runtime.log(`  --private-key 0xTA_CLE \\`);
+  runtime.log(`  --rpc-url https://rpc.sepolia.org`);
+  runtime.log("");
+  runtime.log("========================================");
+  runtime.log("");
 
   // --- Envoi on-chain via CRE ---
   // report = abi.encode(uint8=1, bytes=abi.encode(uint256 discountBps))
@@ -235,7 +264,7 @@ const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Pr
   runtime.log(`[WORKFLOW #2] Évaluation Gate pour : ${slug}`);
 
   const httpClient = new HTTPClient();
-  let avg30 = 0, rScore = 0.5, daysOfData = 0;
+  let avg30 = 0, rScore = 0.5, daysOfData = 0, activeDays = 0;
 
   try {
     const statsJson = httpClient.sendRequest(runtime, fetchProxyStatsApi, consensusIdenticalAggregation())(`${PROXY_URL}${slug}`).result();
@@ -244,18 +273,43 @@ const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Pr
       avg30      = stats.avg30 ?? 0;
       rScore     = stats.rScore ?? 0.5;
       daysOfData = stats.daysOfData ?? 0;
-      runtime.log(`[WORKFLOW #2] Stats proxy : avg30=$${avg30.toFixed(0)}/j, rScore=${rScore}, days=${daysOfData}`);
+      activeDays = stats.activeDays ?? 0;
+      runtime.log(`[WORKFLOW #2] Stats proxy : avg30=$${avg30.toFixed(0)}/j, rScore=${rScore}, days=${daysOfData}, activeDays(90j)=${activeDays}`);
     }
   } catch (e: any) {
     runtime.log(`[WORKFLOW #2] Proxy indisponible : ${e.message}`);
   }
 
+  const gateResult = activeDays >= 60 ? 1 : 0;
   const approved = avg30 >= 1000 && rScore >= 0.5 && daysOfData >= 90;
 
   runtime.log(`[WORKFLOW #2] Critère revenus avg30=$${avg30.toFixed(0)} ≥ $1000 → ${avg30 >= 1000 ? "✓" : "✗"}`);
   runtime.log(`[WORKFLOW #2] Critère rScore ${rScore} ≥ 0.5 → ${rScore >= 0.5 ? "✓" : "✗"}`);
   runtime.log(`[WORKFLOW #2] Critère ancienneté ${daysOfData}j ≥ 90j → ${daysOfData >= 90 ? "✓" : "✗"}`);
   runtime.log(`[WORKFLOW #2] Gate ${slug} : ${approved ? "ACCEPTÉ ✅" : "REFUSÉ ❌"}`);
+
+  // --- P2.2 : résumé + commande cast pour P1 (seuil 60 jours actifs / 90) ---
+  const FACTORY_ADDRESS = envVar("FACTORY_ADDRESS") ?? "0x" + STREAM_FACTORY_ADDRESS;
+  const STREAM_KEY = envVar("STREAM_KEY") ?? "";
+  runtime.log("");
+  runtime.log("========================================");
+  runtime.log("📊 RÉSULTATS WORKFLOW #2 — GATE");
+  runtime.log("========================================");
+  runtime.log(`Jours actifs   : ${activeDays}/90`);
+  runtime.log(`Seuil requis   : 60 jours`);
+  runtime.log(`GATE_RESULT    : ${gateResult}  (${gateResult === 1 ? "✅ APPROUVÉ" : "❌ REJETÉ"})`);
+  runtime.log("========================================");
+  runtime.log("");
+  runtime.log("📋 COMMANDE À DONNER À P1 :");
+  runtime.log("");
+  runtime.log(`cast send ${FACTORY_ADDRESS} \\`);
+  runtime.log(`  "submitWorkflowResult(bytes32,uint8,uint256)" \\`);
+  runtime.log(`  ${STREAM_KEY || "<STREAM_KEY>"} 2 ${gateResult} \\`);
+  runtime.log(`  --private-key 0xTA_CLE \\`);
+  runtime.log(`  --rpc-url https://rpc.sepolia.org`);
+  runtime.log("");
+  runtime.log("========================================");
+  runtime.log("");
 
   // --- Envoi on-chain via CRE ---
   // report = abi.encode(uint8=2, bytes=abi.encode(bool approved))

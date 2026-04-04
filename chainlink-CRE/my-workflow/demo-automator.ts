@@ -6,7 +6,7 @@ dotenv.config({ path: '../.env' });
 dotenv.config();
 
 const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"; 
-const FACTORY_ADDRESS = "0x3615CFfF7D94710AC12Ed63c94E28F53551Ac32E";
+const FACTORY_ADDRESS = "0x0a52b6D02f55ae19Ff3973559Bf2b8129EfcC73B";
 const CLI_PATH = "/Users/cyriacmirkovik/.cre/bin/cre";
 
 const workflows = [

@@ -1,310 +1,321 @@
-import { cre, Runner, type Runtime, type HTTPPayload, decodeJson, HTTPClient, consensusMedianAggregation, consensusIdenticalAggregation, type HTTPSendRequester, EVMClient } from "@chainlink/cre-sdk";
+import { cre, Runner, type Runtime, type HTTPPayload, decodeJson, HTTPClient, consensusMedianAggregation, consensusIdenticalAggregation, type HTTPSendRequester, EVMClient, Report } from "@chainlink/cre-sdk";
+import { SDK_PB } from "@chainlink/cre-sdk/pb";
+import { create } from "@bufbuild/protobuf";
 
-interface Config {
+interface Config {}
 
-}
+// ============================================================
+// ADRESSES SEPOLIA — à mettre à jour après redéploiement P1
+// ============================================================
+const STREAM_FACTORY_ADDRESS = "1Bc1135c04Ad7236C56b8EBc1F3b25A8A0ecb5D6"; // TODO: confirmer avec P1
+const MASTER_SETTLER_ADDRESS = "2F3dd4718A8e8f709d82aC37840565ABCEddA780"; // TODO: confirmer avec P1
+const PROXY_URL = "http://ysm-defilama-proxy.ysm-market-proxy.workers.dev/fees/";
 
-const KEEPER_ADDRESS       = "aad4F938F75A14015E84D7f1aFA81F8A53ad79B7"; 
-const FACTORY_ADDRESS      = "3615CFfF7D94710AC12Ed63c94E28F53551Ac32E"; 
-const ROUTER_ADDRESS       = "02E75407376e5FBEd0e507E8265d92CeE9279fDC"; 
-const MOCK_PROTOCOL        = "1794D78868884567fB4A483e8B827938d9d81C27"; 
-const MOCK_QS_BASE         = "a1A2A7280Ff5EB33773A89F8e05F2Ab7ba67351A"; 
-const MOCK_QS_POLYGON      = "CfB176618D17c7e05A2A5D3d044D89Bce5f320F5"; 
-const USDC_ADDRESS         = "1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"; 
-const CRE_FORWARDER        = "15fc6ae953e024d975e77382eeec56a9101f9f88"; 
-const PRICE_FLOOR_HOOK     = "438197E899F22AFC742cf65c20f0dc15730DAfC9"; 
+// ============================================================
+// ABI ENCODING — helpers manuels (abi.encode compatible)
+// ============================================================
 
-const PERFORM_UPKEEP_SELECTOR = "4585e33b";
+const encodeUint256 = (value: number | bigint): string =>
+  BigInt(value).toString(16).padStart(64, "0");
 
-const CHECK_UPKEEP_SELECTOR   = "6e04d938";
+const encodeUint8 = (value: number): string =>
+  value.toString(16).padStart(64, "0");
 
-const abiEncodeUint256 = (value: number): string => {
-  return value.toString(16).padStart(64, '0'); 
+const encodeBool = (value: boolean): string =>
+  (value ? 1 : 0).toString(16).padStart(64, "0");
+
+/**
+ * Encode un bytes dynamique (length slot + data padded to 32 bytes)
+ */
+const encodeBytesPayload = (hexData: string): string => {
+  const len = hexData.length / 2;
+  const lenHex = len.toString(16).padStart(64, "0");
+  const paddedLen = Math.ceil(len / 32) * 64;
+  const padded = hexData.padEnd(paddedLen, "0");
+  return lenHex + padded;
 };
 
-const PROXY_URL = "http://ysm-defilama-proxy.ysm-market-proxy.workers.dev/fees/";
+/**
+ * Encode le report final : abi.encode(uint8 workflowType, bytes innerPayload)
+ *
+ * Slots ABI :
+ *   [0x00] uint8  workflowType   (padded to 32 bytes)
+ *   [0x20] offset → bytes data  = 0x40 (2 slots)
+ *   [0x40] length de innerPayload
+ *   [0x60+] innerPayload data    (padded to 32 bytes)
+ */
+const encodeReport = (workflowType: number, innerPayloadHex: string): Uint8Array => {
+  const typeSlot   = encodeUint8(workflowType);
+  const offsetSlot = encodeUint256(0x40); // offset fixe : 2 slots × 32 bytes = 64
+  const payloadBody = encodeBytesPayload(innerPayloadHex);
+
+  const fullHex = typeSlot + offsetSlot + payloadBody;
+  const bytes = new Uint8Array(fullHex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(fullHex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+};
+
+const makeReport = (rawReportBytes: Uint8Array): Report => {
+  const reportResponse = create(SDK_PB.ReportResponseSchema, {
+    rawReport: rawReportBytes,
+  });
+  return new Report(reportResponse);
+};
+
+// ============================================================
+// Chainlink latestAnswer() → int256 (8 décimales), encodé sur 32 bytes
+// ============================================================
+
+const decodeLatestAnswerUsd = (data: Uint8Array | undefined): number | null => {
+  if (!data || data.length < 32) return null;
+  const slice = data.subarray(data.length - 32);
+  let hex = "";
+  for (let i = 0; i < 32; i++) {
+    hex += slice[i]!.toString(16).padStart(2, "0");
+  }
+  const unsigned = BigInt("0x" + hex);
+  const signBit = 1n << 255n;
+  const signed = unsigned >= signBit ? unsigned - (1n << 256n) : unsigned;
+  const usd = Number(signed) / 1e8;
+  return Number.isFinite(usd) && usd > 0 ? usd : null;
+};
+
+// ============================================================
+// HTTP helpers
+// ============================================================
+
+const fetchEthSpotBinanceApi = (sendRequester: HTTPSendRequester, url: string): number => {
+  try {
+    const response = sendRequester.sendRequest({ url, method: "GET" }).result();
+    const data = JSON.parse(new TextDecoder().decode(response.body));
+    const p = parseFloat(data.price);
+    return Number.isFinite(p) && p > 0 ? p : 3500;
+  } catch {
+    return 3500;
+  }
+};
 
 const fetchEthPrice30dApi = (sendRequester: HTTPSendRequester, url: string): number => {
   try {
-      const response = sendRequester.sendRequest({ url: url, method: "GET" }).result();
-      const data = JSON.parse(new TextDecoder().decode(response.body));
-      if (data && data[0] && data[0][4]) {
-          return parseFloat(data[0][4]); 
-      }
-      return 3200;
-  } catch(e) {
-      return 3200;
-  }
+    const response = sendRequester.sendRequest({ url, method: "GET" }).result();
+    const data = JSON.parse(new TextDecoder().decode(response.body));
+    if (data && data[0] && data[0][4]) return parseFloat(data[0][4]);
+    return 3200;
+  } catch { return 3200; }
 };
 
 const fetchProxyStatsApi = (sendRequester: HTTPSendRequester, url: string): string => {
   try {
-      const response = sendRequester.sendRequest({ url: url, method: "GET" }).result();
-      return new TextDecoder().decode(response.body);
-  } catch(e: any) {
-      return JSON.stringify({ error: e.message });
+    const response = sendRequester.sendRequest({ url, method: "GET" }).result();
+    return new TextDecoder().decode(response.body);
+  } catch (e: any) {
+    return JSON.stringify({ error: e.message });
   }
 };
+
+// ============================================================
+// WORKFLOW #1 — Calcul décote (workflowType = 1)
+// Trigger : HTTP  |  Payload attendu : { "slug": "..." }
+// Report  : abi.encode(uint8=1, bytes=abi.encode(uint256 discountBps))
+// ============================================================
 
 const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Promise<string> => {
-  let protocolSlug = "quickswap";
+  let slug = "quickswap";
   try {
     const body = decodeJson(payload.input) as any;
-    if (body && body.slug) protocolSlug = body.slug;
-  } catch (e) {}
+    if (body?.slug) slug = body.slug;
+  } catch {}
 
-  runtime.log(`[WORKFLOW #1] Calcul décote pour : ${protocolSlug}`);
-
-  let ethUsdPriceNow = 0;
-  try {
-     const evm = new EVMClient(EVMClient.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
-     const callPayload = {
-         from: Buffer.from("0000000000000000000000000000000000000000", "hex").toString("base64"),
-         to: Buffer.from("694AA1769357215DE4FAC081bf1f309aDC325306", "hex").toString("base64"), 
-         data: Buffer.from("50d25bcd", "hex").toString("base64") 
-     };
-     const reply = evm.callContract(runtime, { call: callPayload }).result();
-     let dataHex = "";
-     for (let i = 0; i < reply.data.length; i++) {
-        dataHex += reply.data[i].toString(16).padStart(2, '0');
-     }
-     ethUsdPriceNow = parseInt(dataHex, 16) / 100000000;
-     runtime.log(`[WORKFLOW #1] Prix ETH/USD (Chainlink Sepolia) : $${ethUsdPriceNow}`);
-  } catch (err: any) {
-     runtime.log(`[WORKFLOW #1] ERREUR Price Feed : ${err.message}`);
-  }
+  runtime.log(`[WORKFLOW #1] Calcul décote pour slug : ${slug}`);
 
   const httpClient = new HTTPClient();
 
+  // --- Prix ETH actuel : Chainlink feed Sepolia, sinon spot Binance (la simu renvoie souvent data vide) ---
+  let ethUsdPriceNow = 3500;
+  const spotUrl = "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT";
+  try {
+    const evm = new EVMClient(EVMClient.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
+    const reply = evm.callContract(runtime, {
+      call: {
+        to: "0x694AA1769357215DE4FAC081bf1f309aDC325306", // ETH/USD feed Sepolia
+        data: "0x50d25bcd", // latestAnswer()
+      }
+    }).result();
+    const fromFeed = decodeLatestAnswerUsd(reply.data);
+    if (fromFeed != null) {
+      ethUsdPriceNow = fromFeed;
+      runtime.log(`[WORKFLOW #1] ETH/USD actuel (Chainlink) : $${ethUsdPriceNow.toFixed(2)}`);
+    } else {
+      ethUsdPriceNow = httpClient.sendRequest(runtime, fetchEthSpotBinanceApi, consensusMedianAggregation())(spotUrl).result();
+      runtime.log(`[WORKFLOW #1] ETH/USD actuel (Binance, feed vide en simu) : $${ethUsdPriceNow.toFixed(2)}`);
+    }
+  } catch (e: any) {
+    try {
+      ethUsdPriceNow = httpClient.sendRequest(runtime, fetchEthSpotBinanceApi, consensusMedianAggregation())(spotUrl).result();
+      runtime.log(`[WORKFLOW #1] ETH/USD actuel (Binance, feed erreur) : $${ethUsdPriceNow.toFixed(2)} — ${e.message}`);
+    } catch {
+      runtime.log(`[WORKFLOW #1] Prix spot indisponible, fallback $${ethUsdPriceNow} : ${e.message}`);
+    }
+  }
+
+  // --- Prix ETH il y a 30j via Binance ---
   let ethUsdPrice30d = 3200;
   try {
-     const thirtyDaysAgoMs = Math.floor(Date.now() / 86400000) * 86400000 - (30 * 24 * 60 * 60 * 1000);
-     const binanceUrl = `https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=1d&limit=1&endTime=${thirtyDaysAgoMs}`;
-     const getEth30d = httpClient.sendRequest(runtime, fetchEthPrice30dApi, consensusMedianAggregation());
-     ethUsdPrice30d = getEth30d(binanceUrl).result();
-     runtime.log(`[WORKFLOW #1] Prix ETH/USD il y a 30j (Binance) : $${ethUsdPrice30d}`);
-  } catch (err: any) {
-     runtime.log(`[WORKFLOW #1] ERREUR Binance : ${err.message}`);
+    const t30j = Math.floor(Date.now() / 86400000) * 86400000 - 30 * 24 * 3600 * 1000;
+    const url = `https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=1d&limit=1&endTime=${t30j}`;
+    ethUsdPrice30d = httpClient.sendRequest(runtime, fetchEthPrice30dApi, consensusMedianAggregation())(url).result();
+    runtime.log(`[WORKFLOW #1] ETH/USD il y a 30j : $${ethUsdPrice30d}`);
+  } catch (e: any) {
+    runtime.log(`[WORKFLOW #1] Binance indisponible, fallback $${ethUsdPrice30d} : ${e.message}`);
   }
 
+  // --- rScore via proxy DeFiLlama ---
   let rScore = 0.8;
   try {
-     const getStats = httpClient.sendRequest(runtime, fetchProxyStatsApi, consensusIdenticalAggregation());
-     const statsJson = getStats(`${PROXY_URL}${protocolSlug}`).result();
-     const stats = JSON.parse(statsJson);
-     if (stats && !stats.error) {
-       rScore = stats.rScore ?? 0.8;
-       runtime.log(`[WORKFLOW #1] rScore (Proxy) : ${rScore}`);
-     } else {
-       runtime.log(`[WORKFLOW #1] Proxy error: ${stats.error || "unknown"}`);
-     }
-  } catch (err: any) {
-     runtime.log(`[WORKFLOW #1] ERREUR Proxy rScore : ${err.message}`);
+    const statsJson = httpClient.sendRequest(runtime, fetchProxyStatsApi, consensusIdenticalAggregation())(`${PROXY_URL}${slug}`).result();
+    const stats = JSON.parse(statsJson);
+    if (stats && !stats.error) {
+      rScore = stats.rScore ?? 0.8;
+      runtime.log(`[WORKFLOW #1] rScore proxy : ${rScore}`);
+    }
+  } catch (e: any) {
+    runtime.log(`[WORKFLOW #1] Proxy indisponible, fallback rScore=${rScore} : ${e.message}`);
   }
 
-  let marketRisk = 0.0;
-  if (ethUsdPriceNow > 0 && ethUsdPrice30d > 0 && ethUsdPriceNow < ethUsdPrice30d) {
-     marketRisk = 1 - (ethUsdPriceNow / ethUsdPrice30d);
-  }
-
+  // --- Calcul décote ---
   const sigma = 0.165;
-
-  let decote = (0.25 * (sigma * 3.46)) + (0.35 * (1 - rScore)) + (0.40 * marketRisk);
+  const marketRisk = ethUsdPriceNow < ethUsdPrice30d
+    ? 1 - ethUsdPriceNow / ethUsdPrice30d
+    : 0;
+  let decote = 0.25 * (sigma * 3.46) + 0.35 * (1 - rScore) + 0.40 * marketRisk;
   decote = Math.min(Math.max(decote, 0.10), 0.50);
-  const decoteInt = Math.floor(decote * 100);
-  const discountBps = decoteInt * 100; 
+  const discountBps = Math.floor(decote * 100) * 100;
 
-  runtime.log(`[WORKFLOW #1] Décote finale : ${decoteInt}% = ${discountBps} bps (marketRisk=${marketRisk.toFixed(3)}, rScore=${rScore})`);
+  runtime.log(`[WORKFLOW #1] Décote : ${Math.floor(decote * 100)}% = ${discountBps} bps (marketRisk=${marketRisk.toFixed(3)}, rScore=${rScore})`);
 
-  const encodedResult = abiEncodeUint256(discountBps);
+  // --- Envoi on-chain via CRE ---
+  // report = abi.encode(uint8=1, bytes=abi.encode(uint256 discountBps))
+  const innerPayload = encodeUint256(discountBps);
+  const reportBytes  = encodeReport(1, innerPayload);
+
+  // Log du hex pour test manuel via demo-sender.ts
+  let reportHex = "0x";
+  for (let i = 0; i < reportBytes.length; i++) reportHex += reportBytes[i]!.toString(16).padStart(2, "0");
+  runtime.log(`[WORKFLOW #1] REPORT_HEX=${reportHex}`);
 
   try {
     const evm = new EVMClient(EVMClient.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
-    const receiverBytes = Buffer.from(FACTORY_ADDRESS, "hex");
-    evm.writeReport(runtime, { receiver: receiverBytes }).result();
-    runtime.log(`[WORKFLOW #1] ✅ writeReport envoyé à Factory (${discountBps} bps)`);
-  } catch (err: any) {
-    runtime.log(`[WORKFLOW #1] ⚠️ writeReport non exécuté en simulation (normal) : ${err.message}`);
+    evm.writeReport(runtime, {
+      receiver: "0x" + STREAM_FACTORY_ADDRESS,
+      report: makeReport(reportBytes),
+    }).result();
+    runtime.log(`[WORKFLOW #1] ✅ writeReport envoyé → StreamFactory (${discountBps} bps)`);
+  } catch (e: any) {
+    runtime.log(`[WORKFLOW #1] ⚠️ writeReport non exécuté (normal en simulation) : ${e.message}`);
   }
 
-  return encodedResult;
+  return "OK";
 };
+
+// ============================================================
+// WORKFLOW #2 — Gate (workflowType = 2)
+// Trigger : HTTP  |  Payload attendu : { "slug": "..." }
+// Report  : abi.encode(uint8=2, bytes=abi.encode(bool approved))
+// ============================================================
 
 const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Promise<string> => {
-  let protocolSlug = "quickswap";
+  let slug = "quickswap";
   try {
     const body = decodeJson(payload.input) as any;
-    if (body && body.slug) protocolSlug = body.slug;
-  } catch (e) {}
+    if (body?.slug) slug = body.slug;
+  } catch {}
 
-  runtime.log(`[WORKFLOW #2] Évaluation Gate pour : ${protocolSlug}`);
-
-  const httpClient = new HTTPClient();
-  let avg30 = 0;
-  let rScore = 0.5;
-  let daysOfData = 0;
-
-  try {
-     const getStats = httpClient.sendRequest(runtime, fetchProxyStatsApi, consensusIdenticalAggregation());
-     const statsJson = getStats(`${PROXY_URL}${protocolSlug}`).result();
-     const stats = JSON.parse(statsJson);
-     if (stats && !stats.error) {
-       avg30 = stats.avg30 ?? 0;
-       rScore = stats.rScore ?? 0.5;
-       daysOfData = stats.daysOfData ?? 0;
-       runtime.log(`[WORKFLOW #2] Stats Proxy : avg30=${avg30}, rScore=${rScore}, days=${daysOfData}`);
-     } else {
-       runtime.log(`[WORKFLOW #2] Proxy error: ${stats.error || "unknown"}`);
-     }
-  } catch (err: any) {
-     runtime.log(`[WORKFLOW #2] ERREUR Proxy stats : ${err.message}`);
-  }
-
-  const SEUIL_FEES_DAY = 1000;
-  const critere1 = avg30 >= SEUIL_FEES_DAY;
-  runtime.log(`[WORKFLOW #2] Critère 1 - Revenus moyens 30j: $${avg30.toFixed(0)}/jour (seuil: $${SEUIL_FEES_DAY}) → ${critere1 ? "✓ PASS" : "✗ FAIL"}`);
-
-  const SEUIL_RSCORE = 0.5;
-  const critere2 = rScore >= SEUIL_RSCORE;
-  runtime.log(`[WORKFLOW #2] Critère 2 - rScore momentum: ${rScore} (seuil: ${SEUIL_RSCORE}) → ${critere2 ? "✓ PASS" : "✗ FAIL"}`);
-
-  const SEUIL_DAYS = 90;
-  const critere3 = daysOfData >= SEUIL_DAYS;
-  runtime.log(`[WORKFLOW #2] Critère 3 - Historique: ${daysOfData} jours (seuil: ${SEUIL_DAYS}) → ${critere3 ? "✓ PASS" : "✗ FAIL"}`);
-
-  const isAccepted = critere1 && critere2 && critere3;
-  const reason = !critere1 ? "Revenus insuffisants (<$1k/jour)" :
-                 !critere2 ? "Momentum en chute (rScore<0.5)" :
-                 !critere3 ? "Historique trop court (<90j)" : "OK";
-
-  runtime.log(`[WORKFLOW #2] Décision finale : ${isAccepted ? "✅ ACCEPTÉ" : "❌ REFUSÉ"} (${reason})`);
-  runtime.log(`[WORKFLOW #2] avg30dFees=$${Math.round(avg30)}/j | rScore=${rScore} | daysOfData=${daysOfData}`);
-
-  const gateResult = abiEncodeUint256(isAccepted ? 1 : 0);
-
-  try {
-    const evm = new EVMClient(EVMClient.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
-    const receiverBytes = Buffer.from(FACTORY_ADDRESS, "hex");
-    evm.writeReport(runtime, { receiver: receiverBytes }).result();
-    runtime.log(`[WORKFLOW #2] ✅ writeReport envoyé à Factory (gate=${isAccepted ? 1 : 0})`);
-  } catch (err: any) {
-    runtime.log(`[WORKFLOW #2] ⚠️ writeReport non exécuté en simulation (normal) : ${err.message}`);
-  }
-
-  return gateResult;
-};
-
-const onSettlementTrigger = async (runtime: Runtime<Config>, payload: any): Promise<string> => {
-  runtime.log(`[WORKFLOW #3] ⏰ Settlement daily déclenché`);
-
-  let protocolSlug = "quickswap";
-  try {
-    const body = decodeJson(payload.input) as any;
-    if (body && body.slug) protocolSlug = body.slug;
-  } catch (e) {}
+  runtime.log(`[WORKFLOW #2] Évaluation Gate pour : ${slug}`);
 
   const httpClient = new HTTPClient();
+  let avg30 = 0, rScore = 0.5, daysOfData = 0;
 
-  let yesterdayFees = 0;
   try {
-    const getStats = httpClient.sendRequest(runtime, fetchProxyStatsApi, consensusIdenticalAggregation());
-    const statsJson = getStats(`${PROXY_URL}${protocolSlug}`).result();
+    const statsJson = httpClient.sendRequest(runtime, fetchProxyStatsApi, consensusIdenticalAggregation())(`${PROXY_URL}${slug}`).result();
     const stats = JSON.parse(statsJson);
-    yesterdayFees = stats.yesterdayFees || 0;
-
-    runtime.log(`[WORKFLOW #3] Fees Proxy hier pour ${protocolSlug} : $${yesterdayFees.toFixed(2)}`);
-  } catch (err: any) {
-    runtime.log(`[WORKFLOW #3] ERREUR Proxy settlement : ${err.message}`);
+    if (stats && !stats.error) {
+      avg30      = stats.avg30 ?? 0;
+      rScore     = stats.rScore ?? 0.5;
+      daysOfData = stats.daysOfData ?? 0;
+      runtime.log(`[WORKFLOW #2] Stats proxy : avg30=$${avg30.toFixed(0)}/j, rScore=${rScore}, days=${daysOfData}`);
+    }
+  } catch (e: any) {
+    runtime.log(`[WORKFLOW #2] Proxy indisponible : ${e.message}`);
   }
 
-  const distributableUSDC = yesterdayFees; 
-  runtime.log(`[WORKFLOW #3] Montant USDC estimé pour la démo : $${distributableUSDC.toFixed(2)} USDC`);
+  const approved = avg30 >= 1000 && rScore >= 0.5 && daysOfData >= 90;
+
+  runtime.log(`[WORKFLOW #2] Critère revenus avg30=$${avg30.toFixed(0)} ≥ $1000 → ${avg30 >= 1000 ? "✓" : "✗"}`);
+  runtime.log(`[WORKFLOW #2] Critère rScore ${rScore} ≥ 0.5 → ${rScore >= 0.5 ? "✓" : "✗"}`);
+  runtime.log(`[WORKFLOW #2] Critère ancienneté ${daysOfData}j ≥ 90j → ${daysOfData >= 90 ? "✓" : "✗"}`);
+  runtime.log(`[WORKFLOW #2] Gate ${slug} : ${approved ? "ACCEPTÉ ✅" : "REFUSÉ ❌"}`);
+
+  // --- Envoi on-chain via CRE ---
+  // report = abi.encode(uint8=2, bytes=abi.encode(bool approved))
+  const innerPayload = encodeBool(approved);
+  const reportBytes  = encodeReport(2, innerPayload);
+
+  // Log du hex pour test manuel via demo-sender.ts
+  let reportHex = "0x";
+  for (let i = 0; i < reportBytes.length; i++) reportHex += reportBytes[i]!.toString(16).padStart(2, "0");
+  runtime.log(`[WORKFLOW #2] REPORT_HEX=${reportHex}`);
 
   try {
     const evm = new EVMClient(EVMClient.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
-
-    const checkCallData = CHECK_UPKEEP_SELECTOR
-      + "0000000000000000000000000000000000000000000000000000000000000020" 
-      + "0000000000000000000000000000000000000000000000000000000000000000"; 
-
-    const checkPayload = {
-      from: Buffer.from("0000000000000000000000000000000000000000", "hex").toString("base64"),
-      to:   Buffer.from(KEEPER_ADDRESS, "hex").toString("base64"),
-      data: Buffer.from(checkCallData, "hex").toString("base64")
-    };
-
-    const checkResult = evm.callContract(runtime, { call: checkPayload }).result();
-
-    let checkHex = "";
-    for (let i = 0; i < checkResult.data.length; i++) {
-      checkHex += checkResult.data[i].toString(16).padStart(2, '0');
-    }
-    runtime.log(`[WORKFLOW #3] checkUpkeep réponse hex (${checkHex.length} chars): ${checkHex.slice(0, 64)}...`);
-
-    const upkeepNeeded = parseInt(checkHex.slice(0, 64), 16) !== 0;
-    runtime.log(`[WORKFLOW #3] upkeepNeeded : ${upkeepNeeded}`);
-
-    if (!upkeepNeeded) {
-      runtime.log(`[WORKFLOW #3] Aucun vault à settler — passage à la prochaine exécution`);
-      return JSON.stringify({
-        action: "settlement", protocol: protocolSlug, status: "no_vaults_pending",
-        data: { yesterdayFees_USD: Math.round(yesterdayFees), upkeepNeeded: false }
-      }, null, 2);
-    }
-
-    const performDataOffset = parseInt(checkHex.slice(64, 128), 16) * 2; 
-    const performDataLen = parseInt(checkHex.slice(128, 192), 16); 
-    const performDataHex = checkHex.slice(192, 192 + performDataLen * 2);
-    runtime.log(`[WORKFLOW #3] performData extrait (${performDataLen} bytes): 0x${performDataHex.slice(0, 40)}...`);
-
-    const performCallData = PERFORM_UPKEEP_SELECTOR
-      + "0000000000000000000000000000000000000000000000000000000000000020" 
-      + performDataLen.toString(16).padStart(64, '0')                      
-      + performDataHex.padEnd(Math.ceil(performDataLen / 32) * 64, '0');   
-
-    const performPayload = {
-      from: Buffer.from(CRE_FORWARDER, "hex").toString("base64"),
-      to:   Buffer.from(KEEPER_ADDRESS, "hex").toString("base64"),
-      data: Buffer.from(performCallData, "hex").toString("base64")
-    };
-
-    const performResult = evm.callContract(runtime, { call: performPayload }).result();
-    runtime.log(`[WORKFLOW #3] ✅ performUpkeep() envoyé avec succès au Keeper`);
-
-    return JSON.stringify({
-      action: "settlement", protocol: protocolSlug, status: "executed",
-      data: {
-        yesterdayFees_USD: Math.round(yesterdayFees),
-        distributableUSDC: Math.round(distributableUSDC),
-        upkeepNeeded: true,
-        keeper: "0x" + KEEPER_ADDRESS,
-        readyForOnChain: true
-      }
-    }, null, 2);
-
-  } catch (err: any) {
-    runtime.log(`[WORKFLOW #3] ⚠️ Erreur on-chain (simulation normale en local) : ${err.message}`);
-    return JSON.stringify({
-      action: "settlement", protocol: protocolSlug, status: "computed_pending_write",
-      data: {
-        yesterdayFees_USD: Math.round(yesterdayFees),
-        distributableUSDC: Math.round(distributableUSDC),
-        keeper: "0x" + KEEPER_ADDRESS,
-        readyForOnChain: false
-      }
-    }, null, 2);
+    evm.writeReport(runtime, {
+      receiver: "0x" + STREAM_FACTORY_ADDRESS,
+      report: makeReport(reportBytes),
+    }).result();
+    runtime.log(`[WORKFLOW #2] ✅ writeReport envoyé → StreamFactory (approved=${approved})`);
+  } catch (e: any) {
+    runtime.log(`[WORKFLOW #2] ⚠️ writeReport non exécuté (normal en simulation) : ${e.message}`);
   }
+
+  return "OK";
 };
 
-const initWorkflow = (config: Config) => {
+// ============================================================
+// WORKFLOW #3 — Settlement
+// Trigger : Cron  |  Report : vide (0x)
+// ============================================================
+
+const onSettlementTrigger = async (runtime: Runtime<Config>, _payload: any): Promise<string> => {
+  runtime.log(`[WORKFLOW #3] Settlement déclenché`);
+
+  try {
+    const evm = new EVMClient(EVMClient.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]);
+    evm.writeReport(runtime, {
+      receiver: "0x" + MASTER_SETTLER_ADDRESS,
+      report: makeReport(new Uint8Array(0)),
+    }).result();
+    runtime.log(`[WORKFLOW #3] ✅ writeReport envoyé → MasterSettler`);
+  } catch (e: any) {
+    runtime.log(`[WORKFLOW #3] ⚠️ writeReport non exécuté (normal en simulation) : ${e.message}`);
+  }
+
+  return "OK";
+};
+
+// ============================================================
+// INIT
+// ============================================================
+
+const initWorkflow = (_config: Config) => {
   const http1 = new cre.capabilities.HTTPCapability();
   const http2 = new cre.capabilities.HTTPCapability();
-  const cron = new cre.capabilities.CronCapability();
+  const cron  = new cre.capabilities.CronCapability();
 
   return [
     cre.handler(http1.trigger({}), onDecoteTrigger),
     cre.handler(http2.trigger({}), onGateTrigger),
-    cre.handler(cron.trigger({ schedule: "0 0 * * *" }), onSettlementTrigger) 
+    cre.handler(cron.trigger({ schedule: "0 0 * * *" }), onSettlementTrigger),
   ];
 };
 

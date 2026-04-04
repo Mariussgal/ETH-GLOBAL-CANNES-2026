@@ -22,7 +22,7 @@ async function main() {
     const vaultAddress = await vault.getAddress();
 
     const TokenFactory = await ethers.getContractFactory("YSTToken");
-    const token = await TokenFactory.deploy("YST-quickswapv3", "YST", vaultAddress, owner.address);
+    const token = await TokenFactory.deploy("quickswapv3", "YST", vaultAddress, owner.address);
     await token.waitForDeployment();
     const tokenAddress = await token.getAddress();
 

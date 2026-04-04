@@ -539,7 +539,7 @@ export default function CreateStreamTerminal() {
     lines.push(
       `> FEES_SLUG (DeFiLlama): ${feesLookupSlug || "—"}${normalizeFeesSlugOverride(feesSlugOverrideInput) ? " [override]" : ""}`
     );
-    lines.push(`> YST_SYMBOL: YST (imposé par le Factory)`);
+    lines.push(`> ERC20: name="${onChainDeploySlug || "—"}" · symbol=YST (Factory)`);
     lines.push(
       `> REV_ANNUEL_USD (DeFiLlama avg30×365): ${feesLoading ? "…" : formatNumber(Math.round(annualRevenueUsd))}`
     );

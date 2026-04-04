@@ -26,6 +26,8 @@ export type OnChainStreamRow = {
    * À la création tout est minté sur l’émetteur — totalSupply/cap faisait 100 % à tort.
    */
   fundingRatio: number;
+  /** Objectif de levée nominal (USDC 6 dec → humain), depuis `Vault.stream.capitalRaised`. */
+  nominalCapUsdc: number;
   totalFeesWei: bigint;
   totalYST: bigint;
   emitterYstBalance: bigint;
@@ -235,6 +237,7 @@ export function useMarketplaceOnChainStreams() {
         vault: row.vault,
         ystToken: row.ystToken,
         fundingRatio,
+        nominalCapUsdc: Number(params.capitalRaised) / 1e6,
         totalFeesWei: totalFees,
         totalYST: cap,
         emitterYstBalance: emitterYstBalance ?? BigInt(0),

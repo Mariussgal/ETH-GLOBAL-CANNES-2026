@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 
-const FACTORY = "0x249c8855b842Cf044De78596702471098B31B082";
+const FACTORY = "0xCe897e27860F6c317DA7b4C7bB0252b941B2dCeC";
 
 async function main() {
     const [deployer] = await ethers.getSigners();

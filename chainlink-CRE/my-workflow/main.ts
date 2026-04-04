@@ -10,7 +10,7 @@ const envVar = (key: string): string | undefined =>
 // ============================================================
 // ADRESSES SEPOLIA — à mettre à jour après redéploiement P1
 // ============================================================
-const STREAM_FACTORY_ADDRESS = "249c8855b842Cf044De78596702471098B31B082";
+const STREAM_FACTORY_ADDRESS = "Ce897e27860F6c317DA7b4C7bB0252b941B2dCeC";
 const MASTER_SETTLER_ADDRESS = "FE6B4a8Ae90C47dA0E19296CaeBb2FF8D313954f";
 const PROXY_URL = "http://ysm-defilama-proxy.ysm-market-proxy.workers.dev/fees/";
 

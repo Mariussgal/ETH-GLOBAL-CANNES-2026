@@ -6,31 +6,63 @@ import type { StreamData } from "@/components/StreamCard";
 import { formatNumber } from "@/lib/format";
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import { useAccount } from "wagmi";
+import { useEffect, useMemo, useState } from "react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount, useReadContract } from "wagmi";
+import { ERC20_ABI, SEPOLIA_CHAIN_ID } from "@/contracts";
+import { ystHumanFromUsdc } from "@/lib/yst-primary-sale";
 import ArcConsolidationHub from "./ArcConsolidationHub";
 import ArcActivityFeed from "./ArcActivityFeed";
 import { useArcSepoliaSync } from "@/hooks/useArcSepoliaSync";
 import { useDemoProtocolRevenueFeed } from "@/hooks/useDemoProtocolRevenueFeed";
+import { usePrimaryMarketInvest } from "@/hooks/usePrimaryMarketInvest";
 import { shouldSimulateDemoRevenue } from "@/lib/demo-revenue-protocol";
+
+export type StreamChainInvest = {
+  ystToken: `0x${string}`;
+  emitter: `0x${string}`;
+};
 
 interface StreamInvestViewProps {
   stream: StreamData;
+  /** Adresses stream Sepolia — achat YST via PrimarySale. */
+  chainInvest?: StreamChainInvest;
   /** Factory + CRE : forwarder et mapping workflow (streams on-chain uniquement). */
   chainlinkAutomationActive?: boolean;
 }
 
 export default function StreamInvestView({
   stream,
+  chainInvest,
   chainlinkAutomationActive = false,
 }: StreamInvestViewProps) {
   const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const [usdcRaw, setUsdcRaw] = useState("");
+
+  /** Plafond : ne pas dépasser l’objectif de levée ni la capacité restante. */
+  const maxInvestUsdc = useMemo(
+    () => Math.max(0, stream.vaultTarget - stream.vaultFill),
+    [stream.vaultTarget, stream.vaultFill]
+  );
 
   const usdcNum = useMemo(() => {
     const n = parseFloat(usdcRaw.replace(/,/g, ""));
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  }, [usdcRaw]);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.min(n, maxInvestUsdc);
+  }, [usdcRaw, maxInvestUsdc]);
+
+  useEffect(() => {
+    if (maxInvestUsdc <= 0) return;
+    const n = parseFloat(usdcRaw.replace(/,/g, ""));
+    if (usdcRaw !== "" && Number.isFinite(n) && n > maxInvestUsdc) {
+      setUsdcRaw(
+        Number.isInteger(maxInvestUsdc)
+          ? String(maxInvestUsdc)
+          : maxInvestUsdc.toFixed(6).replace(/\.?0+$/, "")
+      );
+    }
+  }, [maxInvestUsdc, usdcRaw]);
 
   // vaultTarget = nominal on-chain (= fee% × revenu annuel réf., voir CreateStreamTerminal).
   // Valeur faciale des claims (total YST) = nominal / (1 − décote), aligné Factory.projectedRevenue.
@@ -38,11 +70,26 @@ export default function StreamInvestView({
   const HISTORICAL_ANNUAL_REVENUE = stream.vaultTarget / (stream.feePercent / 100);
   
   const projectedYield = ((TARGET_DISTRIBUTION - stream.vaultTarget) / stream.vaultTarget) * 100;
-  
-  const totalYst = stream.vaultTarget; // 1:1 mapping based on "78,000 YST units for $78k"
-  const pricePerUnit = 1.00; // Fixed as per prompt
-  
-  const ystReceived = usdcNum > 0 ? usdcNum / pricePerUnit : 0;
+
+  const { data: ystDecimalsRaw } = useReadContract({
+    address: chainInvest?.ystToken,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+    chainId: SEPOLIA_CHAIN_ID,
+    query: { enabled: Boolean(chainInvest?.ystToken) },
+  });
+  const ystDecimals =
+    ystDecimalsRaw !== undefined ? Number(ystDecimalsRaw) : 18;
+
+  /** Supply totale en unités humaines = valeur faciale (Factory : projectedRevenue × 1e12 wei). */
+  const totalYst = TARGET_DISTRIBUTION;
+  const pricePerUnit = 1.0;
+
+  const ystReceived = useMemo(() => {
+    if (usdcNum <= 0) return 0;
+    if (chainInvest) return ystHumanFromUsdc(usdcNum, ystDecimals);
+    return usdcNum / pricePerUnit;
+  }, [usdcNum, chainInvest, ystDecimals, pricePerUnit]);
   const revenueSharePct = totalYst > 0 ? (ystReceived / totalYst) * stream.feePercent : 0;
 
   const demoRevenue = shouldSimulateDemoRevenue(stream.protocol);
@@ -79,6 +126,34 @@ export default function StreamInvestView({
     : vaultLive && arc.liveSync && arc.accumulatedYieldUsdc !== null
       ? parseFloat(arc.accumulatedYieldUsdc)
       : 0;
+
+  const {
+    invest,
+    phase,
+    busy: investBusy,
+    lastError: investError,
+    primarySaleConfigured,
+  } = usePrimaryMarketInvest({
+    ystToken: chainInvest?.ystToken,
+    emitter: chainInvest?.emitter,
+    enabled: Boolean(chainInvest),
+  });
+
+  const onInvestClick = () => {
+    if (!chainInvest) return;
+    if (!address) {
+      openConnectModal?.();
+      return;
+    }
+    if (usdcNum <= 0 || maxInvestUsdc <= 0) return;
+    void invest(usdcNum);
+  };
+
+  const investDisabledReason = !chainInvest
+    ? "Stream démo — pas d’achat on-chain."
+    : !primarySaleConfigured
+      ? "Contrat PrimarySale : ajoutez NEXT_PUBLIC_PRIMARY_SALE_ADDRESS."
+      : null;
 
   return (
     <div className="min-h-screen bg-black text-text-primary">
@@ -390,15 +465,39 @@ export default function StreamInvestView({
                  >
                    INVEST_AMOUNT (USDC)
                  </label>
+                 <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wide mb-sm">
+                   Max {formatNumber(Math.round(maxInvestUsdc))} USDC
+                   {stream.vaultFill > 0
+                     ? ` (${formatNumber(Math.round(stream.vaultTarget))} raise − ${formatNumber(Math.round(stream.vaultFill))} filled)`
+                     : ` (raise cap)`}
+                 </p>
                  <input
                    id="usdc-in"
                    type="text"
                    inputMode="decimal"
                    placeholder="0.00"
                    value={usdcRaw}
-                   onChange={(e) =>
-                     setUsdcRaw(e.target.value.replace(/[^\d.]/g, ""))
-                   }
+                   onChange={(e) => {
+                     const cleaned = e.target.value.replace(/[^\d.]/g, "");
+                     if (cleaned === "") {
+                       setUsdcRaw("");
+                       return;
+                     }
+                     const n = parseFloat(cleaned);
+                     if (!Number.isFinite(n)) {
+                       setUsdcRaw(cleaned);
+                       return;
+                     }
+                     if (maxInvestUsdc > 0 && n > maxInvestUsdc) {
+                       setUsdcRaw(
+                         Number.isInteger(maxInvestUsdc)
+                           ? String(maxInvestUsdc)
+                           : maxInvestUsdc.toFixed(6).replace(/\.?0+$/, "")
+                       );
+                       return;
+                     }
+                     setUsdcRaw(cleaned);
+                   }}
                    className="w-full bg-black border border-border px-md py-lg font-mono text-subheading text-text-display tabular-nums outline-none focus:border-text-secondary transition-colors duration-200 ease-nothing mb-xl"
                  />
 
@@ -415,12 +514,41 @@ export default function StreamInvestView({
                    </p>
                  </div>
 
+                 {investError && (
+                   <p className="font-mono text-[10px] text-accent mb-md uppercase leading-relaxed">
+                     {investError}
+                   </p>
+                 )}
                  <button
                    type="button"
-                   className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-text-display bg-black text-text-display transition-colors duration-200 ease-nothing hover:bg-text-display hover:text-black mt-auto"
+                   onClick={onInvestClick}
+                   disabled={
+                     investBusy ||
+                     !chainInvest ||
+                     usdcNum <= 0 ||
+                     maxInvestUsdc <= 0 ||
+                     !primarySaleConfigured
+                   }
+                   title={investDisabledReason ?? undefined}
+                   className="w-full font-mono text-[13px] sm:text-[14px] uppercase tracking-[0.06em] px-md py-xl border border-text-display bg-black text-text-display transition-colors duration-200 ease-nothing hover:bg-text-display hover:text-black mt-auto disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-black disabled:hover:text-text-display"
                  >
-                   [ INVEST & MINT YST ]
+                   {investBusy
+                     ? phase === "approving"
+                       ? "[ APPROVE USDC… ]"
+                       : "[ INVEST & MINT YST… ]"
+                     : "[ INVEST & MINT YST ]"}
                  </button>
+                 {investDisabledReason && chainInvest && (
+                   <p className="font-mono text-[9px] text-text-disabled uppercase tracking-wide mt-sm text-center">
+                     {investDisabledReason}
+                   </p>
+                 )}
+                 {chainInvest && primarySaleConfigured && (
+                   <p className="font-mono text-[9px] text-text-disabled uppercase tracking-wide mt-xs text-center leading-relaxed">
+                     L’émetteur doit avoir approuvé PrimarySale sur le token YST (infinite ou montant
+                     suffisant).
+                   </p>
+                 )}
                </div>
              )}
            </aside>

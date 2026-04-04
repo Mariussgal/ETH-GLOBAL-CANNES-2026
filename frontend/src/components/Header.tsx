@@ -1,13 +1,36 @@
 "use client";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import Link from "next/link";
 
 export default function Header() {
   return (
-    <header className="flex items-center justify-between px-xl py-md">
+    <header className="flex items-center justify-between px-xl py-md gap-md flex-wrap">
       {/* Wordmark */}
-      <div className="flex items-center gap-md">
-        <img src="/logoYSM.png" alt="YSM" className="h-12 w-auto" />
+      <div className="flex items-center gap-lg flex-wrap">
+        <Link href="/" className="flex items-center shrink-0">
+          <img src="/logoYSM.png" alt="YSM" className="h-12 w-auto" />
+        </Link>
+        <nav
+          className="hidden sm:flex items-center gap-x-md gap-y-sm font-mono text-[11px] uppercase tracking-wider text-text-disabled"
+          aria-label="Dashboards"
+        >
+          <Link
+            href="/dashboard/issuer"
+            className="hover:text-text-secondary transition-colors"
+          >
+            Issuer
+          </Link>
+          <span className="text-border" aria-hidden>
+            /
+          </span>
+          <Link
+            href="/dashboard/investor"
+            className="hover:text-text-secondary transition-colors"
+          >
+            Investor
+          </Link>
+        </nav>
       </div>
 
       {/* System status + RainbowKit (UI type bouton d’origine) */}

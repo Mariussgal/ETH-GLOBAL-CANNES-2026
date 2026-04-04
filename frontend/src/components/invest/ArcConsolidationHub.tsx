@@ -74,17 +74,21 @@ export default function ArcConsolidationHub({
 
       {/* Center: Arc Logo & Status */}
       <div className="flex flex-col items-center justify-center mb-2xl relative z-10 mt-md">
-        <div className="w-20 h-20 sm:w-24 sm:h-24 mb-xl relative flex items-center justify-center bg-black rounded-full border border-border p-md shadow-[0_0_20px_rgba(255,255,255,0.05)]">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 mb-xl relative flex items-center justify-center bg-black rounded-full border border-border/80 p-[1px] shadow-[0_0_30px_rgba(255,255,255,0.08)] overflow-hidden group">
             {/* Pulsing rings */}
             <div className="absolute inset-[-10px] border border-text-display/20 rounded-full animate-ping opacity-20" />
             <div className="absolute inset-[-20px] border border-text-display/40 rounded-full animate-ping opacity-40 animation-delay-500" />
-            <Image 
-                src="/logo_arc.png" 
-                alt="Arc Protocol" 
-                layout="fill"
-                objectFit="contain"
-                className="p-md opacity-90 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] z-10" 
-            />
+            
+            <div className="relative w-full h-full rounded-full overflow-hidden flex items-center justify-center">
+              <Image 
+                  src="/logo_arc.png" 
+                  alt="Arc Protocol" 
+                  fill
+                  className="object-cover opacity-95 brightness-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] z-10 scale-105 group-hover:scale-110 transition-transform duration-700 ease-in-out" 
+              />
+              {/* Subtle glass overlay to blend edges */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none z-20" />
+            </div>
         </div>
         <div className="font-mono text-caption text-success uppercase tracking-widest flex items-center gap-sm bg-success/5 px-md py-sm border border-success/30 rounded-sm">
           <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.8)]" />

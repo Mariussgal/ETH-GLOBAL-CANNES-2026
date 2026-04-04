@@ -1,9 +1,14 @@
 "use client";
 
+import ActivateAutomationButton from "@/components/dashboard/ActivateAutomationButton";
 import SegmentedProgress from "@/components/SegmentedProgress";
-import { formatNumber } from "@/lib/format";
+import { useCreAutomationStatus } from "@/hooks/useCreAutomationStatus";
 import type { OnChainStreamRow } from "@/hooks/useMarketplaceOnChainStreams";
+import { formatNumber } from "@/lib/format";
+import { computeStreamKey } from "@/lib/stream-key";
 import Link from "next/link";
+import { useMemo } from "react";
+import type { Address } from "viem";
 import { formatUnits } from "viem";
 
 const USDC_DECIMALS = 6;
@@ -14,6 +19,13 @@ type Props = {
 
 export default function IssuerStreamCard({ row }: Props) {
   const { stream, fundingRatio } = row;
+  const streamKey = useMemo(
+    () =>
+      computeStreamKey(stream.protocol, row.emitter as Address) as `0x${string}`,
+    [stream.protocol, row.emitter]
+  );
+  const { chainlinkAutomationActive } = useCreAutomationStatus(streamKey);
+
   const feesUsdc = Number(formatUnits(row.totalFeesWei, USDC_DECIMALS));
   const targetUsdc = stream.vaultTarget;
   const raisedUsdc = fundingRatio * targetUsdc;
@@ -30,9 +42,16 @@ export default function IssuerStreamCard({ row }: Props) {
             {stream.ensName}
           </h3>
         </div>
-        <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider px-sm py-[4px] border border-success/60 text-success rounded-sm">
-          LIVE ON SEPOLIA
-        </span>
+        <div className="flex flex-col items-end gap-xs shrink-0">
+          <span className="font-mono text-[9px] uppercase tracking-wider px-sm py-[4px] border border-success/60 text-success rounded-sm">
+            LIVE ON SEPOLIA
+          </span>
+          {chainlinkAutomationActive && (
+            <span className="font-mono text-[8px] uppercase tracking-wider px-sm py-[3px] border border-[#375BD2]/70 text-[#9ECFFF] rounded-sm">
+              CRE LINKED
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="p-lg flex flex-col gap-lg flex-1">
@@ -77,6 +96,8 @@ export default function IssuerStreamCard({ row }: Props) {
         >
           VIEW ANALYTICS
         </Link>
+
+        <ActivateAutomationButton row={row} />
       </div>
     </article>
   );

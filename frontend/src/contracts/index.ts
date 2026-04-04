@@ -13,7 +13,17 @@ export const ADDRESSES = {
   /** USDC Sepolia (aligné sur le Vault) */
   usdc: "0x1c7D4B196Cb0274891fA4630730B4863E77a56B9" as `0x${string}`,
   ystToken: "0x343f28CEA446Cef6e8A380bFe11BcBf95f115370" as `0x${string}`,
+  /** Keeper AutomationCompatible — aligné `chainlink-CRE/my-workflow/main.ts` (Sepolia). */
+  keeper: "0xaad4F938F75A14015E84D7f1aFA81F8A53ad79B7" as `0x${string}`,
 } as const;
+
+/** Surcharge déploiement (Vercel). */
+export function getKeeperAddress(): `0x${string}` {
+  const e = process.env.NEXT_PUBLIC_KEEPER_ADDRESS?.trim();
+  return e?.startsWith("0x") && e.length >= 42
+    ? (e as `0x${string}`)
+    : ADDRESSES.keeper;
+}
 
 export const ERC20_ABI = [
   {
@@ -104,6 +114,37 @@ export const STREAM_FACTORY_ABI = [
     stateMutability: "view",
     inputs: [{ name: "index", type: "uint256" }],
     outputs: [{ name: "", type: "bytes32" }],
+  },
+  {
+    name: "owner",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    name: "creForwarder",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    name: "workflowToStream",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "workflowId", type: "bytes32" }],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+  {
+    name: "registerWorkflow",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "workflowId", type: "bytes32" },
+      { name: "streamKey", type: "bytes32" },
+    ],
+    outputs: [],
   },
 ] as const;
 

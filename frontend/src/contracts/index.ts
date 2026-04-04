@@ -3,7 +3,7 @@
 export const SEPOLIA_CHAIN_ID = 11155111;
 
 export const ADDRESSES = {
-  streamFactory: "0x0a52b6D02f55ae19Ff3973559Bf2b8129EfcC73B" as `0x${string}`,
+  streamFactory: "0xB8637430Aa69ca2b2203Da14D61c909313c40997" as `0x${string}`,
   ystSplitter: "0x02E75407376e5FBEd0e507E8265d92CeE9279fDC" as `0x${string}`,
   /** Vault Arc / YSM — lecture `earned(user)` (yield accumulé USDC 6 décimales) */
   vault: "0xaa122Fd7940B575c8eaf8376e315002F33D9ad11" as `0x${string}`,

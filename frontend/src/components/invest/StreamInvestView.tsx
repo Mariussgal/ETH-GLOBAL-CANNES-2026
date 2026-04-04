@@ -32,9 +32,10 @@ export default function StreamInvestView({
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }, [usdcRaw]);
 
-  // Derived metrics based on prompt equations
+  // vaultTarget = nominal on-chain (= fee% × revenu annuel réf., voir CreateStreamTerminal).
+  // Valeur faciale des claims (total YST) = nominal / (1 − décote), aligné Factory.projectedRevenue.
   const TARGET_DISTRIBUTION = stream.vaultTarget / (1 - stream.discount / 100);
-  const HISTORICAL_ANNUAL_REVENUE = TARGET_DISTRIBUTION / (stream.feePercent / 100);
+  const HISTORICAL_ANNUAL_REVENUE = stream.vaultTarget / (stream.feePercent / 100);
   
   const projectedYield = ((TARGET_DISTRIBUTION - stream.vaultTarget) / stream.vaultTarget) * 100;
   

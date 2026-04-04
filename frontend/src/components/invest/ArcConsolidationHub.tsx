@@ -79,11 +79,11 @@ export default function ArcConsolidationHub({
             <div className="absolute inset-[-10px] border border-text-display/20 rounded-full animate-ping opacity-20" />
             <div className="absolute inset-[-20px] border border-text-display/40 rounded-full animate-ping opacity-40 animation-delay-500" />
             <Image 
-                src="/arc_logo_white_sharp.png" 
+                src="/logo_arc.png" 
                 alt="Arc Protocol" 
                 layout="fill"
                 objectFit="contain"
-                className="p-md brightness-0 invert opacity-90 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] z-10" 
+                className="p-md opacity-90 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] z-10" 
             />
         </div>
         <div className="font-mono text-caption text-success uppercase tracking-widest flex items-center gap-sm bg-success/5 px-md py-sm border border-success/30 rounded-sm">

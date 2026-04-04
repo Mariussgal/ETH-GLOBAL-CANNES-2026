@@ -1,7 +1,7 @@
 import type { StreamData } from "@/components/StreamCard";
 
-/** Données démo — alignées sur le plan d’attaque YSM */
-/** IDs 201+ réservent 1–N pour les streams on-chain (Factory `streamKeys`) */
+/** Demo data — aligned with the YSM attack plan */
+/** IDs 201+ reserved for 1–N on-chain streams (Factory `streamKeys`) */
 export const MOCK_STREAMS: StreamData[] = [
   {
     id: 201,

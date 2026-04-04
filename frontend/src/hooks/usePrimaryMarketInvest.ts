@@ -44,12 +44,12 @@ export function usePrimaryMarketInvest(opts: {
     async (usdcHuman: number) => {
       setLastError(null);
       if (!enabled || !ystToken || !emitter || !primarySale || !address || !publicClient) {
-        setLastError("Marché primaire indisponible (config wallet ou contrat).");
+        setLastError("Primary market unavailable (check wallet config or contract).");
         return;
       }
       const amount = parseUnits(usdcHuman.toFixed(6), 6);
       if (amount <= BigInt(0)) {
-        setLastError("Montant invalide.");
+        setLastError("Invalid amount.");
         return;
       }
 
@@ -96,7 +96,7 @@ export function usePrimaryMarketInvest(opts: {
             ? String((e as { shortMessage: string }).shortMessage)
             : e instanceof Error
               ? e.message
-              : "Transaction échouée.";
+              : "Transaction failed.";
         setLastError(msg);
       }
     },

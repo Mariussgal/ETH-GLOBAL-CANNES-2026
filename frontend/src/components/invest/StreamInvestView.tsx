@@ -25,9 +25,9 @@ export type StreamChainInvest = {
 
 interface StreamInvestViewProps {
   stream: StreamData;
-  /** Adresses stream Sepolia — achat YST via PrimarySale. */
+  /** Sepolia stream addresses — buy YST via PrimarySale. */
   chainInvest?: StreamChainInvest;
-  /** Factory + CRE : forwarder et mapping workflow (streams on-chain uniquement). */
+  /** Factory + CRE: forwarder and workflow mapping (on-chain streams only). */
   chainlinkAutomationActive?: boolean;
 }
 
@@ -40,7 +40,7 @@ export default function StreamInvestView({
   const { openConnectModal } = useConnectModal();
   const [usdcRaw, setUsdcRaw] = useState("");
 
-  /** Plafond : ne pas dépasser l’objectif de levée ni la capacité restante. */
+  /** Ceiling: do not exceed the raise objective or remaining capacity. */
   const maxInvestUsdc = useMemo(
     () => Math.max(0, stream.vaultTarget - stream.vaultFill),
     [stream.vaultTarget, stream.vaultFill]
@@ -64,8 +64,8 @@ export default function StreamInvestView({
     }
   }, [maxInvestUsdc, usdcRaw]);
 
-  // vaultTarget = nominal on-chain (= fee% × revenu annuel réf., voir CreateStreamTerminal).
-  // Valeur faciale des claims (total YST) = nominal / (1 − décote), aligné Factory.projectedRevenue.
+  // vaultTarget = nominal on-chain (= fee% × annual ref revenue, see CreateStreamTerminal).
+  // Claim face value (total YST) = nominal / (1 − discount), aligns with Factory.projectedRevenue.
   const TARGET_DISTRIBUTION = stream.vaultTarget / (1 - stream.discount / 100);
   const HISTORICAL_ANNUAL_REVENUE = stream.vaultTarget / (stream.feePercent / 100);
   
@@ -81,7 +81,7 @@ export default function StreamInvestView({
   const ystDecimals =
     ystDecimalsRaw !== undefined ? Number(ystDecimalsRaw) : 18;
 
-  /** Supply totale en unités humaines = valeur faciale (Factory : projectedRevenue × 1e12 wei). */
+  /** Total supply in human units = face value (Factory: projectedRevenue × 1e12 wei). */
   const totalYst = TARGET_DISTRIBUTION;
   const pricePerUnit = 1.0;
 
@@ -93,10 +93,10 @@ export default function StreamInvestView({
   const revenueSharePct = totalYst > 0 ? (ystReceived / totalYst) * stream.feePercent : 0;
 
   const demoRevenue = shouldSimulateDemoRevenue(stream.protocol);
-  /** Offre souscrite / vault plein — seul ce critère bascule en vue « live » (pas le mock CRE). */
+  /** Subscribed offer / full vault — only this criterion switches to "live" view (not the CRE mock). */
   const vaultLive = stream.vaultFill >= stream.vaultTarget;
   const isLive = vaultLive;
-  /** Mock revenus nohem : uniquement quand le stream est déjà en mode live. */
+  /** Nohem revenue mock: only when the stream is already in live mode. */
   const demoFeedActive = demoRevenue && vaultLive;
 
   const protocolShort = useMemo(
@@ -150,9 +150,9 @@ export default function StreamInvestView({
   };
 
   const investDisabledReason = !chainInvest
-    ? "Stream démo — pas d’achat on-chain."
+    ? "Demo stream — no on-chain purchase."
     : !primarySaleConfigured
-      ? "Contrat PrimarySale : ajoutez NEXT_PUBLIC_PRIMARY_SALE_ADDRESS."
+      ? "PrimarySale contract: add NEXT_PUBLIC_PRIMARY_SALE_ADDRESS."
       : null;
 
   return (
@@ -543,12 +543,11 @@ export default function StreamInvestView({
                      {investDisabledReason}
                    </p>
                  )}
-                 {chainInvest && primarySaleConfigured && (
-                   <p className="font-mono text-[9px] text-text-disabled uppercase tracking-wide mt-xs text-center leading-relaxed">
-                     L’émetteur doit avoir approuvé PrimarySale sur le token YST (infinite ou montant
-                     suffisant).
-                   </p>
-                 )}
+                  {chainInvest && primarySaleConfigured && (
+                    <p className="font-mono text-[9px] text-text-disabled uppercase tracking-wide mt-xs text-center leading-relaxed">
+                      The issuer must have approved PrimarySale for the YST token (infinite or sufficient amount).
+                    </p>
+                  )}
                </div>
              )}
            </aside>

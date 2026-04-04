@@ -6,8 +6,8 @@ const walletConnectProjectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "YOUR_PROJECT_ID";
 
 /**
- * Transport HTTP sans batch JSON-RPC (certains fournisseurs répondent 400 sur des lots atypiques).
- * Retry léger + timeout un peu plus large pour le navigateur.
+ * HTTP transport without JSON-RPC batching (some providers respond with 400 on atypical batches).
+ * Light retry + slightly larger timeout for the browser.
  */
 function safeHttp(url: string) {
   return http(url, {
@@ -17,7 +17,7 @@ function safeHttp(url: string) {
   });
 }
 
-/** Sepolia : priorité à la clé locale, puis RPC publics stables (évite drpc/publicnode si 400/429 fréquents) */
+/** Sepolia: priority to local key, then stable public RPCs (avoids drpc/publicnode if 400/429 are frequent) */
 const SEPOLIA_RPC_URLS = Array.from(
   new Set(
     [
@@ -30,9 +30,9 @@ const SEPOLIA_RPC_URLS = Array.from(
 );
 
 /**
- * Sepolia : WebSocket Alchemy optionnel (`NEXT_PUBLIC_SEPOLIA_ALCHEMY_WEBSOCKET=true`).
- * Par défaut HTTP uniquement : certains navigateurs / requêtes renvoient 400 sur le WSS ;
- * le fallback HTTP+Alchemy reste fiable.
+ * Sepolia: Optional Alchemy WebSocket (`NEXT_PUBLIC_SEPOLIA_ALCHEMY_WEBSOCKET=true`).
+ * Default HTTP only: some browsers / requests return 400 on WSS;
+ * the HTTP+Alchemy fallback remains reliable.
  */
 function buildSepoliaTransport(): Transport {
   const alchemyHttps = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL?.trim();
@@ -52,10 +52,10 @@ function buildSepoliaTransport(): Transport {
 }
 
 /**
- * Mainnet : ne pas utiliser `http()` seul — Viem pointe par défaut sur `https://eth.merkle.io`
- * (souvent ERR_FAILED / instable depuis le navigateur).
+ * Mainnet: do not use `http()` alone — Viem points by default to `https://eth.merkle.io`
+ * (often ERR_FAILED / unstable from the browser).
  */
-/** Sans eth.llamarpc.com : souvent bloqué par les bloqueurs de pub (ERR_BLOCKED_BY_CLIENT). */
+/** Without eth.llamarpc.com: often blocked by ad blockers (ERR_BLOCKED_BY_CLIENT). */
 const MAINNET_RPC_URLS = [
   "https://cloudflare-eth.com",
   "https://rpc.ankr.com/eth",

@@ -1,7 +1,7 @@
 /**
- * Données DeFiLlama (worker CRE) → annualisation avg30×365.
- * Côté navigateur : `/api/fees/[slug]` (Next relaie en serveur, pas de CORS vers le worker).
- * Côté serveur : appel direct au worker si besoin.
+ * DeFiLlama data (CRE worker) → annualization avg30×365.
+ * Browser side: `/api/fees/[slug]` (Next relays in server mode, no CORS to worker).
+ * Server side: direct worker call if needed.
  */
 const DEFAULT_FEES_PROXY_BASE =
   process.env.NEXT_PUBLIC_FEES_PROXY_URL?.replace(/\/$/, "") ??
@@ -41,7 +41,7 @@ export async function fetchFeesFromProxy(
       data.error === "fees_upstream_unreachable"
     ) {
       throw new Error(
-        "Le relais des frais (worker) est injoignable depuis le serveur Next. Vérifiez FEES_PROXY_URL ou le réseau."
+        "The fees relay (worker) is unreachable from the Next server. Check FEES_PROXY_URL or the network."
       );
     }
     return null;

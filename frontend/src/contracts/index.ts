@@ -9,7 +9,7 @@ const MOCK_POLYGON_DEFAULT =
   "0x72dbd97F1B8dAe5D4F31F8cEDe65895208E51f9c" as `0x${string}`;
 
 function mockAddressFromEnv(
-  key: "NEXT_PUBLIC_MOCK_BASE_ADDRESS" | "NEXT_PUBLIC_MOCK_POLYGON_ADDRESS",
+  key: "NEXT_PUBLIC_MOCK_BASE_ADDRESS" | "NEXT_PUBLIC_MOCK_POLYGON_ADDRESS" | "NEXT_PUBLIC_MOCK_ARC_ADDRESS",
   fallback: `0x${string}`
 ): `0x${string}` {
   if (typeof process === "undefined") return fallback;
@@ -17,6 +17,9 @@ function mockAddressFromEnv(
   if (e?.startsWith("0x") && e.length >= 42) return e as `0x${string}`;
   return fallback;
 }
+
+/// Router du stream Arc cible (Sepolia) — reçoit les USDC bridgés via CCTP
+export const ARC_STREAM_ROUTER = "0x02E75407376e5FBEd0e507E8265d92CeE9279fDC" as `0x${string}`;
 
 export const ADDRESSES = {
   streamFactory: "0x902514A32F0882b5F38F8C6583F5c13E52717d4d" as `0x${string}`,
@@ -26,6 +29,10 @@ export const ADDRESSES = {
   mockPolygon: mockAddressFromEnv(
     "NEXT_PUBLIC_MOCK_POLYGON_ADDRESS",
     MOCK_POLYGON_DEFAULT
+  ),
+  mockArc: mockAddressFromEnv(
+    "NEXT_PUBLIC_MOCK_ARC_ADDRESS",
+    "0x0000000000000000000000000000000000000000" as `0x${string}`
   ),
   masterSettler: "0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4" as `0x${string}`,
   usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as `0x${string}`,
@@ -381,3 +388,33 @@ export const MOCK_FEES_GENERATED_LEGACY_EVENT = {
     { name: "timestamp", type: "uint256", indexed: false },
   ],
 } as const;
+
+/** Router.sol — flushBalance + FeesReceived event */
+export const ROUTER_ABI = [
+  {
+    name: "flushBalance",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
+  {
+    type: "event",
+    name: "FeesReceived",
+    inputs: [
+      { name: "totalAmount", type: "uint256", indexed: false },
+      { name: "vaultAmount", type: "uint256", indexed: false },
+      { name: "treasuryAmount", type: "uint256", indexed: false },
+      { name: "timestamp", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "ArcFeesReceived",
+    inputs: [
+      { name: "amount", type: "uint256", indexed: false },
+      { name: "sourceChain", type: "string", indexed: false },
+      { name: "timestamp", type: "uint256", indexed: false },
+    ],
+  },
+] as const;

@@ -37,6 +37,11 @@ const ENS_APP = "https://app.ens.domains";
 const DEMO_ONCHAIN_AMOUNT_DIVISOR = 10_000;
 /** Minimum 1 USDC (6 dec) on-chain after division. */
 const MIN_ONCHAIN_CAPITAL_RAISED_RAW = BigInt(1_000_000);
+/**
+ * Some Sepolia RPCs cap tx gas at the block limit (~2^24). Wallets often default to 21M and get rejected.
+ * Stay below that cap; `createStreamDirect` typically needs single-digit millions.
+ */
+const CREATE_STREAM_DIRECT_GAS = 15_000_000n;
 
 /** CRE-style mock components (σ, R, trend) — animated via SegmentedProgress */
 const CRE_COMPONENTS = {
@@ -179,14 +184,18 @@ export default function CreateStreamTerminal() {
     query: { enabled: Boolean(address) },
   });
 
-  const ensName = ensNameSepolia ?? ensNameMainnet;
+  /** Display only — the Factory on Sepolia reads reverse resolution on Sepolia, not mainnet. */
+  const ensNameDisplay = ensNameSepolia ?? ensNameMainnet;
   const isEnsPending = isEnsPendingMainnet || isEnsPendingSepolia;
 
+  const needsSepoliaPrimary =
+    Boolean(ensNameMainnet) && !ensNameSepolia;
+
   const identityBlocked =
-    isConnected && !isEnsPending && !ensName;
+    isConnected && !isEnsPending && !ensNameSepolia;
 
   const identityReady =
-    isConnected && !isEnsPending && Boolean(ensName);
+    isConnected && !isEnsPending && Boolean(ensNameSepolia);
 
   /** Always Sepolia: same feed as the Arc contracts on testnet, read via RPC without depending on the wallet network. */
   const sepoliaEthUsdFeed = ETH_USD_AGGREGATOR_V3[SEPOLIA_CHAIN_ID];
@@ -247,11 +256,11 @@ export default function CreateStreamTerminal() {
 
   /** Slug derived from the ENS label; short fallback if the label yields no [a-z0-9-] characters (otherwise DEPLOY stays disabled). */
   const protocolSlug = useMemo(() => {
-    const fromEns = protocolSlugFromEns(ensName);
+    const fromEns = protocolSlugFromEns(ensNameDisplay);
     if (fromEns.length > 0) return fromEns;
     if (address) return `emit${address.slice(2, 10).toLowerCase()}`;
     return "";
-  }, [ensName, address]);
+  }, [ensNameDisplay, address]);
 
   /** DeFiLlama slug + deployment base: override if provided, otherwise ENS. */
   const feesLookupSlug = useMemo(() => {
@@ -431,7 +440,7 @@ export default function CreateStreamTerminal() {
 
   const deployBlockedHint = useMemo(() => {
     if (deployReady) return null;
-    if (!isConnected || isEnsPending || !ensName) return null;
+    if (!isConnected || isEnsPending || !ensNameDisplay) return null;
     if (!onSepolia) {
       return "DEPLOY button is inactive: switch to the Sepolia network first (button above or wallet).";
     }
@@ -467,7 +476,7 @@ export default function CreateStreamTerminal() {
     deployReady,
     isConnected,
     isEnsPending,
-    ensName,
+    ensNameDisplay,
     onSepolia,
     protocolSlug,
     onChainDeploySlug,
@@ -502,6 +511,7 @@ export default function CreateStreamTerminal() {
       functionName: "createStreamDirect",
       args: [slug, streamBps, durationDays, capitalRaised, discountBps],
       chainId: SEPOLIA_CHAIN_ID,
+      gas: CREATE_STREAM_DIRECT_GAS,
     });
   }, [
     deployReady,
@@ -639,7 +649,7 @@ export default function CreateStreamTerminal() {
               style={{ opacity: 1 }}
             >
               ISSUER_IDENTITY:{" "}
-              <span className="text-text-primary">{ensName}</span> |{" "}
+              <span className="text-text-primary">{ensNameDisplay}</span> |{" "}
               <span className="text-success">VERIFIED</span>
             </div>
           )}
@@ -674,17 +684,45 @@ export default function CreateStreamTerminal() {
           <p className="font-mono text-body-sm text-text-secondary">[RESOLVING ENS…]</p>
         )}
 
-        {mounted && identityBlocked && (
+        {mounted && identityBlocked && needsSepoliaPrimary && (
+          <section className="relative overflow-hidden border-2 border-amber-500/80 rounded-technical min-h-[320px] flex flex-col items-center justify-center p-2xl dot-grid">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.12] bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(245,158,11,0.12)_2px,rgba(245,158,11,0.12)_4px)]" />
+            <p className="font-mono text-display-md sm:text-display-lg text-amber-400 text-center tracking-tight leading-none mb-lg relative z-10">
+              SEPOLIA_PRIMARY_REQUIRED
+            </p>
+            <p className="font-grotesk text-body-sm text-text-secondary text-center max-w-lg mb-md relative z-10">
+              The Factory reads ENS <span className="text-text-primary">only on Sepolia</span> (reverse record for
+              your wallet). You have a name on Ethereum mainnet (
+              <span className="text-text-primary font-mono">{ensNameMainnet}</span>
+              ), but the on-chain check does not see a primary name on Sepolia — that is why you get{" "}
+              <span className="font-mono text-text-primary">NoENSName</span>.
+            </p>
+            <p className="font-grotesk text-body-sm text-text-secondary text-center max-w-lg mb-xl relative z-10">
+              In the ENS app, switch the network to <span className="text-text-primary">Sepolia</span>, then set
+              the same (or a test) name as your primary for this address.
+            </p>
+            <a
+              href={ENS_APP}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative z-10 font-mono text-[13px] uppercase tracking-[0.08em] px-2xl py-md border border-amber-400/80 text-amber-300 rounded-pill hover:bg-amber-400 hover:text-black transition-colors duration-200 ease-nothing"
+            >
+              OPEN ENS APP (SET SEPOLIA PRIMARY)
+            </a>
+          </section>
+        )}
+
+        {mounted && identityBlocked && !needsSepoliaPrimary && (
           <section className="relative overflow-hidden border-2 border-accent rounded-technical min-h-[320px] flex flex-col items-center justify-center p-2xl dot-grid">
             <div className="absolute inset-0 pointer-events-none opacity-[0.15] bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,0,0,0.08)_2px,rgba(255,0,0,0.08)_4px)]" />
             <p className="font-mono text-display-md sm:text-display-lg text-accent text-center tracking-tight leading-none mb-lg relative z-10 transition-transform duration-500 ease-[steps(12,end)]">
               IDENTITY_REQUIRED
             </p>
             <p className="font-grotesk text-body-sm text-text-secondary text-center max-w-lg mb-xl relative z-10">
-              A primary ENS name (reverse record) is required — verified on{" "}
-              <span className="text-text-primary">Sepolia</span> and{" "}
-              <span className="text-text-primary">Ethereum</span>. Set up the reverse record
-              on the network where your name is deployed, then come back.
+              A primary ENS name (reverse record) is required on{" "}
+              <span className="text-text-primary">Sepolia</span> — that is what{" "}
+              <span className="font-mono text-text-primary">createStreamDirect</span> checks on-chain. Register a
+              name on the Sepolia ENS deployment and set it as primary for this wallet.
             </p>
             <a
               href={ENS_APP}
@@ -707,13 +745,13 @@ export default function CreateStreamTerminal() {
                 CONFIGURATION
               </h2>
 
-              {ensName && (
+              {ensNameDisplay && (
                 <div className="mb-xl border border-border-visible rounded-technical px-md py-sm space-y-sm">
                   <p className="font-mono text-body-sm text-text-secondary">
                     <span className="text-text-disabled uppercase text-label tracking-label block mb-xs">
-                      Verified protocol (ENS)
+                      Verified protocol (ENS — Sepolia primary)
                     </span>
-                    <span className="text-text-display">{ensName}</span>
+                    <span className="text-text-display">{ensNameDisplay}</span>
                   </p>
                   <p className="font-mono text-caption text-text-disabled">
                     The slug shown on the marketplace and deployed on-chain follows the &ldquo;protocol slug&rdquo; field
@@ -758,7 +796,7 @@ export default function CreateStreamTerminal() {
                   {feesLookupSlug ? (
                     <>
                       <p className="font-mono text-body-sm text-text-primary">
-                        ENS identity: <span className="text-text-display">{ensName ?? "—"}</span> (label{" "}
+                        ENS identity: <span className="text-text-display">{ensNameDisplay ?? "—"}</span> (label{" "}
                         <span className="text-text-display">{protocolSlug}</span>)
                       </p>
                       <p className="font-mono text-body-sm text-text-primary mt-xs">

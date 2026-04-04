@@ -10,8 +10,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { formatUnits } from "viem";
-import { useAccount, useReadContract, useReadContracts } from "wagmi";
-import { ADDRESSES, ERC20_ABI, SEPOLIA_CHAIN_ID } from "@/contracts";
+import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import { ADDRESSES, ARC_STREAM_ROUTER, ERC20_ABI, ROUTER_ABI, SEPOLIA_CHAIN_ID } from "@/contracts";
 import { usdcHumanFromYstWei, ystHumanFromUsdc } from "@/lib/yst-primary-sale";
 import ArcConsolidationHub from "./ArcConsolidationHub";
 import ArcActivityFeed from "./ArcActivityFeed";
@@ -57,6 +57,65 @@ interface StreamInvestViewProps {
   chainInvest?: StreamChainInvest;
   /** Factory + CRE: forwarder and workflow mapping (on-chain streams only). */
   chainlinkAutomationActive?: boolean;
+}
+
+// ── Flush Arc fees button ──────────────────────────────────────────────────
+function FlushArcButton({ queryClient }: { queryClient: ReturnType<typeof useQueryClient> }) {
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const onSepolia = chainId === SEPOLIA_CHAIN_ID;
+
+  const { writeContract, isPending, isSuccess, isError } = useWriteContract();
+
+  const handleFlush = () => {
+    writeContract(
+      {
+        address: ARC_STREAM_ROUTER,
+        abi: ROUTER_ABI,
+        functionName: "flushBalance",
+      },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries();
+        },
+      }
+    );
+  };
+
+  if (!address || !onSepolia) return null;
+
+  return (
+    <div className="mt-md flex items-center gap-md">
+      <button
+        type="button"
+        onClick={handleFlush}
+        disabled={isPending}
+        className="font-mono text-[10px] uppercase tracking-widest px-md py-sm border border-[#F5A623]/40 text-[#F5A623] bg-[#F5A623]/5 rounded-sm hover:bg-[#F5A623]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-xs"
+      >
+        {isPending ? (
+          <>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#F5A623] animate-pulse" />
+            Flushing…
+          </>
+        ) : (
+          <>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#F5A623]" />
+            Flush Arc fees
+          </>
+        )}
+      </button>
+      {isSuccess && (
+        <span className="font-mono text-[10px] text-success uppercase tracking-widest">
+          ✓ Flushed
+        </span>
+      )}
+      {isError && (
+        <span className="font-mono text-[10px] text-red-400 uppercase tracking-widest">
+          Failed
+        </span>
+      )}
+    </div>
+  );
 }
 
 export default function StreamInvestView({
@@ -411,6 +470,7 @@ export default function StreamInvestView({
   const feedItems = demoFeedActive ? demo.feedItems : arc.feedItems;
   const totalBaseRevenue = demoFeedActive ? demo.demoBaseUsdc : arc.totalBaseRevenue;
   const totalPolygonRevenue = demoFeedActive ? demo.demoPolygonUsdc : arc.totalPolygonRevenue;
+  const totalArcRevenue = demoFeedActive ? 0 : arc.totalArcRevenue;
   const hubLiveSync = demoFeedActive || arc.liveSync;
 
   /** After 100%: calls /api/crank-mock-fees immediately then every ~11 min (while page is open). */
@@ -677,9 +737,11 @@ export default function StreamInvestView({
                   <ArcConsolidationHub
                     totalBaseRevenue={totalBaseRevenue}
                     totalPolygonRevenue={totalPolygonRevenue}
+                    totalArcRevenue={totalArcRevenue}
                     liveSync={hubLiveSync}
                     chainlinkAutomationActive={chainlinkAutomationActive}
                   />
+                  <FlushArcButton queryClient={queryClient} />
                 </div>
 
                 {chainInvest && !demoRevenue && (

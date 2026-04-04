@@ -30,7 +30,7 @@ import type { Address } from "viem";
 
 const ENS_APP = "https://app.ens.domains";
 
-/** CRE-style mock components (σ, R, trend) — animés via SegmentedProgress */
+/** CRE-style mock components (σ, R, trend) — animated via SegmentedProgress */
 const CRE_COMPONENTS = {
   volatility: { label: "VOLATILITY (σ)", max: 100, value: 62, status: "warning" as const },
   regularity: { label: "REGULARITY (R_SCORE)", max: 100, value: 78, status: "success" as const },
@@ -46,8 +46,8 @@ function formatUsdFromAnswer(answer: bigint): string {
 }
 
 /**
- * Risque marché 0–100 à partir de la fraîcheur du round Chainlink (updatedAt).
- * Oracle récent → score bas ; données stale → score élevé (décote plus forte).
+ * Market risk 0–100 based on the freshness of the Chainlink round (updatedAt).
+ * Recent oracle → low score; stale data → high score (larger discount).
  */
 function marketRiskFromOracleUpdatedAt(updatedAtSeconds: bigint): number {
   const u = Number(updatedAtSeconds);
@@ -55,7 +55,7 @@ function marketRiskFromOracleUpdatedAt(updatedAtSeconds: bigint): number {
   const now = Math.floor(Date.now() / 1000);
   const ageSec = Math.max(0, now - u);
   const SOFT = 180; // ~3 min
-  const HARD = 7200; // 2 h → plafond risque
+  const HARD = 7200; // 2 h → risk ceiling
   if (ageSec <= SOFT) {
     return Math.round(10 + (ageSec / SOFT) * 22);
   }
@@ -65,7 +65,7 @@ function marketRiskFromOracleUpdatedAt(updatedAtSeconds: bigint): number {
   );
 }
 
-/** Décote % (5–55) agrégée sur σ, R, trend et risque marché — pas une « recommandation », sortie du modèle CRE affiché. */
+/** Discount % (5–55) aggregated from σ, R, trend and market risk — not a "recommendation", output of the displayed CRE model. */
 function computeCreDecotePercent(
   volatility: number,
   regularity: number,
@@ -81,16 +81,16 @@ function computeCreDecotePercent(
   return Math.min(55, Math.max(5, pct));
 }
 
-/** Affichage USDC avec au plus une décimale (ex. 11 923,1). */
+/** USDC display with at most one decimal (e.g. 11,923.1). */
 function formatUsdcShort(n: number): string {
   const v = Math.round(n * 10) / 10;
-  return v.toLocaleString("fr-FR", {
+  return v.toLocaleString("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
   });
 }
 
-/** Label ENS → base du slug ; le nom ERC20 on-chain = le slug Factory exact (ex. nohemmg-s2), symbole `YST`. */
+/** ENS label → slug base; the on-chain ERC20 name = the exact Factory slug (e.g. nohemmg-s2), symbol `YST`. */
 function protocolSlugFromEns(ens: string | undefined | null): string {
   if (!ens?.trim()) return "";
   const lower = ens.trim().toLowerCase();
@@ -100,12 +100,12 @@ function protocolSlugFromEns(ens: string | undefined | null): string {
   return slug;
 }
 
-/** Saisie utilisateur pour le lookup DeFiLlama (démo / hackathon) — même alphabet que les slugs Llama. */
+/** User input for DeFiLlama lookup (demo / hackathon) — same character set as Llama slugs. */
 function normalizeFeesSlugOverride(raw: string): string {
   return raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 48);
 }
 
-/** Essais `slug`, `slug-1`, `slug-2`… jusqu’au premier slot libre on-chain. */
+/** Tries `slug`, `slug-1`, `slug-2`... until the first free on-chain slot. */
 const MAX_DEPLOY_SLUG_TRIES = 48;
 
 function deploySlugCandidate(base: string, index: number): string {
@@ -113,7 +113,7 @@ function deploySlugCandidate(base: string, index: number): string {
   return `${base}-${index}`;
 }
 
-/** Retour `active` depuis le tuple / struct `getStream`. */
+/** Returns `active` from the `getStream` tuple / struct. */
 function getStreamActive(result: unknown): boolean {
   if (result == null) return false;
   if (Array.isArray(result)) {
@@ -149,10 +149,10 @@ export default function CreateStreamTerminal() {
     },
   });
 
-  /** Vrai seulement après un clic DEPLOY : tx envoyée, attente d’inclusion (pas d’état fantôme sans hash). */
+  /** True only after a DEPLOY click: tx sent, waiting for inclusion (no ghost state without hash). */
   const awaitingReceipt = Boolean(txHash) && isConfirming;
 
-  /** Primary ENS : mainnet et Sepolia (souvent seul le testnet est configuré pour le hackathon). */
+  /** Primary ENS: mainnet and Sepolia (often only the testnet is configured for the hackathon). */
   const {
     data: ensNameMainnet,
     isPending: isEnsPendingMainnet,
@@ -180,7 +180,7 @@ export default function CreateStreamTerminal() {
   const identityReady =
     isConnected && !isEnsPending && Boolean(ensName);
 
-  /** Toujours Sepolia : même feed que les contrats Arc sur testnet, lecture via RPC sans dépendre du réseau du wallet. */
+  /** Always Sepolia: same feed as the Arc contracts on testnet, read via RPC without depending on the wallet network. */
   const sepoliaEthUsdFeed = ETH_USD_AGGREGATOR_V3[SEPOLIA_CHAIN_ID];
 
   const {
@@ -208,7 +208,7 @@ export default function CreateStreamTerminal() {
     return marketRiskFromOracleUpdatedAt(roundData[3]);
   }, [roundData, isFeedError]);
 
-  /** Part des revenus annuels estimés que vous cédez (1–50 %). */
+  /** Share of estimated annual revenue you are selling (1–50 %). */
   const [revenuePct, setRevenuePct] = useState(10);
   const revenueTrackRef = useRef<HTMLDivElement>(null);
 
@@ -223,7 +223,7 @@ export default function CreateStreamTerminal() {
   }, []);
 
   const [durationMonths, setDurationMonths] = useState(12);
-  /** Annualisation avg30×365 depuis le proxy DeFiLlama (workflow CRE). */
+  /** Annualization avg30×365 from the DeFiLlama proxy (CRE workflow). */
   const [annualRevenueUsd, setAnnualRevenueUsd] = useState(0);
   const [feesLoading, setFeesLoading] = useState(false);
   const [feesError, setFeesError] = useState<string | null>(null);
@@ -233,11 +233,11 @@ export default function CreateStreamTerminal() {
     rScore: number;
   } | null>(null);
   /**
-   * Saisie optionnelle (ex. uniswap). Sinon = slug ENS — même valeur pour DeFiLlama **et** déploiement Factory.
+   * Optional input (e.g. uniswap). Otherwise = ENS slug — same value for DeFiLlama **and** Factory deployment.
    */
   const [feesSlugOverrideInput, setFeesSlugOverrideInput] = useState("");
 
-  /** Slug dérivé du label ENS ; repli court si le label ne donne aucun caractère [a-z0-9-] (sinon DEPLOY reste désactivé). */
+  /** Slug derived from the ENS label; short fallback if the label yields no [a-z0-9-] characters (otherwise DEPLOY stays disabled). */
   const protocolSlug = useMemo(() => {
     const fromEns = protocolSlugFromEns(ensName);
     if (fromEns.length > 0) return fromEns;
@@ -245,7 +245,7 @@ export default function CreateStreamTerminal() {
     return "";
   }, [ensName, address]);
 
-  /** Slug DeFiLlama + base du déploiement : override si renseigné, sinon ENS. */
+  /** DeFiLlama slug + deployment base: override if provided, otherwise ENS. */
   const feesLookupSlug = useMemo(() => {
     const o = normalizeFeesSlugOverride(feesSlugOverrideInput);
     if (o.length > 0) return o;
@@ -331,7 +331,7 @@ export default function CreateStreamTerminal() {
         if (cancelled) return;
         if (!payload) {
           setFeesError(
-            "Aucune donnée DeFiLlama pour ce slug — essayez un protocole listé (ex. uniswap, aave) dans le champ optionnel ci-dessus."
+            "No DeFiLlama data for this slug — try a listed protocol (e.g. uniswap, aave) in the optional field above."
           );
           setAnnualRevenueUsd(0);
           setFeesStats(null);
@@ -348,7 +348,7 @@ export default function CreateStreamTerminal() {
           setFeesError(
             e instanceof Error
               ? e.message
-              : "Impossible de charger les frais (réponse invalide ou réseau). Réessayez."
+              : "Unable to load fees (invalid response or network error). Please retry."
           );
           setAnnualRevenueUsd(0);
           setFeesStats(null);
@@ -400,7 +400,7 @@ export default function CreateStreamTerminal() {
     );
   }, [creMetrics, marketRiskValue]);
 
-  /** Tranche = revenu annuel × part cédée ; après décote CRE = tranche × (1 − décote). */
+  /** Tranche = annual revenue × sold share; after CRE discount = tranche × (1 − discount). */
   const offeringEconomics = useMemo(() => {
     if (!Number.isFinite(annualRevenueUsd) || annualRevenueUsd <= 0) return null;
     const nominalUsd = annualRevenueUsd * (revenuePct / 100);
@@ -425,34 +425,34 @@ export default function CreateStreamTerminal() {
     if (deployReady) return null;
     if (!isConnected || isEnsPending || !ensName) return null;
     if (!onSepolia) {
-      return "Le bouton DEPLOY est inactif : passez d’abord sur le réseau Sepolia (bouton ci-dessus ou wallet).";
+      return "DEPLOY button is inactive: switch to the Sepolia network first (button above or wallet).";
     }
     if (!protocolSlug.trim()) {
-      return "Identifiant protocole indisponible — reconnectez le portefeuille.";
+      return "Protocol identifier unavailable — reconnect the wallet.";
     }
     if (streamSlotsPending) {
-      return "Recherche du prochain slug libre (nohemmg, nohemmg-1, …)…";
+      return "Looking for the next free slug (nohemmg, nohemmg-1, …)…";
     }
     if (!onChainDeploySlug.trim()) {
-      return `Limite atteinte : plus de ${MAX_DEPLOY_SLUG_TRIES} streams pour ce label ENS et ce wallet.`;
+      return `Limit reached: more than ${MAX_DEPLOY_SLUG_TRIES} streams for this ENS label and wallet.`;
     }
     if (feesLoading) {
-      return "Chargement des frais protocole (DeFiLlama via proxy)…";
+      return "Loading protocol fees (DeFiLlama via proxy)…";
     }
     if (feesError || annualRevenueUsd <= 0) {
       return (
         feesError ??
-        "Revenu annuel indisponible — renseignez un slug DeFiLlama dans le champ optionnel (ex. uniswap) ou vérifiez la connexion."
+        "Annual revenue unavailable — enter a DeFiLlama slug in the optional field (e.g. uniswap) or check the connection."
       );
     }
     if (isWritePending) {
-      return "Une signature est attendue dans le wallet (vous venez de cliquer sur DEPLOY).";
+      return "Awaiting wallet signature (you just clicked DEPLOY).";
     }
     if (awaitingReceipt) {
-      return "Déploiement en cours : votre transaction est en attente d’inclusion sur Sepolia (souvent quelques secondes).";
+      return "Deployment in progress: your transaction is pending inclusion on Sepolia (usually a few seconds).";
     }
     if (!offeringEconomics || offeringEconomics.nominalUsd <= 0) {
-      return "Montant d’offre invalide — vérifiez la part de revenus.";
+      return "Invalid offer amount — check the revenue share.";
     }
     return null;
   }, [
@@ -503,7 +503,7 @@ export default function CreateStreamTerminal() {
   ]);
 
   useEffect(() => {
-    /** `isReceiptSuccess` = reçu RPC récupéré ; une tx peut être incluse avec `status: reverted`. */
+    /** `isReceiptSuccess` = RPC receipt fetched; a tx can be included with `status: reverted`. */
     if (!receipt || receipt.status !== "success" || !publicClient) return;
     void refetchStreamSlots();
     let cancelled = false;
@@ -520,7 +520,7 @@ export default function CreateStreamTerminal() {
           router.push(`/invest/${newId}`);
         }
       } catch {
-        /* redirect optionnelle si lecture Factory échoue */
+        /* optional redirect if Factory read fails */
       }
     })();
     return () => {
@@ -531,19 +531,19 @@ export default function CreateStreamTerminal() {
   const terminalBody = useMemo(() => {
     const lines: string[] = [];
     lines.push(`> ENS_LABEL: ${protocolSlug || "—"}`);
-    lines.push(`> SLUG_PROTOCOLE (frais + base Factory): ${feesLookupSlug || "—"}`);
-    lines.push(`> DEPLOY_SLUG (premier slot libre): ${onChainDeploySlug || "—"}`);
+    lines.push(`> PROTOCOL_SLUG (fees + Factory base): ${feesLookupSlug || "—"}`);
+    lines.push(`> DEPLOY_SLUG (first free slot): ${onChainDeploySlug || "—"}`);
     lines.push(`> ERC20: name="${onChainDeploySlug || "—"}" · symbol=YST (Factory)`);
     lines.push(
-      `> REV_ANNUEL_USD (DeFiLlama avg30×365): ${feesLoading ? "…" : formatNumber(Math.round(annualRevenueUsd))}`
+      `> ANNUAL_REV_USD (DeFiLlama avg30×365): ${feesLoading ? "…" : formatNumber(Math.round(annualRevenueUsd))}`
     );
     lines.push(
-      `> VOUS_VENDEZ (droits): ${offeringEconomics ? formatNumber(Math.round(offeringEconomics.nominalUsd)) : "—"} USDC`
+      `> YOU_SELL (rights): ${offeringEconomics ? formatNumber(Math.round(offeringEconomics.nominalUsd)) : "—"} USDC`
     );
     lines.push(
-      `> VOUS_RECEVEZ_NET: ${offeringEconomics ? formatUsdcShort(offeringEconomics.afterDiscountUsd) : "—"} USDC`
+      `> YOU_RECEIVE_NET: ${offeringEconomics ? formatUsdcShort(offeringEconomics.afterDiscountUsd) : "—"} USDC`
     );
-    lines.push(`> TAUX_DECOTE_CRE: ${creDecotePercent}% (σ, R_SCORE, trend, ETH/USD feed)`);
+    lines.push(`> CRE_DISCOUNT_RATE: ${creDecotePercent}% (σ, R_SCORE, trend, ETH/USD feed)`);
     lines.push(`> FACTORY: ${ADDRESSES.streamFactory}`);
     lines.push(`> USDC: immutable in Factory constructor — not passed in createStreamDirect`);
     lines.push(`> MSG.VALUE: 0 ETH (no protocol fee on Factory)`);
@@ -553,15 +553,15 @@ export default function CreateStreamTerminal() {
       const em = writeError.message;
       if (/StreamAlreadyExists/i.test(em)) {
         lines.push(
-          "> ERROR: StreamAlreadyExists — slug pris entre-temps. Réessayez (prochain libre recalculé)."
+          "> ERROR: StreamAlreadyExists — slug taken in the meantime. Retry (next free slot will be recalculated)."
         );
       } else {
         lines.push(`> ERROR: ${em.slice(0, 280)}`);
       }
     } else if (receipt?.status === "reverted") {
-      lines.push("> ÉCHEC ON-CHAIN (revert) — pas de vault, pas de redirection.");
+      lines.push("> ON-CHAIN FAILURE (revert) — no vault created, no redirect.");
       lines.push(
-        "> Ex. NotOwner : mauvais contrat / fonction réservée au owner — vérifier l’adresse Factory déployée."
+        "> E.g. NotOwner: wrong contract / owner-only function — check the deployed Factory address."
       );
     } else if (receipt?.status === "success") {
       lines.push("> DEPLOYMENT SUCCESSFUL. VAULT CREATED.");
@@ -611,7 +611,7 @@ export default function CreateStreamTerminal() {
               Deploy stream
             </h1>
             <p className="font-grotesk text-body-sm text-text-secondary mt-sm max-w-md">
-              Terminal protocole — configuration instrument + synthèse risque CRE.
+              Protocol terminal — instrument configuration + CRE risk summary.
             </p>
           </div>
 
@@ -627,14 +627,14 @@ export default function CreateStreamTerminal() {
           )}
         </div>
 
-        {/* Wallet non connecté */}
+        {/* Wallet not connected */}
         {mounted && !isConnected && status !== "connecting" && (
           <section className="border border-border-visible p-2xl dot-grid rounded-technical transition-opacity duration-300 ease-[steps(8,end)]">
             <p className="font-mono text-label uppercase tracking-label text-text-secondary mb-md">
               WALLET
             </p>
             <p className="font-grotesk text-body text-text-primary mb-lg">
-              Connectez un portefeuille pour la vérification ENS et le déploiement.
+              Connect a wallet for ENS verification and deployment.
             </p>
             <button
               type="button"
@@ -651,7 +651,7 @@ export default function CreateStreamTerminal() {
           <p className="font-mono text-body-sm text-text-secondary">[CONNECTING…]</p>
         )}
 
-        {/* Gate ENS — bloqué */}
+        {/* ENS gate — blocked */}
         {mounted && isConnected && isEnsPending && (
           <p className="font-mono text-body-sm text-text-secondary">[RESOLVING ENS…]</p>
         )}
@@ -663,10 +663,10 @@ export default function CreateStreamTerminal() {
               IDENTITY_REQUIRED
             </p>
             <p className="font-grotesk text-body-sm text-text-secondary text-center max-w-lg mb-xl relative z-10">
-              Un nom ENS primaire (reverse record) est requis — vérifié sur{" "}
-              <span className="text-text-primary">Sepolia</span> et{" "}
-              <span className="text-text-primary">Ethereum</span>. Configurez l’enregistrement inverse
-              sur le réseau où votre nom est déployé, puis revenez.
+              A primary ENS name (reverse record) is required — verified on{" "}
+              <span className="text-text-primary">Sepolia</span> and{" "}
+              <span className="text-text-primary">Ethereum</span>. Set up the reverse record
+              on the network where your name is deployed, then come back.
             </p>
             <a
               href={ENS_APP}
@@ -693,13 +693,13 @@ export default function CreateStreamTerminal() {
                 <div className="mb-xl border border-border-visible rounded-technical px-md py-sm space-y-sm">
                   <p className="font-mono text-body-sm text-text-secondary">
                     <span className="text-text-disabled uppercase text-label tracking-label block mb-xs">
-                      Protocole vérifié (ENS)
+                      Verified protocol (ENS)
                     </span>
                     <span className="text-text-display">{ensName}</span>
                   </p>
                   <p className="font-mono text-caption text-text-disabled">
-                    Le slug affiché sur la marketplace et déployé en chaîne suit le champ « slug protocole »
-                    (ex. uniswap) ; sans override, c’est votre label ENS.
+                    The slug shown on the marketplace and deployed on-chain follows the "protocol slug" field
+                    (e.g. uniswap); without an override, it is your ENS label.
                   </p>
                 </div>
               )}
@@ -710,41 +710,41 @@ export default function CreateStreamTerminal() {
                     htmlFor="fees-slug-override"
                     className="font-mono text-label uppercase tracking-label text-text-secondary block mb-sm"
                   >
-                    Slug protocole (DeFiLlama + déploiement)
+                    Protocol slug (DeFiLlama + deployment)
                   </label>
                   <p className="font-grotesk text-body-sm text-text-secondary mb-md leading-snug">
-                    Par défaut = votre label ENS. Pour une démo lisible (ex.{" "}
-                    <span className="text-text-display">uniswap</span>), saisissez le slug ici : il sert à la
-                    fois aux <strong className="text-text-primary font-medium">frais</strong> et au{" "}
-                    <strong className="text-text-primary font-medium">nom du stream / token sur la chaîne</strong>.
+                    Default = your ENS label. For a readable demo (e.g.{" "}
+                    <span className="text-text-display">uniswap</span>), enter the slug here: it is used for both{" "}
+                    <strong className="text-text-primary font-medium">fees</strong> and the{" "}
+                    <strong className="text-text-primary font-medium">stream / token name on-chain</strong>.
                   </p>
                   <input
                     id="fees-slug-override"
                     type="text"
                     autoComplete="off"
-                    placeholder="vide = label ENS · ex. uniswap"
+                    placeholder="empty = ENS label · e.g. uniswap"
                     value={feesSlugOverrideInput}
                     onChange={(e) => setFeesSlugOverrideInput(e.target.value)}
                     className="w-full bg-black border border-border-visible px-md py-sm font-mono text-body-sm text-text-display placeholder:text-text-disabled tabular-nums outline-none focus:border-text-secondary transition-colors duration-200 ease-nothing rounded-technical"
                   />
                   <p className="font-mono text-caption text-text-disabled mt-sm">
-                    Slug effectif (frais + Factory) :{" "}
+                    Active slug (fees + Factory):{" "}
                     <span className="text-text-secondary">{feesLookupSlug || "—"}</span>
                   </p>
                 </div>
 
                 <div className="border border-border-visible rounded-technical px-md py-md bg-black/40">
                   <p className="font-mono text-label uppercase tracking-label text-text-secondary mb-sm">
-                    Aperçu déploiement (Factory)
+                    Deployment preview (Factory)
                   </p>
                   {feesLookupSlug ? (
                     <>
                       <p className="font-mono text-body-sm text-text-primary">
-                        Identité ENS : <span className="text-text-display">{ensName ?? "—"}</span> (label{" "}
+                        ENS identity: <span className="text-text-display">{ensName ?? "—"}</span> (label{" "}
                         <span className="text-text-display">{protocolSlug}</span>)
                       </p>
                       <p className="font-mono text-body-sm text-text-primary mt-xs">
-                        Prochain slug libre sur la chaîne :{" "}
+                        Next free slot on-chain:{" "}
                         {streamSlotsPending ? (
                           <span className="text-text-disabled">…</span>
                         ) : (
@@ -752,45 +752,45 @@ export default function CreateStreamTerminal() {
                         )}
                       </p>
                       <p className="font-mono text-body-sm text-text-primary mt-xs">
-                        Token (nom ERC20) :{" "}
+                        Token (ERC20 name):{" "}
                         {streamSlotsPending ? (
                           <span className="text-text-disabled">…</span>
                         ) : (
                           <span className="text-text-display">{onChainDeploySlug || "—"}</span>
                         )}{" "}
-                        · symbole <span className="text-text-display">YST</span>
+                        · symbol <span className="text-text-display">YST</span>
                       </p>
                       <p className="font-mono text-caption text-text-disabled mt-sm">
-                        Si <span className="text-text-secondary">{feesLookupSlug}</span> est déjà pris pour ce
-                        wallet, on enchaîne{" "}
+                        If <span className="text-text-secondary">{feesLookupSlug}</span> is already taken for this
+                        wallet, it falls through to{" "}
                         <span className="text-text-secondary">{feesLookupSlug}-1</span>,{" "}
                         <span className="text-text-secondary">{feesLookupSlug}-2</span>…
                       </p>
                     </>
                   ) : (
                     <p className="font-mono text-caption text-accent">
-                      Impossible de dériver le slug — vérifiez votre primary ENS.
+                      Unable to derive slug — check your primary ENS.
                     </p>
                   )}
                 </div>
 
                 <div className="border border-success/30 rounded-technical px-md py-md bg-success/5">
                   <p className="font-mono text-label uppercase tracking-label text-success mb-sm">
-                    Revenus annuels estimés (DeFiLlama)
+                    Estimated annual revenue (DeFiLlama)
                   </p>
                   <p className="font-grotesk text-body-sm text-text-secondary mb-sm">
                     Moyenne des frais sur 30 jours (USD/jour) via le proxy Cloudflare du workflow CRE,
-                    annualisée ×365 — même source que l’évaluation Chainlink CRE hors chaîne.
+                    annualized ×365 — same source as the off-chain Chainlink CRE valuation.
                   </p>
                   <p className="font-mono text-display-sm sm:text-display-md text-text-display tabular-nums">
                     {feesLoading ? (
-                      <span className="text-text-disabled">Chargement…</span>
+                      <span className="text-text-disabled">Loading…</span>
                     ) : feesError ? (
                       <span className="text-caption text-accent font-mono leading-snug">{feesError}</span>
                     ) : (
                       <>
                         ${formatNumber(Math.round(annualRevenueUsd))}{" "}
-                        <span className="text-caption text-text-disabled font-mono">USD / an</span>
+                        <span className="text-caption text-text-disabled font-mono">USD / yr</span>
                       </>
                     )}
                   </p>
@@ -799,17 +799,17 @@ export default function CreateStreamTerminal() {
                 <div>
                   <div className="flex justify-between items-baseline mb-sm gap-md">
                     <span className="font-mono text-label uppercase tracking-label text-text-secondary">
-                      Part des revenus futurs vendue
+                      Share of future revenue sold
                     </span>
                     <span className="font-mono text-heading text-text-display tabular-nums">
                       {revenuePct}%
                     </span>
                   </div>
                   <p className="font-mono text-caption text-text-disabled mb-sm">
-                    Part de votre <span className="text-text-secondary">revenu annuel estimé</span> que vous
-                    proposez aux investisseurs. Cliquez une case ou{" "}
+                    Share of your <span className="text-text-secondary">estimated annual revenue</span> you are
+                    offering to investors. Click a block or{" "}
                     <span className="text-text-disabled/90">
-                      maintenez et glissez sur la barre (gauche = moins, droite = plus).
+                      hold and drag the bar (left = less, right = more).
                     </span>
                   </p>
                   <div
@@ -819,7 +819,7 @@ export default function CreateStreamTerminal() {
                     aria-valuemin={1}
                     aria-valuemax={50}
                     aria-valuenow={revenuePct}
-                    aria-label="Part des revenus futurs vendue, de 1 à 50 pour cent"
+                    aria-label="Share of future revenue sold, from 1 to 50 percent"
                     onPointerDown={(e) => {
                       e.preventDefault();
                       e.currentTarget.setPointerCapture(e.pointerId);
@@ -896,7 +896,7 @@ export default function CreateStreamTerminal() {
                 {offeringEconomics && (
                   <div className="border border-success/25 rounded-technical px-md py-md space-y-lg bg-success/5">
                     <p className="font-mono text-label uppercase tracking-label text-text-secondary">
-                      Lecture émetteur
+                      Issuer summary
                     </p>
 
                 <div>
@@ -908,8 +908,8 @@ export default function CreateStreamTerminal() {
                         <span className="font-mono text-body-sm text-text-disabled">USDC</span>
                       </p>
                       <p className="font-grotesk text-body-sm text-text-secondary mt-sm leading-snug">
-                        Valeur des <strong className="text-text-primary font-medium">droits sur vos revenus</strong>{" "}
-                        que les investisseurs achètent ({revenuePct}% de l’estimation annuelle).
+                        Value of the <strong className="text-text-primary font-medium">rights to your revenue</strong>{" "}
+                        that investors purchase ({revenuePct}% of the annual estimate).
                       </p>
                     </div>
 
@@ -922,8 +922,8 @@ export default function CreateStreamTerminal() {
                         <span className="font-mono text-body-sm text-success/80">USDC</span>
                       </p>
                       <p className="font-grotesk text-body-sm text-text-secondary mt-sm leading-snug">
-                        Ce qui vous revient <strong className="text-text-primary font-medium">après la décote</strong>{" "}
-                        ({creDecotePercent}%) calculée sur la synthèse CRE (σ, R, trend, marché ETH/USD).
+                        What you receive <strong className="text-text-primary font-medium">after the discount</strong>{" "}
+                        ({creDecotePercent}%) calculated from the CRE summary (σ, R, trend, ETH/USD market).
                       </p>
                     </div>
                 </div>
@@ -934,7 +934,7 @@ export default function CreateStreamTerminal() {
                 {!onSepolia && isConnected && (
                   <div className="flex flex-col gap-sm">
                     <p className="font-mono text-caption text-accent uppercase tracking-wide">
-                      WRONG_NETWORK — Sepolia requis pour createStreamDirect
+                      WRONG_NETWORK — Sepolia required for createStreamDirect
                     </p>
                     <button
                       type="button"
@@ -958,9 +958,8 @@ export default function CreateStreamTerminal() {
 
                 {receipt?.status === "reverted" && (
                   <p className="font-mono text-caption text-accent leading-relaxed border border-accent/50 rounded-technical px-md py-sm bg-accent/5">
-                    Transaction échouée on-chain (revert — ex. NotOwner). Aucun vault créé, pas de
-                    redirection. Vérifiez l’adresse Factory dans le code et l’explorateur Sepolia pour le
-                    détail.
+                    Transaction failed on-chain (revert — e.g. NotOwner). No vault created, no
+                    redirect. Check the Factory address in the code and the Sepolia explorer for details.
                   </p>
                 )}
 
@@ -970,8 +969,8 @@ export default function CreateStreamTerminal() {
                       StreamAlreadyExists
                     </p>
                     <p className="font-grotesk text-body-sm text-text-secondary leading-snug">
-                      Course rare : le slug a été pris entre-temps. Réessayez — le prochain libre sera
-                      recalculé.
+                      Rare race: the slug was taken in the meantime. Retry — the next free slot will be
+                      recalculated.
                     </p>
                     {existingStreamInvestId != null ? (
                       <Link
@@ -994,14 +993,14 @@ export default function CreateStreamTerminal() {
                   type="button"
                   onClick={deploy}
                   disabled={!deployReady}
-                  title={deployBlockedHint ?? (deployReady ? "Déployer le stream sur Sepolia" : undefined)}
+                  title={deployBlockedHint ?? (deployReady ? "Deploy the stream on Sepolia" : undefined)}
                   className="w-full font-mono text-[12px] sm:text-[13px] uppercase tracking-[0.05em] px-md py-lg rounded-technical bg-text-display text-black transition-opacity duration-200 ease-nothing hover:opacity-90 btn-dot-matrix-hover disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   DEPLOY
                 </button>
                 <p className="font-mono text-caption text-text-disabled text-center leading-relaxed">
-                  Aucun frais en ETH vers la Factory (msg.value = 0). USDC géré en interne au déploiement
-                  du Vault.
+                  No ETH fees to the Factory (msg.value = 0). USDC handled internally at Vault
+                  deployment.
                 </p>
               </div>
             </section>
@@ -1011,18 +1010,18 @@ export default function CreateStreamTerminal() {
                 CHAINLINK CRE — RISK SUMMARY
               </h2>
               <p className="font-grotesk text-body-sm text-text-secondary mb-lg">
-                Quatre entrées (frais DeFiLlama + oracle ETH/USD Sepolia) agrégées en un taux de décote sur le flux,
-                pas une suggestion arbitraire.
+                Four inputs (DeFiLlama fees + Sepolia ETH/USD oracle) aggregated into a stream discount rate —
+                not an arbitrary suggestion.
               </p>
 
               <div className="mb-lg border border-border-visible rounded-technical px-md py-sm font-mono text-caption text-text-secondary">
                 <span className="text-text-disabled uppercase tracking-wider block mb-xs">
-                  Revenu annuel (DeFiLlama)
+                  Annual revenue (DeFiLlama)
                 </span>
                 <span className="text-text-display tabular-nums text-body-sm">
                   {feesLoading ? "…" : feesError ? "—" : `$${formatNumber(Math.round(annualRevenueUsd))}`}
                 </span>
-                <span className="text-text-disabled"> USD — aligné sur la colonne configuration.</span>
+                <span className="text-text-disabled"> USD — aligned with the configuration column.</span>
               </div>
 
               <div className="space-y-lg mb-xl">
@@ -1114,14 +1113,14 @@ export default function CreateStreamTerminal() {
 
               <div className="border-t border-border pt-lg">
                 <p className="font-mono text-label uppercase tracking-label text-text-secondary mb-sm">
-                  DÉCOTE DU FLUX
+                  STREAM DISCOUNT
                 </p>
                 <p className="font-mono text-display-sm text-text-display tabular-nums leading-snug">
                   {creDecotePercent}%
                 </p>
                 <p className="font-mono text-caption text-text-disabled mt-sm leading-relaxed">
-                  Pondération : 26 % volatilité · 26 % (100 − régularité) · 24 % trend · 24 % risque marché
-                  (fraîcheur feed ETH/USD). Plage 5–55 %.
+                  Weighting: 26% volatility · 26% (100 − regularity) · 24% trend · 24% market risk
+                  (ETH/USD feed freshness). Range 5–55%.
                 </p>
               </div>
             </aside>

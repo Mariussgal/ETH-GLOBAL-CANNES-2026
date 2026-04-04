@@ -6,7 +6,7 @@ interface SegmentedProgressProps {
   segments?: number;
   status?: "neutral" | "success" | "warning" | "accent";
   size?: "hero" | "standard" | "compact";
-  /** Blocs carrés (grille), Nothing / instrument panel */
+  /** Square blocks (grid), Nothing / instrument panel */
   variant?: "bar" | "blocks";
   animated?: boolean;
 }

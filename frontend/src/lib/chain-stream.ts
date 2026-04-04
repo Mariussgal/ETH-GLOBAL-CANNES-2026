@@ -93,7 +93,7 @@ export function buildChainStreamCardData(
   totalFeesReceived: bigint,
   priceFloorRaw: bigint | undefined,
   opts?: {
-    /** Si défini : levée marché primaire (USDC), pas les frais vault. */
+    /** If set: primary market raise (USDC), not vault fees. */
     emitterYstBalanceWei?: bigint;
     /** Supply YST « réelle » (souvent `totalSupply()`), plus fiable que `stream.totalYST` seul. */
     capYstWei?: bigint;

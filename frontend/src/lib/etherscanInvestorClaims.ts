@@ -1,6 +1,6 @@
 /**
  * Historique `RewardsClaimed` via [Etherscan API V2](https://docs.etherscan.io/api-reference/endpoint/getlogs-topics.md)
- * — même approche que `etherscanFeesLogs.ts`, évite les quotas / 400 des RPC sur `eth_getLogs`.
+ * — same approach as `etherscanFeesLogs.ts`, avoids RPC quotas / 400 errors on `eth_getLogs`.
  */
 
 import {
@@ -23,7 +23,7 @@ export const REWARDS_CLAIMED_TOPIC0 = toEventHash(
 
 const DEFAULT_LOOKBACK = BigInt(800_000); // ~3 mois (Sepolia 12s)
 
-/** Plage max par requête (alignée sur le feed Arc). */
+/** Max range per request (aligned with the Arc feed). */
 const BLOCK_SPAN = BigInt(500_000);
 
 export type SerializedClaimEntry = {
@@ -127,7 +127,7 @@ async function fetchRewardsClaimedRange(
 }
 
 /**
- * Tous les `RewardsClaimed` pour `user` sur la fenêtre [fromBlock, latest],
+ * All `RewardsClaimed` events for `user` over the window [fromBlock, latest],
  * filtrés aux vaults listés (whitelist).
  */
 export async function fetchInvestorClaimsEtherscan(

@@ -127,7 +127,7 @@ export default function ActivateAutomationButton({ row }: Props) {
           </button>
           {!isFactoryOwner && (
             <p className="font-mono text-[9px] text-text-disabled leading-snug">
-              Réservé au wallet owner Factory. Copiez le{" "}
+              Reserved for the Factory owner wallet. Copy the{" "}
               <span className="text-text-secondary">streamKey</span> pour votre job CRE / opérateur.
             </p>
           )}

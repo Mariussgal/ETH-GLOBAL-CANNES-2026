@@ -9,7 +9,7 @@ import {
 
 /**
  * Historique FeesGenerated pour le LIVE ACTIVITY FEED.
- * La clé est lue côté serveur (.env.local) — pas besoin que NEXT_PUBLIC soit injecté dans le bundle client.
+ * The key is read server-side (.env.local) — no need for NEXT_PUBLIC to be injected into the client bundle.
  */
 export async function GET() {
   const apiKey =

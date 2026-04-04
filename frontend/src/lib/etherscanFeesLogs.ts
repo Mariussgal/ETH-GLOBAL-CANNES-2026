@@ -1,6 +1,6 @@
 /**
  * Historique FeesGenerated via [Etherscan API V2](https://docs.etherscan.io/api-reference/endpoint/getlogs-address-topics.md)
- * — évite les limites eth_getLogs des RPC (Alchemy free : 10 blocs / requête, CU/s, etc.).
+ * — avoids eth_getLogs limits on RPCs (Alchemy free: 10 blocks / request, CU/s, etc.).
  */
 
 import { hexToBigInt } from "viem";
@@ -9,12 +9,12 @@ import { SEPOLIA_CHAIN_ID } from "@/contracts";
 
 const ETHERSCAN_V2 = "https://api.etherscan.io/v2/api";
 
-/** Fenêtre d’historique pour le feed (Sepolia ~12s/bloc : ~2 jours à 20k blocs) */
+/** History window for the feed (Sepolia ~12s/block: ~2 days at 20k blocks) */
 export const TOTAL_HISTORY_LOOKBACK_BLOCKS = BigInt(20_000);
 
 /**
- * Plage max par requête getLogs (blocs inclusifs : from..from+span-1).
- * Doit couvrir TOTAL_HISTORY_LOOKBACK_BLOCKS + 1 blocs (latest − N … latest).
+ * Max range per getLogs request (inclusive blocks: from..from+span-1).
+ * Must cover TOTAL_HISTORY_LOOKBACK_BLOCKS + 1 blocks (latest − N … latest).
  */
 const ETHERSCAN_GETLOGS_BLOCK_SPAN = BigInt(25_000);
 
@@ -114,7 +114,7 @@ function mapEtherscanRowToLog(row: EtherscanLogRow): Log {
 }
 
 /**
- * Récupère tous les logs FeesGenerated sur [fromBlock, toBlock] (pagination 1000 max / page par plage).
+ * Fetches all FeesGenerated logs over [fromBlock, toBlock] (pagination 1000 max / page per range).
  */
 export async function fetchFeesGeneratedLogsEtherscan(
   apiKey: string,

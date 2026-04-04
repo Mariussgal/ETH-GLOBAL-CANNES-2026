@@ -1,12 +1,12 @@
 /**
- * Appelle `generateFees()` sur MockQuickswapBase + MockQuickswapPolygon (Sepolia).
- * Les frais USDC passent par le `splitter` de chaque mock (Router) → `depositFees` sur le vault.
+ * Calls `generateFees()` on MockQuickswapBase + MockQuickswapPolygon (Sepolia).
+ * USDC fees flow through the `splitter` of each mock (Router) → `depositFees` on the vault.
  *
- * POST ou GET (pour Vercel Cron). Si `CRANK_SECRET` est défini : header
+ * POST or GET (for Vercel Cron). If `CRANK_SECRET` is set: header
  * `Authorization: Bearer <CRANK_SECRET>`.
  *
- * Env : PRIVATE_KEY, CRANK_SECRET (optionnel),
- * SEPOLIA_RPC_URL ou NEXT_PUBLIC_SEPOLIA_RPC_URL (recommandé : même URL Alchemy que le client).
+ * Env: PRIVATE_KEY, CRANK_SECRET (optional),
+ * SEPOLIA_RPC_URL or NEXT_PUBLIC_SEPOLIA_RPC_URL (recommended: same Alchemy URL as the client).
  */
 
 import { NextResponse } from "next/server";
@@ -19,12 +19,12 @@ export const dynamic = "force-dynamic";
 
 const MOCK_ABI = parseAbi(["function generateFees() external"]);
 
-/** Sélecteurs d’erreurs custom MockQuickswapBase / Polygon (Solidity). */
+/** Custom error selectors for MockQuickswapBase / Polygon (Solidity). */
 const MOCK_ERROR_HINTS: Record<string, string> = {
   "0xf4d678b8":
-    "InsufficientBalance — le mock n’a pas assez d’USDC Sepolia sur son adresse : envoyer du USDC test au contrat mock (≥ minFee, souvent ≥ 0,1 USDC).",
-  "0x36c13ba1": "FeesDisabled — setFeesEnabled(true) (owner) ou interrupteur ON dans l’UI.",
-  "0x2a35a324": "TooEarly — attendre le cooldown (minCooldown) entre deux generateFees.",
+    "InsufficientBalance — the mock does not have enough USDC Sepolia at its address: send test USDC to the mock contract (≥ minFee, often ≥ 0.1 USDC).",
+  "0x36c13ba1": "FeesDisabled — call setFeesEnabled(true) (owner) or toggle ON in the UI.",
+  "0x2a35a324": "TooEarly — wait for the cooldown (minCooldown) between two generateFees calls.",
 };
 
 function hintForRevertError(message: string): string | undefined {
@@ -37,7 +37,7 @@ function hintForRevertError(message: string): string | undefined {
   return undefined;
 }
 
-/** Revert attendu quand l’interrupteur a mis feesEnabled(false) — pas une vraie panne. */
+/** Expected revert when the switch set feesEnabled(false) — not a real error. */
 function isFeesDisabledError(message: string): boolean {
   const m = message.toLowerCase();
   return (
@@ -49,7 +49,7 @@ function isFeesDisabledError(message: string): boolean {
 
 /**
  * Certains RPC / viem renvoient ce texte au lieu du revert décodé quand generateFees revert
- * (ex. 2e tx après la 1re) — même contexte « fees OFF ».
+ * (e.g. 2nd tx after the 1st) — same "fees OFF" context.
  */
 function isLikelyBenignRpcNoise(message: string): boolean {
   return (
@@ -160,7 +160,7 @@ async function runCrank(): Promise<NextResponse> {
     results.every((r) => !r.ok && r.error && isExpectedSkipAfterFeesOff(r.error));
 
   /**
-   * Après OFF, un dernier tick peut encore appeler generateFees → revert sur les deux mocks.
+   * After OFF, one last tick may still call generateFees → revert on both mocks.
    * HTTP 200 + `allFeesDisabled` pour éviter 502 / Bad Gateway dans la console navigateur.
    */
   const httpOk = anyOk || allFeesDisabled;
@@ -181,7 +181,7 @@ export async function POST(request: Request) {
   return runCrank();
 }
 
-/** Vercel Cron envoie souvent un GET — même logique que POST. */
+/** Vercel Cron often sends a GET — same logic as POST. */
 export async function GET(request: Request) {
   const denied = authorize(request);
   if (denied) return denied;

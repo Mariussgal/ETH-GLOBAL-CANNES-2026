@@ -2,7 +2,7 @@
 
 export const SEPOLIA_CHAIN_ID = 11155111;
 
-/** Défauts dans le repo ; surcharger avec `NEXT_PUBLIC_MOCK_BASE_ADDRESS` / `NEXT_PUBLIC_MOCK_POLYGON_ADDRESS` après redeploy des mocks. */
+/** Defaults in the repo; override with `NEXT_PUBLIC_MOCK_BASE_ADDRESS` / `NEXT_PUBLIC_MOCK_POLYGON_ADDRESS` after redeploying mocks. */
 const MOCK_BASE_DEFAULT =
   "0x646f3ba4fe570D52e0C80D2A7Bf2131A990e4d95" as `0x${string}`;
 const MOCK_POLYGON_DEFAULT =

@@ -31,11 +31,11 @@ import type { Address } from "viem";
 const ENS_APP = "https://app.ens.domains";
 
 /**
- * Démo / hackathon : `capitalRaised` envoyé à la Factory = (net après décote CRE) ÷ ce diviseur,
- * pour garder des levées testnet réalistes tout en affichant les gros chiffres DeFiLlama à l’écran.
+ * Demo / hackathon: `capitalRaised` sent to Factory = (net after CRE discount) ÷ this divisor,
+ * to keep testnet raises realistic while displaying the large DeFiLlama figures on screen.
  */
 const DEMO_ONCHAIN_AMOUNT_DIVISOR = 10_000;
-/** Minimum 1 USDC (6 dec) on-chain après division. */
+/** Minimum 1 USDC (6 dec) on-chain after division. */
 const MIN_ONCHAIN_CAPITAL_RAISED_RAW = BigInt(1_000_000);
 
 /** CRE-style mock components (σ, R, trend) — animated via SegmentedProgress */
@@ -797,7 +797,7 @@ export default function CreateStreamTerminal() {
                     Estimated annual revenue (DeFiLlama)
                   </p>
                   <p className="font-grotesk text-body-sm text-text-secondary mb-sm">
-                    Moyenne des frais sur 30 jours (USD/jour) via le proxy Cloudflare du workflow CRE,
+                    Average fees over 30 days (USD/day) via the CRE workflow Cloudflare proxy,
                     annualized ×365 — same source as the off-chain Chainlink CRE valuation.
                   </p>
                   <p className="font-mono text-display-sm sm:text-display-md text-text-display tabular-nums">
@@ -947,7 +947,7 @@ export default function CreateStreamTerminal() {
 
                     <div className="border-t border-border-visible pt-md">
                       <p className="font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-xs">
-                        Montant on-chain (démo ÷ {DEMO_ONCHAIN_AMOUNT_DIVISOR.toLocaleString("en-US")})
+                        On-chain amount (demo ÷ {DEMO_ONCHAIN_AMOUNT_DIVISOR.toLocaleString("en-US")})
                       </p>
                       <p className="font-grotesk text-display-sm sm:text-display-md text-text-primary tabular-nums leading-none">
                         {formatUsdcShort(
@@ -959,7 +959,7 @@ export default function CreateStreamTerminal() {
                         <span className="font-mono text-body-sm text-text-disabled">USDC</span>
                       </p>
                       <p className="font-grotesk text-body-sm text-text-secondary mt-sm leading-snug">
-                        Valeur enregistrée dans la Factory pour la levée (net après décote, divisé par{" "}
+                        Value recorded in the Factory for the raise (net after discount, divided by{" "}
                         {DEMO_ONCHAIN_AMOUNT_DIVISOR.toLocaleString("en-US")} pour la démo testnet).
                       </p>
                     </div>
@@ -1014,7 +1014,7 @@ export default function CreateStreamTerminal() {
                         href={`/invest/${existingStreamInvestId}`}
                         className="inline-flex font-mono text-[12px] uppercase tracking-[0.06em] px-md py-sm border border-text-display text-text-display rounded-technical hover:bg-text-display hover:text-black transition-colors"
                       >
-                        Ouvrir /invest/{existingStreamInvestId}
+                        Open /invest/{existingStreamInvestId}
                       </Link>
                     ) : null}
                   </div>

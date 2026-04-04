@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   }
 
   const allOk = results.every((r) => r.ok);
-  /** Toujours 200 : le client lit `allOk` + `results` (évite « Bad Gateway » sur échec owner). */
+  /** Always 200: the client reads `allOk` + `results` (avoids "Bad Gateway" on owner failure). */
   return NextResponse.json({
     results,
     from: account.address,

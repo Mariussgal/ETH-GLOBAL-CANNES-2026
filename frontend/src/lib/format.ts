@@ -1,7 +1,7 @@
 /**
  * Format a number with commas as thousands separator on the integer part only.
  * Avoids `298,114.2,857` when the value has decimals (ancien bug : regex sur toute la chaîne).
- * Décimales : jusqu’à 2 pour les montants non entiers.
+ * Decimals: up to 2 for non-integer amounts.
  */
 export function formatNumber(n: number): string {
   if (!Number.isFinite(n)) return "—";

@@ -47,7 +47,7 @@ export type StreamChainInvest = {
   ystToken: `0x${string}`;
   emitter: `0x${string}`;
   vault: `0x${string}`;
-  /** Router déployé par la Factory pour ce stream — doit être le même que `mock.splitter` pour créditer ce vault. */
+  /** Router deployed by the Factory for this stream — must match `mock.splitter` to credit this vault. */
   splitter: `0x${string}`;
 };
 
@@ -73,7 +73,7 @@ export default function StreamInvestView({
   const [halveBoundsPending, setHalveBoundsPending] = useState(false);
   const [mockPanelMessage, setMockPanelMessage] = useState<string | null>(null);
 
-  /** Plafond de levée affiché : nominal (`capitalRaised`) si on-chain primaire, sinon `vaultTarget`. */
+  /** Displayed raise cap: nominal (`capitalRaised`) if on-chain primary, otherwise `vaultTarget`. */
   const raiseCapUsdc = useMemo(() => {
     if (
       stream.nominalRaiseCapUsdc !== undefined &&
@@ -132,7 +132,7 @@ export default function StreamInvestView({
     return ((TARGET_DISTRIBUTION - raiseCapUsdc) / raiseCapUsdc) * 100;
   }, [raiseCapUsdc, TARGET_DISTRIBUTION]);
 
-  /** 100 % = levée nominale atteinte (primaire on-chain), pas la valeur faciale. */
+  /** 100% = nominal raise reached (on-chain primary), not the face value. */
   const primaryRaiseComplete = Boolean(
     chainInvest &&
       nominalUsdc !== undefined &&
@@ -188,7 +188,7 @@ export default function StreamInvestView({
     return parseFloat(formatUnits(myYstBalanceWei as bigint, ystDecimals));
   }, [myYstBalanceWei, ystDecimals]);
 
-  /** Base pour breakeven / ROI : montant USDC réellement investi (YST) ou plafond nominal. */
+  /** Base for breakeven / ROI: actual USDC amount invested (YST) or nominal cap. */
   const breakevenBaseUsdc = useMemo(() => {
     if (myInvestedUsdc !== null && myInvestedUsdc > 0) return myInvestedUsdc;
     if (nominalUsdc !== undefined && nominalUsdc > 0) return nominalUsdc;
@@ -196,7 +196,7 @@ export default function StreamInvestView({
     return 500;
   }, [myInvestedUsdc, nominalUsdc, raiseCapUsdc]);
 
-  /** Part du flux de revenus protocole (même logique que « REVENUE SHARE » : (YST / supply) × fee%). */
+  /** Share of the protocol revenue stream (same logic as "REVENUE SHARE": (YST / supply) × fee%). */
   const myRevenueShareOfProtocolPct = useMemo(() => {
     if (
       myYstHuman === null ||
@@ -262,7 +262,7 @@ export default function StreamInvestView({
   const feesPolyOn = mockFeesEnabledReads?.[1]?.result as boolean | undefined;
   /**
    * Crank **uniquement** si les deux mocks ont `feesEnabled === true`.
-   * Évite d’appeler `generateFees` pendant le refetch (`undefined !== false` était vrai → erreur FeesDisabled après OFF).
+   * Avoids calling `generateFees` during refetch (`undefined !== false` was true → FeesDisabled error after OFF).
    */
   const mockFeesSwitchOn = feesBaseOn === true && feesPolyOn === true;
   const feesGenerationEnabled = mockFeesSwitchOn;
@@ -271,7 +271,7 @@ export default function StreamInvestView({
     feesPolyOn !== undefined &&
     feesBaseOn !== feesPolyOn;
 
-  /** Si les mocks n’appellent pas le Router de ce stream, les fees vont à un autre vault → earned ici = 0. */
+  /** If the mocks do not call this stream’s Router, fees go to another vault → earned here = 0. */
   const mockSplitterMismatch = useMemo(() => {
     const target = chainInvest?.splitter?.toLowerCase();
     if (!target) return false;
@@ -311,7 +311,7 @@ export default function StreamInvestView({
             .join(" · ");
           throw new Error(
             msg.includes("NotOwner") || msg.includes("owner")
-              ? `${msg} — la clé PRIVATE_KEY doit être owner des mocks (transferOwnership).`
+              ? `${msg} — PRIVATE_KEY must be the owner of the mocks (transferOwnership).`
               : msg
           );
         }
@@ -381,11 +381,11 @@ export default function StreamInvestView({
           .join(" · ");
         throw new Error(
           msg.includes("NotOwner") || msg.includes("owner")
-            ? `${msg} — PRIVATE_KEY doit être owner des mocks.`
+            ? `${msg} — PRIVATE_KEY must be the owner of the mocks.`
             : msg
         );
       }
-      setMockPanelMessage("Bornes min/max ÷2 — les mocks vident le solde ~2× moins vite par tick.");
+      setMockPanelMessage("Min/max bounds ÷2 — mocks drain the balance ~2× slower per tick.");
       void queryClient.invalidateQueries();
     } catch (e) {
       setMockPanelMessage(e instanceof Error ? e.message : String(e));
@@ -413,7 +413,7 @@ export default function StreamInvestView({
   const totalPolygonRevenue = demoFeedActive ? demo.demoPolygonUsdc : arc.totalPolygonRevenue;
   const hubLiveSync = demoFeedActive || arc.liveSync;
 
-  /** Après 100 % : appelle /api/crank-mock-fees tout de puis puis toutes les ~11 min (page ouverte). */
+  /** After 100%: calls /api/crank-mock-fees immediately then every ~11 min (while page is open). */
   const mockFeeCrank = useMockFeeAutoCrank({
     enabled: Boolean(chainInvest && vaultLive && !demoRevenue),
     feesGenerationEnabled,
@@ -667,7 +667,7 @@ export default function StreamInvestView({
                   items={feedItems}
                   feedHint={
                     chainInvest && !demoRevenue
-                      ? "Historique = tous les frais générés par les mocks Base/Polygon partagés (même vault). Les horaires peuvent précéder la création de ce stream."
+                      ? "History = all fees generated by shared Base/Polygon mocks (same vault). Timestamps may predate this stream’s creation."
                       : undefined
                   }
                 />
@@ -723,8 +723,8 @@ export default function StreamInvestView({
                     </div>
                     {mockFeesSwitchMixed ? (
                       <p className="text-accent normal-case text-[10px]">
-                        Base et Polygon diffèrent sur <code className="text-text-secondary">feesEnabled</code>{" "}
-                        — utilise l’interrupteur pour les remettre au même état.
+                        Base and Polygon differ on <code className="text-text-secondary">feesEnabled</code>{" "}
+                        — use the toggle to bring them back to the same state.
                       </p>
                     ) : null}
                     <div className="flex flex-col gap-sm">
@@ -749,8 +749,8 @@ export default function StreamInvestView({
                         </button>
                       </div>
                       <p className="text-text-disabled normal-case text-[9px] max-w-md">
-                        <code className="text-text-secondary">setSplitter</code> : même clé owner que les
-                        autres actions mock. <code className="text-text-secondary">setFeeBounds</code> : réduit
+                        <code className="text-text-secondary">setSplitter</code>: same owner key as the
+                        other mock actions. <code className="text-text-secondary">setFeeBounds</code>: reduces
                         chaque tick (~2× moins d’USDC par appel si tu divises par 2).
                       </p>
                     </div>
@@ -771,9 +771,9 @@ export default function StreamInvestView({
                     </p>
                     {!feesGenerationEnabled ? (
                       <p className="text-text-secondary normal-case">
-                        Crank en pause — interrupteur{" "}
-                        <span className="text-text-display">OFF</span> (aucun{" "}
-                        <code className="text-text-secondary">generateFees</code>). Un ancien{" "}
+                        Crank paused — switch{" "}
+                        <span className="text-text-display">OFF</span> (no{" "}
+                        <code className="text-text-secondary">generateFees</code> calls). A stale{" "}
                         <span className="text-accent">LAST_TICK_ERR</span> peut encore s’afficher si le solde
                         mock était vide avant la coupure ; ignore-le.
                       </p>
@@ -791,7 +791,7 @@ export default function StreamInvestView({
                           ? "CRANK…"
                           : mockFeeCrank.status
                             ? `${mockFeeCrank.status.ok ? "LAST_TICK_OK" : "LAST_TICK_ERR"} · ${mockFeeCrank.status.message}`
-                            : "En attente du premier tick…"}
+                            : "Waiting for first tick…"}
                       </p>
                     )}
                   </div>
@@ -953,7 +953,7 @@ export default function StreamInvestView({
                        Mock → mauvais Router
                      </p>
                      <p className="normal-case text-text-disabled">
-                       Les contrats mock Base/Polygon appellent un{" "}
+                       The Base/Polygon mock contracts call a{" "}
                        <code className="text-text-secondary">splitter</code> différent du Router de{" "}
                        <strong className="text-text-primary">ce</strong> stream. Les USDC partent donc vers un{" "}
                        <strong className="text-text-primary">autre</strong> vault :{" "}
@@ -965,7 +965,7 @@ export default function StreamInvestView({
                        <code className="text-text-secondary break-all">
                          setSplitter({chainInvest.splitter})
                        </code>{" "}
-                       sur chaque mock (même adresse que la Factory pour ce stream).
+                       on each mock (same address as the Factory for this stream).
                      </p>
                    </div>
                  ) : null}
@@ -1073,7 +1073,7 @@ export default function StreamInvestView({
                        />
                        <p className="font-mono text-[9px] text-text-disabled normal-case text-center leading-snug">
                          Envoie <code className="text-text-secondary">claimRewards()</code> sur le YST de ce
-                         stream — transfère l’USDC accumulé depuis le vault (frais 50 bps au claim dans le
+                         stream — transfers accumulated USDC from the vault (50 bps fee at claim in the
                          contrat).
                        </p>
                      </>

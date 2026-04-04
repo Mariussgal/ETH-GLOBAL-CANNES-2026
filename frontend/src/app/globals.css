@@ -209,7 +209,7 @@ body {
   background-size: 8px 8px;
 }
 
-/* ── RainbowKit × Nothing — typo (Grotesk UI, Mono identité portefeuille) ── */
+/* ── RainbowKit × Nothing — typography (Grotesk UI, Mono wallet identity) ── */
 [data-rk] {
   --rk-fonts-body: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
 }

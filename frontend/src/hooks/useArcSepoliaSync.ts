@@ -32,29 +32,29 @@ import type { ArcActivityItem } from "@/components/invest/ArcActivityFeed";
 const USDC_DECIMALS = 6;
 const FEED_MAX = 10;
 /**
- * Alchemy **gratuit** : eth_getLogs limité à **10 blocs** par requête (doc / erreur API).
- * On aligne tous les RPC sur cette taille de tranche (les nœuds publics l’acceptent aussi).
+ * Alchemy **free tier**: eth_getLogs limited to **10 blocks** per request (per docs / API error).
+ * All RPCs are aligned to this chunk size (public nodes accept it too).
  */
 const MAX_ETH_GETLOGS_BLOCKS_INCLUSIVE = BigInt(10);
 /**
- * Pause entre chaque eth_getLogs (10 blocs). Trop bas → erreur Alchemy « compute units per second ».
+ * Delay between each eth_getLogs call (10 blocks). Too low → Alchemy "compute units per second" error.
  * ~200 ms ≈ ≤5 req/s, compatible free tier.
  */
 const BETWEEN_LOG_CHUNKS_MS = 200;
 /**
- * Polling eth_getLogs : 2 watchers × intervalle.
- * En prod, augmenter l’espace entre polls réduit la concurrence avec les eth_call / multicall de la console.
+ * Polling eth_getLogs: 2 watchers × interval.
+ * In prod, increasing the gap between polls reduces contention with eth_call / multicall from the console.
  */
 const EVENT_POLLING_MS =
   typeof process !== "undefined" && process.env.NODE_ENV === "production"
     ? 20_000
     : 12_000;
-/** Après ce délai, on lance quand même le scan feed (évite de bloquer le feed si la console reste en pending) */
+/** After this delay, start the feed scan anyway (avoids blocking the feed if the console stays pending) */
 const FEED_HEAVY_FALLBACK_MS = 5_000;
 
 const LOG_PREFIX = "[useArcSepoliaSync]";
 
-/** ABI alignée sur les mocks Sepolia (MockQuickswapBase / MockQuickswapPolygon) */
+/** ABI aligned with the Sepolia mocks (MockQuickswapBase / MockQuickswapPolygon) */
 const STRICT_ABI = [
   {
     type: "event",
@@ -97,7 +97,7 @@ function isAlchemyThroughputError(e: unknown): boolean {
   );
 }
 
-/** Découpe en tranches ≤10 blocs inclus (Alchemy Free + compatibilité max des RPC) */
+/** Splits into chunks of ≤10 inclusive blocks (Alchemy Free + max RPC compatibility) */
 async function getFeesGeneratedEventsChunked(
   publicClient: Pick<PublicClient, "getContractEvents">,
   contractAddress: `0x${string}`,
@@ -148,9 +148,9 @@ async function getFeesGeneratedEventsChunked(
 }
 
 /**
- * Historique : préférence [Etherscan API V2 getLogs](https://docs.etherscan.io/api-reference/endpoint/getlogs-address-topics.md)
- * si `NEXT_PUBLIC_ETHERSCAN_API_KEY` est défini (pas de limite 10 blocs / eth_getLogs Alchemy).
- * Sinon repli sur le RPC (tranches 10 blocs).
+ * History: prefers [Etherscan API V2 getLogs](https://docs.etherscan.io/api-reference/endpoint/getlogs-address-topics.md)
+ * if `NEXT_PUBLIC_ETHERSCAN_API_KEY` is set (no 10-block limit / eth_getLogs Alchemy).
+ * Falls back to RPC otherwise (10-block chunks).
  */
 async function fetchFeesHistoryForContract(
   rpcClient: Pick<PublicClient, "getContractEvents"> | null,
@@ -170,7 +170,7 @@ async function fetchFeesHistoryForContract(
   }
 
   if (!rpcClient) {
-    console.warn(`${LOG_PREFIX} pas de client RPC pour le repli historique`);
+    console.warn(`${LOG_PREFIX} no RPC client for history fallback`);
     return [];
   }
   return getFeesGeneratedEventsChunked(rpcClient, contractAddress, fromBlock, latest);
@@ -209,11 +209,11 @@ function decodeFeesLogStrict(log: Log): {
 
 export function useArcSepoliaSync(options: {
   enabled?: boolean;
-  /** Libellé protocol pour les entrées synthétiques (delta yield), pas les événements on-chain */
+  /** Protocol label for synthetic entries (delta yield), not on-chain events */
   fallbackProtocolLabel?: string;
   /**
-   * Slug / protocole du stream affiché (ex. chainlink). Les mocks Solidity émettent toujours
-   * `QuickswapV3` dans l’event — on remplace l’affichage pour la démo multi-stream.
+   * Slug / protocol of the displayed stream (e.g. chainlink). Solidity mocks always emit
+   * `QuickswapV3` in the event — we override the display label for the multi-stream demo.
    */
   feedProtocolLabel?: string;
   /**
@@ -237,7 +237,7 @@ export function useArcSepoliaSync(options: {
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId: SEPOLIA_CHAIN_ID });
 
-  /** Client dédié Alchemy pour l’historique : évite le fallback Wagmi (1rpc, etc.) qui faisait échouer eth_getLogs alors que les eth_call passent */
+  /** Dedicated Alchemy client for history: avoids the Wagmi fallback (1rpc, etc.) which was failing eth_getLogs while eth_call succeeded */
   const explicitHistoryClient = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL?.trim();
     if (!url?.startsWith("http")) return null;
@@ -332,8 +332,8 @@ export function useArcSepoliaSync(options: {
   }, [readEnabled, address]);
 
   /**
-   * Un seul appel RPC (multicall viem) pour usdc + fees Base/Poly + earned — évite la saturation
-   * concurrente de connexions HTTP vers le même hôte qu’eth_getLogs.
+   * Single RPC call (viem multicall) for usdc + fees Base/Poly + earned — avoids saturating
+   * concurrent HTTP connections to the same host as eth_getLogs.
    */
   const consoleReadContracts = useMemo(() => {
     const shared = [
@@ -404,7 +404,7 @@ export function useArcSepoliaSync(options: {
     },
   });
 
-  /** Historique + watchers getLogs : uniquement après la console ou timeout — priorité RPC pour earned / liquidité */
+  /** History + getLogs watchers: only after the console or timeout — RPC priority for earned / liquidity */
   const [feedHeavySyncEnabled, setFeedHeavySyncEnabled] = useState(false);
   useEffect(() => {
     if (!readEnabled) {
@@ -420,7 +420,7 @@ export function useArcSepoliaSync(options: {
     return () => window.clearTimeout(id);
   }, [readEnabled, loadingConsoleBatch, loadingVaultLiquidity]);
 
-  /** Historique : d’abord `/api/arc-feed-history` (clé lue côté serveur), sinon Etherscan client puis RPC */
+  /** History: first tries `/api/arc-feed-history` (key read server-side), then Etherscan client, then RPC */
   useEffect(() => {
     if (!readEnabled || !feedHeavySyncEnabled) return;
 
@@ -564,7 +564,7 @@ export function useArcSepoliaSync(options: {
     eventName: "FeesGenerated" as const,
     chainId: SEPOLIA_CHAIN_ID,
     enabled: readEnabled && feedHeavySyncEnabled,
-    /** Si true, aucun poll Sepolia tant que le wallet n’est pas sur Sepolia — les eth_call passent quand même via chainId */
+    /** If true, no Sepolia poll until the wallet is on Sepolia — eth_call still goes through via chainId */
     syncConnectedChain: false as const,
     pollingInterval: EVENT_POLLING_MS,
   };
@@ -581,7 +581,7 @@ export function useArcSepoliaSync(options: {
     onLogs: onPolygonLogs,
   });
 
-  /** Fallback : dès que `earned` augmente (ex. 24.90 → 29.90 USDC), pousse une ligne dans le feed sans attendre les events ni délai */
+  /** Fallback: when `earned` increases (e.g. 24.90 → 29.90 USDC), push a line to the feed without waiting for events or a delay */
   useEffect(() => {
     const yieldValue = earnedRaw;
     console.log("[YIELD_CHECK]", { yieldValue, prevYield: prevYieldRef.current });
@@ -631,7 +631,7 @@ export function useArcSepoliaSync(options: {
         chainLabel,
       });
 
-      console.log(`${LOG_PREFIX} fallback feed row (earned ↑, immédiat)`, { chainLabel, amountNum });
+      console.log(`${LOG_PREFIX} fallback feed row (earned ↑, immediate)`, { chainLabel, amountNum });
     }
 
     prevYieldRef.current = earned;

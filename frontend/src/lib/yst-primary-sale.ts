@@ -10,7 +10,7 @@ export function ystWeiFromUsdcAmount(amountUsdc: bigint, ystDecimals: number): b
   return (amountUsdc * factor) / BigInt(1_000_000);
 }
 
-/** Montant YST « humain » pour un montant USDC (aligné on-chain). */
+/** Human YST amount for a given USDC amount (aligned on-chain). */
 export function ystHumanFromUsdc(usdcHuman: number, ystDecimals: number): number {
   if (usdcHuman <= 0 || !Number.isFinite(usdcHuman)) return 0;
   const amount = parseUnits(usdcHuman.toFixed(6), 6);

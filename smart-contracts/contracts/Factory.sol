@@ -380,6 +380,12 @@ function submitWorkflowResult(
         PUBLIC_RESOLVER.setText(subnode, "ysm.status", "");
     }
 
+    function markRepaid(bytes32 streamKey) external onlyOwner {
+        bytes32 subnode = streamKeyToSubnode[streamKey];
+        require(subnode != bytes32(0), "no subnode");
+        PUBLIC_RESOLVER.setText(subnode, "ysm.status", "REPAID");
+    }
+
     function getStream(bytes32 streamKey) external view returns (StreamRecord memory) {
         return streams[streamKey];
     }

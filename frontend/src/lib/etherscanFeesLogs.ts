@@ -16,7 +16,7 @@ export const TOTAL_HISTORY_LOOKBACK_BLOCKS = BigInt(20_000);
  * Plage max par requête getLogs (blocs inclusifs : from..from+span-1).
  * Doit couvrir TOTAL_HISTORY_LOOKBACK_BLOCKS + 1 blocs (latest − N … latest).
  */
-const ETHERSCAN_GETLOGS_BLOCK_SPAN = 25_000n;
+const ETHERSCAN_GETLOGS_BLOCK_SPAN = BigInt(25_000);
 
 /** Transport JSON pour Route Handler → client (viem Log contient des bigint) */
 export type SerializedLog = {
@@ -131,8 +131,8 @@ export async function fetchFeesGeneratedLogsEtherscan(
   let chunkStart = fromBlock;
   while (chunkStart <= toBlock) {
     const chunkEnd =
-      chunkStart + ETHERSCAN_GETLOGS_BLOCK_SPAN - 1n <= toBlock
-        ? chunkStart + ETHERSCAN_GETLOGS_BLOCK_SPAN - 1n
+      chunkStart + ETHERSCAN_GETLOGS_BLOCK_SPAN - BigInt(1) <= toBlock
+        ? chunkStart + ETHERSCAN_GETLOGS_BLOCK_SPAN - BigInt(1)
         : toBlock;
 
     const chunk = await fetchFeesGeneratedLogsEtherscanRange(
@@ -143,7 +143,7 @@ export async function fetchFeesGeneratedLogsEtherscan(
     );
     out.push(...chunk);
 
-    chunkStart = chunkEnd + 1n;
+    chunkStart = chunkEnd + BigInt(1);
     if (chunkStart <= toBlock) {
       await new Promise((r) => setTimeout(r, 400));
     }

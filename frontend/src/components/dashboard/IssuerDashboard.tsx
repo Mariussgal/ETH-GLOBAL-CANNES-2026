@@ -6,7 +6,6 @@ import { useMarketplaceOnChainStreams } from "@/hooks/useMarketplaceOnChainStrea
 import Link from "next/link";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useIssuerReceiveHistory } from "@/hooks/useIssuerReceiveHistory";
 
 const SEPOLIA_TX_URL = "https://sepolia.etherscan.io/tx/";
@@ -228,7 +227,6 @@ export default function IssuerDashboard() {
                 Link an emitter wallet to load your active streams and deploy
                 new infrastructure.
               </p>
-              <ConnectButton />
             </div>
           </div>
         )}

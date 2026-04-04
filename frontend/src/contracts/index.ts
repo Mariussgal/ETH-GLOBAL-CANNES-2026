@@ -2,12 +2,31 @@
 
 export const SEPOLIA_CHAIN_ID = 11155111;
 
+/** Défauts dans le repo ; surcharger avec `NEXT_PUBLIC_MOCK_BASE_ADDRESS` / `NEXT_PUBLIC_MOCK_POLYGON_ADDRESS` après redeploy des mocks. */
+const MOCK_BASE_DEFAULT =
+  "0x646f3ba4fe570D52e0C80D2A7Bf2131A990e4d95" as `0x${string}`;
+const MOCK_POLYGON_DEFAULT =
+  "0x72dbd97F1B8dAe5D4F31F8cEDe65895208E51f9c" as `0x${string}`;
+
+function mockAddressFromEnv(
+  key: "NEXT_PUBLIC_MOCK_BASE_ADDRESS" | "NEXT_PUBLIC_MOCK_POLYGON_ADDRESS",
+  fallback: `0x${string}`
+): `0x${string}` {
+  if (typeof process === "undefined") return fallback;
+  const e = process.env[key]?.trim();
+  if (e?.startsWith("0x") && e.length >= 42) return e as `0x${string}`;
+  return fallback;
+}
+
 export const ADDRESSES = {
   streamFactory: "0xCe897e27860F6c317DA7b4C7bB0252b941B2dCeC" as `0x${string}`,
   ystSplitter: "0xaCD8f042eE1E29580A84e213760D144957eec148" as `0x${string}`,
   vault: "0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8" as `0x${string}`,
-  mockBase: "0x89e3dF8A6970B62564b232cbBD7376987cD093a8" as `0x${string}`,
-  mockPolygon: "0x006969A32349d9581ac7206a7a1fC1168DbBcfbc" as `0x${string}`,
+  mockBase: mockAddressFromEnv("NEXT_PUBLIC_MOCK_BASE_ADDRESS", MOCK_BASE_DEFAULT),
+  mockPolygon: mockAddressFromEnv(
+    "NEXT_PUBLIC_MOCK_POLYGON_ADDRESS",
+    MOCK_POLYGON_DEFAULT
+  ),
   masterSettler: "0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4" as `0x${string}`,
   usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as `0x${string}`,
   ystToken: "0x343f28CEA446Cef6e8A380bFe11BcBf95f115370" as `0x${string}`,

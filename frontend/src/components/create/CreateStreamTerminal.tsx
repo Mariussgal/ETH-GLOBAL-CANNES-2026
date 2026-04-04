@@ -30,6 +30,14 @@ import type { Address } from "viem";
 
 const ENS_APP = "https://app.ens.domains";
 
+/**
+ * Démo / hackathon : `capitalRaised` envoyé à la Factory = (net après décote CRE) ÷ ce diviseur,
+ * pour garder des levées testnet réalistes tout en affichant les gros chiffres DeFiLlama à l’écran.
+ */
+const DEMO_ONCHAIN_AMOUNT_DIVISOR = 10_000;
+/** Minimum 1 USDC (6 dec) on-chain après division. */
+const MIN_ONCHAIN_CAPITAL_RAISED_RAW = BigInt(1_000_000);
+
 /** CRE-style mock components (σ, R, trend) — animated via SegmentedProgress */
 const CRE_COMPONENTS = {
   volatility: { label: "VOLATILITY (σ)", max: 100, value: 62, status: "warning" as const },
@@ -475,12 +483,16 @@ export default function CreateStreamTerminal() {
   const deploy = useCallback(() => {
     if (!deployReady || !offeringEconomics) return;
     const slug = onChainDeploySlug.trim();
-    const nominalUsd = offeringEconomics.nominalUsd;
-    if (!Number.isFinite(nominalUsd) || nominalUsd <= 0) return;
+    const afterNetUsd = offeringEconomics.afterDiscountUsd;
+    if (!Number.isFinite(afterNetUsd) || afterNetUsd <= 0) return;
     const streamBps = BigInt(revenuePct * 100);
     if (streamBps < BigInt(100) || streamBps > BigInt(5000)) return;
     const durationDays = BigInt(durationMonths * 30);
-    const capitalRaised = BigInt(Math.round(nominalUsd * 1e6));
+    const scaledNetUsd = afterNetUsd / DEMO_ONCHAIN_AMOUNT_DIVISOR;
+    let capitalRaised = BigInt(Math.round(scaledNetUsd * 1e6));
+    if (capitalRaised < MIN_ONCHAIN_CAPITAL_RAISED_RAW) {
+      capitalRaised = MIN_ONCHAIN_CAPITAL_RAISED_RAW;
+    }
     const discountBps = BigInt(creDecotePercent * 100);
 
     resetWrite();
@@ -542,6 +554,13 @@ export default function CreateStreamTerminal() {
     );
     lines.push(
       `> YOU_RECEIVE_NET: ${offeringEconomics ? formatUsdcShort(offeringEconomics.afterDiscountUsd) : "—"} USDC`
+    );
+    lines.push(
+      `> FACTORY capitalRaised (net ÷ ${DEMO_ONCHAIN_AMOUNT_DIVISOR}, min 1 USDC): ${
+        offeringEconomics
+          ? formatUsdcShort(offeringEconomics.afterDiscountUsd / DEMO_ONCHAIN_AMOUNT_DIVISOR)
+          : "—"
+      } USDC`
     );
     lines.push(`> CRE_DISCOUNT_RATE: ${creDecotePercent}% (σ, R_SCORE, trend, ETH/USD feed)`);
     lines.push(`> FACTORY: ${ADDRESSES.streamFactory}`);
@@ -924,6 +943,25 @@ export default function CreateStreamTerminal() {
                       <p className="font-grotesk text-body-sm text-text-secondary mt-sm leading-snug">
                         What you receive <strong className="text-text-primary font-medium">after the discount</strong>{" "}
                         ({creDecotePercent}%) calculated from the CRE summary (σ, R, trend, ETH/USD market).
+                      </p>
+                    </div>
+
+                    <div className="border-t border-border-visible pt-md">
+                      <p className="font-mono text-[11px] uppercase tracking-wider text-text-secondary mb-xs">
+                        Montant on-chain (démo ÷ {DEMO_ONCHAIN_AMOUNT_DIVISOR.toLocaleString("en-US")})
+                      </p>
+                      <p className="font-grotesk text-display-sm sm:text-display-md text-text-primary tabular-nums leading-none">
+                        {formatUsdcShort(
+                          Math.max(
+                            1,
+                            offeringEconomics.afterDiscountUsd / DEMO_ONCHAIN_AMOUNT_DIVISOR
+                          )
+                        )}{" "}
+                        <span className="font-mono text-body-sm text-text-disabled">USDC</span>
+                      </p>
+                      <p className="font-grotesk text-body-sm text-text-secondary mt-sm leading-snug">
+                        Valeur enregistrée dans la Factory pour la levée (net après décote, divisé par{" "}
+                        {DEMO_ONCHAIN_AMOUNT_DIVISOR.toLocaleString("en-US")} pour la démo testnet).
                       </p>
                     </div>
                 </div>

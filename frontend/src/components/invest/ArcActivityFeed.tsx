@@ -19,6 +19,8 @@ export type ArcActivityItem = {
 type ArcActivityFeedProps = {
   items: readonly ArcActivityItem[];
   emptyMessage?: string;
+  /** Court texte sous le titre (ex. mocks partagés Sepolia). */
+  feedHint?: string;
 };
 
 /**
@@ -28,6 +30,7 @@ type ArcActivityFeedProps = {
 function ArcActivityFeedComponent({
   items,
   emptyMessage = "Waiting for network routing...",
+  feedHint,
 }: ArcActivityFeedProps) {
   const hasItems = items.length > 0;
 
@@ -66,14 +69,21 @@ function ArcActivityFeedComponent({
 
   return (
     <section className="border border-border rounded-technical bg-black flex flex-col relative overflow-hidden flex-1">
-      <div className="p-xl border-b border-border-visible flex justify-between items-center bg-black z-10">
-        <h2 className="font-mono text-label uppercase tracking-label text-text-secondary flex items-center gap-sm">
-          <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          LIVE ACTIVITY FEED
-        </h2>
-        <span className="font-mono text-caption text-text-disabled">
-          LAST_FEE_RECEIVED: {hasItems ? "live" : "pending"}
-        </span>
+      <div className="p-xl border-b border-border-visible bg-black z-10">
+        <div className="flex justify-between items-center gap-md">
+          <h2 className="font-mono text-label uppercase tracking-label text-text-secondary flex items-center gap-sm">
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+            LIVE ACTIVITY FEED
+          </h2>
+          <span className="font-mono text-caption text-text-disabled shrink-0">
+            LAST_FEE_RECEIVED: {hasItems ? "live" : "pending"}
+          </span>
+        </div>
+        {feedHint ? (
+          <p className="font-mono text-[10px] text-text-disabled mt-sm leading-snug normal-case max-w-[52ch]">
+            {feedHint}
+          </p>
+        ) : null}
       </div>
       <div className="p-xl h-[300px] font-mono text-body-sm relative z-0">
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black to-transparent pointer-events-none z-10" />

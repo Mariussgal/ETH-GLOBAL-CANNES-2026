@@ -51,7 +51,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid MOCK_CRANK_PRIVATE_KEY" }, { status: 500 });
   }
 
-  const rpc = process.env.SEPOLIA_RPC_URL?.trim() || "https://rpc.sepolia.org";
+  const rpc =
+    process.env.SEPOLIA_RPC_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL?.trim() ||
+    "https://rpc.sepolia.org";
   const client = createWalletClient({
     account,
     chain: sepolia,
@@ -83,6 +86,11 @@ export async function POST(request: Request) {
     }
   }
 
-  const anyOk = results.some((r) => r.ok);
-  return NextResponse.json({ results, from: account.address }, { status: anyOk ? 200 : 502 });
+  const allOk = results.every((r) => r.ok);
+  /** Toujours 200 : le client lit `allOk` + `results` (évite « Bad Gateway » sur échec owner). */
+  return NextResponse.json({
+    results,
+    from: account.address,
+    allOk,
+  });
 }

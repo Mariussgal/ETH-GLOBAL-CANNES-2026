@@ -6,11 +6,12 @@ import type { StreamData } from "@/components/StreamCard";
 import { formatNumber } from "@/lib/format";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { formatUnits } from "viem";
-import { useAccount, useReadContract } from "wagmi";
-import { ERC20_ABI, SEPOLIA_CHAIN_ID } from "@/contracts";
+import { useAccount, useReadContract, useReadContracts } from "wagmi";
+import { ADDRESSES, ERC20_ABI, SEPOLIA_CHAIN_ID } from "@/contracts";
 import { usdcHumanFromYstWei, ystHumanFromUsdc } from "@/lib/yst-primary-sale";
 import ArcConsolidationHub from "./ArcConsolidationHub";
 import ArcActivityFeed from "./ArcActivityFeed";
@@ -20,9 +21,33 @@ import { useMockFeeAutoCrank } from "@/hooks/useMockFeeAutoCrank";
 import { usePrimaryMarketInvest } from "@/hooks/usePrimaryMarketInvest";
 import { shouldSimulateDemoRevenue } from "@/lib/demo-revenue-protocol";
 
+/** Getter `splitter` sur MockQuickswapBase / Polygon */
+const MOCK_SPLITTER_READ_ABI = [
+  {
+    name: "splitter",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address", name: "" }],
+  },
+] as const;
+
+const MOCK_FEES_ENABLED_READ_ABI = [
+  {
+    name: "feesEnabled",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "bool", name: "" }],
+  },
+] as const;
+
 export type StreamChainInvest = {
   ystToken: `0x${string}`;
   emitter: `0x${string}`;
+  vault: `0x${string}`;
+  /** Router déployé par la Factory pour ce stream — doit être le même que `mock.splitter` pour créditer ce vault. */
+  splitter: `0x${string}`;
 };
 
 interface StreamInvestViewProps {
@@ -38,9 +63,14 @@ export default function StreamInvestView({
   chainInvest,
   chainlinkAutomationActive = false,
 }: StreamInvestViewProps) {
+  const queryClient = useQueryClient();
   const { address } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [usdcRaw, setUsdcRaw] = useState("");
+  const [mockTogglePending, setMockTogglePending] = useState(false);
+  const [alignSplittersPending, setAlignSplittersPending] = useState(false);
+  const [halveBoundsPending, setHalveBoundsPending] = useState(false);
+  const [mockPanelMessage, setMockPanelMessage] = useState<string | null>(null);
 
   /** Plafond de levée affiché : nominal (`capitalRaised`) si on-chain primaire, sinon `vaultTarget`. */
   const raiseCapUsdc = useMemo(() => {
@@ -158,6 +188,14 @@ export default function StreamInvestView({
     return parseFloat(formatUnits(myYstBalanceWei as bigint, ystDecimals));
   }, [myYstBalanceWei, ystDecimals]);
 
+  /** Base pour breakeven / ROI : montant USDC réellement investi (YST) ou plafond nominal. */
+  const breakevenBaseUsdc = useMemo(() => {
+    if (myInvestedUsdc !== null && myInvestedUsdc > 0) return myInvestedUsdc;
+    if (nominalUsdc !== undefined && nominalUsdc > 0) return nominalUsdc;
+    if (raiseCapUsdc > 0) return raiseCapUsdc;
+    return 500;
+  }, [myInvestedUsdc, nominalUsdc, raiseCapUsdc]);
+
   /** Part du flux de revenus protocole (même logique que « REVENUE SHARE » : (YST / supply) × fee%). */
   const myRevenueShareOfProtocolPct = useMemo(() => {
     if (
@@ -175,6 +213,187 @@ export default function StreamInvestView({
   /** Nohem revenue mock: only when the stream is already in live mode. */
   const demoFeedActive = demoRevenue && vaultLive;
 
+  const { data: mockSplitterReads, refetch: refetchMockSplitters } = useReadContracts({
+    contracts: [
+      {
+        address: ADDRESSES.mockBase,
+        abi: MOCK_SPLITTER_READ_ABI,
+        functionName: "splitter",
+        chainId: SEPOLIA_CHAIN_ID,
+      },
+      {
+        address: ADDRESSES.mockPolygon,
+        abi: MOCK_SPLITTER_READ_ABI,
+        functionName: "splitter",
+        chainId: SEPOLIA_CHAIN_ID,
+      },
+    ],
+    query: {
+      enabled: Boolean(chainInvest?.splitter && vaultLive && !demoRevenue),
+    },
+  });
+
+  const {
+    data: mockFeesEnabledReads,
+    refetch: refetchMockFeesEnabled,
+    isPending: mockFeesFlagLoading,
+  } = useReadContracts({
+    contracts: [
+      {
+        address: ADDRESSES.mockBase,
+        abi: MOCK_FEES_ENABLED_READ_ABI,
+        functionName: "feesEnabled",
+        chainId: SEPOLIA_CHAIN_ID,
+      },
+      {
+        address: ADDRESSES.mockPolygon,
+        abi: MOCK_FEES_ENABLED_READ_ABI,
+        functionName: "feesEnabled",
+        chainId: SEPOLIA_CHAIN_ID,
+      },
+    ],
+    query: {
+      enabled: Boolean(chainInvest && vaultLive && !demoRevenue),
+      refetchInterval: 12_000,
+    },
+  });
+
+  const feesBaseOn = mockFeesEnabledReads?.[0]?.result as boolean | undefined;
+  const feesPolyOn = mockFeesEnabledReads?.[1]?.result as boolean | undefined;
+  /**
+   * Crank **uniquement** si les deux mocks ont `feesEnabled === true`.
+   * Évite d’appeler `generateFees` pendant le refetch (`undefined !== false` était vrai → erreur FeesDisabled après OFF).
+   */
+  const mockFeesSwitchOn = feesBaseOn === true && feesPolyOn === true;
+  const feesGenerationEnabled = mockFeesSwitchOn;
+  const mockFeesSwitchMixed =
+    feesBaseOn !== undefined &&
+    feesPolyOn !== undefined &&
+    feesBaseOn !== feesPolyOn;
+
+  /** Si les mocks n’appellent pas le Router de ce stream, les fees vont à un autre vault → earned ici = 0. */
+  const mockSplitterMismatch = useMemo(() => {
+    const target = chainInvest?.splitter?.toLowerCase();
+    if (!target) return false;
+    const b = mockSplitterReads?.[0]?.result as `0x${string}` | undefined;
+    const p = mockSplitterReads?.[1]?.result as `0x${string}` | undefined;
+    if (!b || !p) return false;
+    return b.toLowerCase() !== target || p.toLowerCase() !== target;
+  }, [chainInvest?.splitter, mockSplitterReads]);
+
+  const mockApiJsonHeaders = useCallback((): HeadersInit => {
+    const h: HeadersInit = { "Content-Type": "application/json" };
+    const s = process.env.NEXT_PUBLIC_CRANK_SECRET?.trim();
+    if (s) h.Authorization = `Bearer ${s}`;
+    return h;
+  }, []);
+
+  const setMockFeesGeneration = useCallback(
+    async (enabled: boolean) => {
+      setMockTogglePending(true);
+      setMockPanelMessage(null);
+      try {
+        const res = await fetch("/api/mock-fees-enabled", {
+          method: "POST",
+          headers: mockApiJsonHeaders(),
+          body: JSON.stringify({ enabled }),
+        });
+        const j = (await res.json()) as {
+          error?: string;
+          allOk?: boolean;
+          results?: { label: string; ok: boolean; error?: string }[];
+        };
+        if (!res.ok) throw new Error(j.error ?? res.statusText);
+        if (j.allOk === false && j.results?.length) {
+          const msg = j.results
+            .filter((r) => !r.ok)
+            .map((r) => `${r.label}: ${r.error ?? "err"}`)
+            .join(" · ");
+          throw new Error(
+            msg.includes("NotOwner") || msg.includes("owner")
+              ? `${msg} — la clé MOCK_CRANK_PRIVATE_KEY doit être owner des mocks (transferOwnership).`
+              : msg
+          );
+        }
+        await refetchMockFeesEnabled();
+        void queryClient.invalidateQueries();
+      } catch (e) {
+        setMockPanelMessage(e instanceof Error ? e.message : String(e));
+      } finally {
+        setMockTogglePending(false);
+      }
+    },
+    [mockApiJsonHeaders, queryClient, refetchMockFeesEnabled]
+  );
+
+  const alignMocksToStreamRouter = useCallback(async () => {
+    if (!chainInvest?.splitter) return;
+    setAlignSplittersPending(true);
+    setMockPanelMessage(null);
+    try {
+      const res = await fetch("/api/mock-set-splitter", {
+        method: "POST",
+        headers: mockApiJsonHeaders(),
+        body: JSON.stringify({ splitter: chainInvest.splitter }),
+      });
+      const j = (await res.json()) as {
+        error?: string;
+        hint?: string;
+        results?: { label: string; ok: boolean; error?: string }[];
+      };
+      if (!res.ok) {
+        throw new Error(j.hint ?? j.error ?? res.statusText);
+      }
+      await refetchMockSplitters();
+      void queryClient.invalidateQueries();
+      setMockPanelMessage("Mocks alignés sur le Router de ce stream.");
+    } catch (e) {
+      setMockPanelMessage(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAlignSplittersPending(false);
+    }
+  }, [
+    chainInvest?.splitter,
+    mockApiJsonHeaders,
+    queryClient,
+    refetchMockSplitters,
+  ]);
+
+  const halveMockFeeBounds = useCallback(async () => {
+    setHalveBoundsPending(true);
+    setMockPanelMessage(null);
+    try {
+      const res = await fetch("/api/mock-fee-bounds", {
+        method: "POST",
+        headers: mockApiJsonHeaders(),
+        body: JSON.stringify({ halve: true }),
+      });
+      const j = (await res.json()) as {
+        allOk?: boolean;
+        error?: string;
+        results?: { label: string; ok: boolean; error?: string }[];
+      };
+      if (!res.ok) throw new Error(j.error ?? res.statusText);
+      if (j.allOk === false && j.results?.length) {
+        const msg = j.results
+          .filter((r) => !r.ok)
+          .map((r) => `${r.label}: ${r.error ?? "err"}`)
+          .join(" · ");
+        throw new Error(
+          msg.includes("NotOwner") || msg.includes("owner")
+            ? `${msg} — MOCK_CRANK_PRIVATE_KEY doit être owner des mocks.`
+            : msg
+        );
+      }
+      setMockPanelMessage("Bornes min/max ÷2 — les mocks vident le solde ~2× moins vite par tick.");
+      void queryClient.invalidateQueries();
+    } catch (e) {
+      setMockPanelMessage(e instanceof Error ? e.message : String(e));
+    } finally {
+      setHalveBoundsPending(false);
+    }
+  }, [mockApiJsonHeaders, queryClient]);
+
   const protocolShort = useMemo(
     () => stream.ensName.split(".")[0].toUpperCase(),
     [stream.ensName]
@@ -183,6 +402,8 @@ export default function StreamInvestView({
   const arc = useArcSepoliaSync({
     enabled: vaultLive && !demoRevenue,
     fallbackProtocolLabel: protocolShort,
+    feedProtocolLabel: stream.protocol,
+    streamVaultAddress: chainInvest?.vault,
   });
 
   const demo = useDemoProtocolRevenueFeed(stream.protocol, demoFeedActive);
@@ -195,6 +416,7 @@ export default function StreamInvestView({
   /** Après 100 % : appelle /api/crank-mock-fees tout de puis puis toutes les ~11 min (page ouverte). */
   const mockFeeCrank = useMockFeeAutoCrank({
     enabled: Boolean(chainInvest && vaultLive && !demoRevenue),
+    feesGenerationEnabled,
   });
 
   const demoYieldEstimate = useMemo(
@@ -204,9 +426,11 @@ export default function StreamInvestView({
 
   const yieldNum = demoFeedActive
     ? demoYieldEstimate
-    : vaultLive && arc.liveSync && arc.accumulatedYieldUsdc !== null
-      ? parseFloat(arc.accumulatedYieldUsdc)
-      : 0;
+    : mockSplitterMismatch
+      ? 0
+      : vaultLive && arc.liveSync && arc.accumulatedYieldUsdc !== null
+        ? parseFloat(arc.accumulatedYieldUsdc)
+        : 0;
 
   const {
     invest,
@@ -420,7 +644,14 @@ export default function StreamInvestView({
                   </div>
                 </section>
 
-                <ArcActivityFeed items={feedItems} />
+                <ArcActivityFeed
+                  items={feedItems}
+                  feedHint={
+                    chainInvest && !demoRevenue
+                      ? "Historique = tous les frais générés par les mocks Base/Polygon partagés (même vault). Les horaires peuvent précéder la création de ce stream."
+                      : undefined
+                  }
+                />
                 
                 {/* Multi-Chain Hub */}
                 <div className="mt-xl">
@@ -433,73 +664,119 @@ export default function StreamInvestView({
                 </div>
 
                 {chainInvest && !demoRevenue && (
-                  <div className="font-mono text-[10px] text-text-disabled border border-border rounded-technical p-md leading-relaxed space-y-sm">
-                    <div className="text-text-secondary uppercase tracking-wide">
-                      Revenue mocks (Base + Polygon) → Router → vault
+                  <div className="font-mono text-[10px] text-text-disabled border border-border rounded-technical p-md leading-relaxed space-y-md">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-md border-b border-border-visible pb-md">
+                      <div className="text-text-secondary uppercase tracking-wide">
+                        Revenue mocks (Base + Polygon) → Router → vault
+                      </div>
+                      <div className="flex items-center gap-sm">
+                        <span className="text-text-disabled uppercase text-[9px]">
+                          Génération fees
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={mockFeesSwitchOn}
+                          disabled={mockTogglePending || mockFeesFlagLoading}
+                          onClick={() => void setMockFeesGeneration(!mockFeesSwitchOn)}
+                          className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors ${
+                            mockFeesSwitchOn
+                              ? "border-success bg-success/20"
+                              : "border-border bg-black"
+                          } ${mockTogglePending || mockFeesFlagLoading ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-text-display shadow transition-transform ${
+                              mockFeesSwitchOn ? "translate-x-5 bg-success" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                        <span className="text-[9px] tabular-nums text-text-secondary min-w-[4rem]">
+                          {mockFeesFlagLoading
+                            ? "…"
+                            : mockFeesSwitchOn
+                              ? "ON"
+                              : mockFeesSwitchMixed
+                                ? "MIX"
+                                : "OFF"}
+                        </span>
+                      </div>
                     </div>
+                    {mockFeesSwitchMixed ? (
+                      <p className="text-accent normal-case text-[10px]">
+                        Base et Polygon diffèrent sur <code className="text-text-secondary">feesEnabled</code>{" "}
+                        — utilise l’interrupteur pour les remettre au même état.
+                      </p>
+                    ) : null}
+                    <div className="flex flex-col gap-sm">
+                      <div className="flex flex-col sm:flex-row flex-wrap gap-sm items-stretch sm:items-start">
+                        <button
+                          type="button"
+                          disabled={alignSplittersPending || !chainInvest.splitter}
+                          onClick={() => void alignMocksToStreamRouter()}
+                          className="font-mono text-[10px] uppercase border border-success px-md py-sm text-success hover:bg-success/10 rounded-sm disabled:opacity-40 disabled:cursor-not-allowed w-fit"
+                        >
+                          {alignSplittersPending
+                            ? "Alignement…"
+                            : "Aligner les mocks sur ce stream (setSplitter)"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={halveBoundsPending}
+                          onClick={() => void halveMockFeeBounds()}
+                          className="font-mono text-[10px] uppercase border border-text-secondary px-md py-sm text-text-secondary hover:bg-white/5 rounded-sm disabled:opacity-40 w-fit"
+                        >
+                          {halveBoundsPending ? "…" : "Diviser min/max par 2 (moins vite)"}
+                        </button>
+                      </div>
+                      <p className="text-text-disabled normal-case text-[9px] max-w-md">
+                        <code className="text-text-secondary">setSplitter</code> : même clé owner que les
+                        autres actions mock. <code className="text-text-secondary">setFeeBounds</code> : réduit
+                        chaque tick (~2× moins d’USDC par appel si tu divises par 2).
+                      </p>
+                    </div>
+                    {mockPanelMessage ? (
+                      <p
+                        className={`normal-case text-[10px] ${
+                          mockPanelMessage.startsWith("Mocks alignés")
+                            ? "text-success"
+                            : "text-accent"
+                        }`}
+                      >
+                        {mockPanelMessage}
+                      </p>
+                    ) : null}
                     <p className="text-text-disabled normal-case">
-                      Levée nominale complète : le serveur appelle{" "}
-                      <code className="text-text-secondary">generateFees()</code> sur Base + Polygon
-                      tout de suite puis toutes les ~8–15&nbsp;s (aléatoire) tant que cette page est
-                      ouverte. Montants pseudo-aléatoires on-chain entre min/max (contrats déployés).
-                      Env serveur :{" "}
-                      <code className="text-text-secondary">MOCK_CRANK_PRIVATE_KEY</code> = owner des
-                      mocks + ETH Sepolia.
+                      Levée complète : le serveur appelle{" "}
+                      <code className="text-text-secondary">generateFees()</code> tant que l’interrupteur
+                      est ON et que la page est ouverte (~8–15&nbsp;s). Crank :{" "}
+                      <code className="text-text-secondary">MOCK_CRANK_PRIVATE_KEY</code> + ETH Sepolia.
                     </p>
-                    <p
-                      className={
-                        mockFeeCrank.pending
-                          ? "text-text-secondary animate-pulse"
-                          : mockFeeCrank.status?.ok === false
-                            ? "text-accent"
-                            : "text-success"
-                      }
-                    >
-                      {mockFeeCrank.pending
-                        ? "CRANK…"
-                        : mockFeeCrank.status
-                          ? `${mockFeeCrank.status.ok ? "LAST_TICK_OK" : "LAST_TICK_ERR"} · ${mockFeeCrank.status.message}`
-                          : "En attente du premier tick…"}
-                    </p>
-                    <div className="flex flex-wrap gap-sm pt-sm">
-                      <button
-                        type="button"
-                        className="font-mono text-[10px] uppercase border border-accent px-sm py-xs text-accent hover:bg-accent/10 rounded-sm"
-                        onClick={async () => {
-                          const headers: HeadersInit = {
-                            "Content-Type": "application/json",
-                          };
-                          const s = process.env.NEXT_PUBLIC_CRANK_SECRET?.trim();
-                          if (s) headers.Authorization = `Bearer ${s}`;
-                          await fetch("/api/mock-fees-enabled", {
-                            method: "POST",
-                            headers,
-                            body: JSON.stringify({ enabled: false }),
-                          });
-                          void mockFeeCrank.crankAgain();
-                        }}
+                    {!feesGenerationEnabled ? (
+                      <p className="text-text-secondary normal-case">
+                        Crank en pause — interrupteur{" "}
+                        <span className="text-text-display">OFF</span> (aucun{" "}
+                        <code className="text-text-secondary">generateFees</code>). Un ancien{" "}
+                        <span className="text-accent">LAST_TICK_ERR</span> peut encore s’afficher si le solde
+                        mock était vide avant la coupure ; ignore-le.
+                      </p>
+                    ) : (
+                      <p
+                        className={
+                          mockFeeCrank.pending
+                            ? "text-text-secondary animate-pulse"
+                            : mockFeeCrank.status?.ok === false
+                              ? "text-accent"
+                              : "text-success"
+                        }
                       >
-                        Arrêter les mocks (on-chain)
-                      </button>
-                      <button
-                        type="button"
-                        className="font-mono text-[10px] uppercase border border-text-secondary px-sm py-xs text-text-secondary hover:bg-white/5 rounded-sm"
-                        onClick={async () => {
-                          const headers: HeadersInit = {
-                            "Content-Type": "application/json",
-                          };
-                          const s = process.env.NEXT_PUBLIC_CRANK_SECRET?.trim();
-                          if (s) headers.Authorization = `Bearer ${s}`;
-                          await fetch("/api/mock-fees-enabled", {
-                            method: "POST",
-                            headers,
-                            body: JSON.stringify({ enabled: true }),
-                          });
-                        }}
-                      >
-                        Réactiver les mocks
-                      </button>
-                    </div>
+                        {mockFeeCrank.pending
+                          ? "CRANK…"
+                          : mockFeeCrank.status
+                            ? `${mockFeeCrank.status.ok ? "LAST_TICK_OK" : "LAST_TICK_ERR"} · ${mockFeeCrank.status.message}`
+                            : "En attente du premier tick…"}
+                      </p>
+                    )}
                   </div>
                 )}
               </>
@@ -653,6 +930,28 @@ export default function StreamInvestView({
              
              {isLive ? (
                <div className="flex flex-col gap-xl">
+                 {chainInvest && mockSplitterMismatch ? (
+                   <div className="border border-accent p-md bg-accent/5 font-mono text-[11px] text-text-secondary leading-relaxed space-y-sm">
+                     <p className="text-accent uppercase tracking-wide">
+                       Mock → mauvais Router
+                     </p>
+                     <p className="normal-case text-text-disabled">
+                       Les contrats mock Base/Polygon appellent un{" "}
+                       <code className="text-text-secondary">splitter</code> différent du Router de{" "}
+                       <strong className="text-text-primary">ce</strong> stream. Les USDC partent donc vers un{" "}
+                       <strong className="text-text-primary">autre</strong> vault :{" "}
+                       <code className="text-text-secondary">earned</code> reste 0 ici alors que le feed affiche des
+                       frais.
+                     </p>
+                     <p className="normal-case text-text-disabled">
+                       <strong className="text-text-primary">Fix (owner des mocks)</strong> :{" "}
+                       <code className="text-text-secondary break-all">
+                         setSplitter({chainInvest.splitter})
+                       </code>{" "}
+                       sur chaque mock (même adresse que la Factory pour ce stream).
+                     </p>
+                   </div>
+                 ) : null}
                  <div className="border border-success p-xl bg-success/5 shadow-[0_0_15px_rgba(34,197,94,0.1)] relative overflow-hidden group">
                    <div className="absolute inset-0 bg-success/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
                    
@@ -666,6 +965,10 @@ export default function StreamInvestView({
                        <>{yieldNum.toFixed(4)} USDC</>
                      ) : !arc.liveSync ? (
                        <span className="text-text-disabled text-body-sm tracking-wide">SWITCH TO SEPOLIA</span>
+                     ) : mockSplitterMismatch ? (
+                       <span className="text-text-disabled text-body-sm tracking-wide normal-case">
+                         0 (fees vers autre vault)
+                       </span>
                      ) : arc.loadingEarned ? (
                        <span className="text-text-disabled animate-pulse tracking-wide">SYNCING...</span>
                      ) : (
@@ -677,14 +980,29 @@ export default function StreamInvestView({
                    <div className="relative z-10 pt-md border-t border-success/30">
                      <div className="flex justify-between items-end mb-xs">
                         <span className="font-mono text-[10px] text-success/80 uppercase tracking-widest">BREAKEVEN_PROGRESS</span>
-                        <span className="font-mono text-[10px] text-success tabular-nums">{((yieldNum / 500) * 100).toFixed(2)}%</span>
+                        <span className="font-mono text-[10px] text-success tabular-nums">
+                          {breakevenBaseUsdc > 0
+                            ? ((yieldNum / breakevenBaseUsdc) * 100).toFixed(2)
+                            : "0.00"}
+                          %
+                        </span>
                      </div>
                      <div className="w-full h-[6px] bg-black border border-success/30 overflow-hidden">
-                       <div className="h-full bg-success transition-all duration-300 shadow-[0_0_8px_rgba(34,197,94,0.8)]" style={{ width: `${Math.min((yieldNum / 500) * 100, 100)}%` }} />
+                       <div
+                         className="h-full bg-success transition-all duration-300 shadow-[0_0_8px_rgba(34,197,94,0.8)]"
+                         style={{
+                           width: `${Math.min(
+                             breakevenBaseUsdc > 0 ? (yieldNum / breakevenBaseUsdc) * 100 : 0,
+                             100
+                           )}%`,
+                         }}
+                       />
                      </div>
                      <div className="flex justify-between mt-sm text-text-disabled">
                         <span className="font-mono text-[9px] uppercase">ROI 0</span>
-                        <span className="font-mono text-[9px] uppercase">INITIAL: 500.00 USDC</span>
+                        <span className="font-mono text-[9px] uppercase">
+                          INITIAL: {formatNumber(breakevenBaseUsdc)} USDC
+                        </span>
                      </div>
                    </div>
                  </div>

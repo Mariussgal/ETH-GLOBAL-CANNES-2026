@@ -5,7 +5,8 @@
  * POST ou GET (pour Vercel Cron). Si `CRANK_SECRET` est défini : header
  * `Authorization: Bearer <CRANK_SECRET>`.
  *
- * Env : MOCK_CRANK_PRIVATE_KEY, CRANK_SECRET (optionnel), SEPOLIA_RPC_URL (optionnel).
+ * Env : MOCK_CRANK_PRIVATE_KEY, CRANK_SECRET (optionnel),
+ * SEPOLIA_RPC_URL ou NEXT_PUBLIC_SEPOLIA_RPC_URL (recommandé : même URL Alchemy que le client).
  */
 
 import { NextResponse } from "next/server";
@@ -17,6 +18,50 @@ import { ADDRESSES } from "@/contracts";
 export const dynamic = "force-dynamic";
 
 const MOCK_ABI = parseAbi(["function generateFees() external"]);
+
+/** Sélecteurs d’erreurs custom MockQuickswapBase / Polygon (Solidity). */
+const MOCK_ERROR_HINTS: Record<string, string> = {
+  "0xf4d678b8":
+    "InsufficientBalance — le mock n’a pas assez d’USDC Sepolia sur son adresse : envoyer du USDC test au contrat mock (≥ minFee, souvent ≥ 0,1 USDC).",
+  "0x36c13ba1": "FeesDisabled — setFeesEnabled(true) (owner) ou interrupteur ON dans l’UI.",
+  "0x2a35a324": "TooEarly — attendre le cooldown (minCooldown) entre deux generateFees.",
+};
+
+function hintForRevertError(message: string): string | undefined {
+  const m = message.toLowerCase();
+  for (const [sel, hint] of Object.entries(MOCK_ERROR_HINTS)) {
+    if (m.includes(sel.slice(2).toLowerCase()) || m.includes(sel)) return hint;
+  }
+  if (m.includes("insufficientbalance") || m.includes("0xf4d678b8"))
+    return MOCK_ERROR_HINTS["0xf4d678b8"];
+  return undefined;
+}
+
+/** Revert attendu quand l’interrupteur a mis feesEnabled(false) — pas une vraie panne. */
+function isFeesDisabledError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("0x36c13ba1") ||
+    m.includes("feesdisabled") ||
+    m.includes("fees disabled")
+  );
+}
+
+/**
+ * Certains RPC / viem renvoient ce texte au lieu du revert décodé quand generateFees revert
+ * (ex. 2e tx après la 1re) — même contexte « fees OFF ».
+ */
+function isLikelyBenignRpcNoise(message: string): boolean {
+  return (
+    message.includes("Missing or invalid parameters") &&
+    message.includes("Double check you have provided")
+  );
+}
+
+function isExpectedSkipAfterFeesOff(message: string | undefined): boolean {
+  if (!message) return false;
+  return isFeesDisabledError(message) || isLikelyBenignRpcNoise(message);
+}
 
 function normalizePk(raw: string): `0x${string}` {
   const t = raw.trim();
@@ -53,7 +98,10 @@ async function runCrank(): Promise<NextResponse> {
     return NextResponse.json({ error: "invalid MOCK_CRANK_PRIVATE_KEY" }, { status: 500 });
   }
 
-  const rpc = process.env.SEPOLIA_RPC_URL?.trim() || "https://rpc.sepolia.org";
+  const rpc =
+    process.env.SEPOLIA_RPC_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL?.trim() ||
+    "https://rpc.sepolia.org";
   const client = createWalletClient({
     account,
     chain: sepolia,
@@ -82,20 +130,48 @@ async function runCrank(): Promise<NextResponse> {
       });
       results.push({ label: t.label, address: t.address, ok: true, hash });
     } catch (e: unknown) {
+      const ex = e as { shortMessage?: string; details?: string; cause?: unknown };
       const msg =
-        e && typeof e === "object" && "shortMessage" in e
-          ? String((e as { shortMessage: string }).shortMessage)
+        typeof ex.shortMessage === "string"
+          ? ex.shortMessage
           : e instanceof Error
             ? e.message
             : String(e);
-      results.push({ label: t.label, address: t.address, ok: false, error: msg });
+      const details =
+        typeof ex.details === "string"
+          ? ex.details
+          : ex.cause instanceof Error
+            ? ex.cause.message
+            : undefined;
+      const full = details && !msg.includes(details) ? `${msg} — ${details}` : msg;
+      const hint = hintForRevertError(full);
+      results.push({
+        label: t.label,
+        address: t.address,
+        ok: false,
+        error: hint ? `${full} → ${hint}` : full,
+      });
     }
   }
 
   const anyOk = results.some((r) => r.ok);
+  const allFeesDisabled =
+    results.length >= 2 &&
+    results.every((r) => !r.ok && r.error && isExpectedSkipAfterFeesOff(r.error));
+
+  /**
+   * Après OFF, un dernier tick peut encore appeler generateFees → revert sur les deux mocks.
+   * HTTP 200 + `allFeesDisabled` pour éviter 502 / Bad Gateway dans la console navigateur.
+   */
+  const httpOk = anyOk || allFeesDisabled;
+
   return NextResponse.json(
-    { results, cranker: account.address },
-    { status: anyOk ? 200 : 502 }
+    {
+      results,
+      cranker: account.address,
+      allFeesDisabled,
+    },
+    { status: httpOk ? 200 : 502 }
   );
 }
 

@@ -179,8 +179,13 @@ export default function InvestStreamPage({ id }: { id: string }) {
   }
 
   const chainInvest: StreamChainInvest | undefined =
-    record?.ystToken && record?.emitter
-      ? { ystToken: record.ystToken, emitter: record.emitter }
+    record?.ystToken && record?.emitter && record?.vault && record?.splitter
+      ? {
+          ystToken: record.ystToken,
+          emitter: record.emitter,
+          vault: record.vault,
+          splitter: record.splitter,
+        }
       : undefined;
 
   if (!chainEnabled || Number.isNaN(numericId)) {

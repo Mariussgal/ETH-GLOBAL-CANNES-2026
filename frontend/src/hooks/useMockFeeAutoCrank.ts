@@ -20,6 +20,8 @@ export type MockFeeCrankStatus = {
 type Opts = {
   /** Levée à 100 % + stream on-chain (pas démo revenue synthétique). */
   enabled: boolean;
+  /** Si false : `feesEnabled` off-chain sur les mocks — ne pas spammer generateFees. */
+  feesGenerationEnabled?: boolean;
 };
 
 /**
@@ -27,7 +29,8 @@ type Opts = {
  * (aligné sur `minCooldown` des mocks, ex. 5 s on-chain).
  */
 export function useMockFeeAutoCrank(opts: Opts) {
-  const { enabled } = opts;
+  const { enabled, feesGenerationEnabled = true } = opts;
+  const runCrank = enabled && feesGenerationEnabled;
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<MockFeeCrankStatus | null>(null);
   const [pending, setPending] = useState(false);
@@ -39,6 +42,14 @@ export function useMockFeeAutoCrank(opts: Opts) {
       mounted.current = false;
     };
   }, []);
+
+  /** Évite d’afficher un vieux LAST_TICK_ERR après passage interrupteur OFF → ON. */
+  useEffect(() => {
+    if (!feesGenerationEnabled) {
+      setStatus(null);
+      setPending(false);
+    }
+  }, [feesGenerationEnabled]);
 
   const crank = useCallback(async () => {
     setPending(true);
@@ -54,12 +65,17 @@ export function useMockFeeAutoCrank(opts: Opts) {
       });
       const json = (await res.json()) as {
         error?: string;
+        allFeesDisabled?: boolean;
         results?: { label: string; ok: boolean; hash?: string; error?: string }[];
         cranker?: string;
       };
-      const ok = res.ok;
+      /** Dernier tick après interrupteur OFF : le serveur renvoie 200 + allFeesDisabled. */
+      const ok = res.ok || json.allFeesDisabled === true;
       let message = "";
-      if (json.results?.length) {
+      if (json.allFeesDisabled) {
+        message =
+          "SKIPPED — fees désactivés (interrupteur OFF) ; dernier tick sans effet.";
+      } else if (json.results?.length) {
         message = json.results
           .map((r) => `${r.label}: ${r.ok ? (r.hash?.slice(0, 10) ?? "ok") : (r.error ?? "err")}`)
           .join(" · ");
@@ -86,7 +102,7 @@ export function useMockFeeAutoCrank(opts: Opts) {
   }, [queryClient]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!runCrank) return;
     let cancelled = false;
     let timeoutId: number | undefined;
 
@@ -106,7 +122,7 @@ export function useMockFeeAutoCrank(opts: Opts) {
       cancelled = true;
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     };
-  }, [enabled, crank]);
+  }, [runCrank, crank]);
 
   return { status, pending, crankAgain: crank };
 }

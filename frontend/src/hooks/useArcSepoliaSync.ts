@@ -211,8 +211,27 @@ export function useArcSepoliaSync(options: {
   enabled?: boolean;
   /** Libellé protocol pour les entrées synthétiques (delta yield), pas les événements on-chain */
   fallbackProtocolLabel?: string;
+  /**
+   * Slug / protocole du stream affiché (ex. chainlink). Les mocks Solidity émettent toujours
+   * `QuickswapV3` dans l’event — on remplace l’affichage pour la démo multi-stream.
+   */
+  feedProtocolLabel?: string;
+  /**
+   * Vault du stream courant (Factory). Si absent, fallback sur `ADDRESSES.vault` (legacy single-vault).
+   */
+  streamVaultAddress?: `0x${string}`;
 }) {
-  const { enabled = true, fallbackProtocolLabel = "Arc" } = options;
+  const {
+    enabled = true,
+    fallbackProtocolLabel = "Arc",
+    feedProtocolLabel,
+    streamVaultAddress,
+  } = options;
+
+  const vaultForEarn = useMemo(
+    () => streamVaultAddress ?? ADDRESSES.vault,
+    [streamVaultAddress]
+  );
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -268,6 +287,14 @@ export function useArcSepoliaSync(options: {
     setFeedItems(next);
   }, []);
 
+  const labelForLogProtocol = useCallback(
+    (onChainProtocol: string) =>
+      feedProtocolLabel?.trim()
+        ? `${feedProtocolLabel.trim()} · shared mock`
+        : onChainProtocol,
+    [feedProtocolLabel]
+  );
+
   const upsertFeedRow = useCallback(
     (dedupeKey: string, sortTs: bigint, item: Omit<ArcActivityItem, "id">) => {
       feedRowsRef.current.set(dedupeKey, { ...item, id: dedupeKey, sortTs });
@@ -285,6 +312,12 @@ export function useArcSepoliaSync(options: {
     if (!readEnabled) return;
     lastWatcherLogAtRef.current = 0;
   }, [readEnabled]);
+
+  useEffect(() => {
+    prevYieldRef.current = undefined;
+    prevBaseFeesRef.current = undefined;
+    prevPolyFeesRef.current = undefined;
+  }, [vaultForEarn]);
 
   useEffect(() => {
     if (!readEnabled) return;
@@ -305,7 +338,7 @@ export function useArcSepoliaSync(options: {
   const consoleReadContracts = useMemo(() => {
     const shared = [
       {
-        address: ADDRESSES.vault,
+        address: vaultForEarn,
         abi: YST_VAULT_ABI,
         functionName: "usdc" as const,
         chainId: SEPOLIA_CHAIN_ID,
@@ -327,7 +360,7 @@ export function useArcSepoliaSync(options: {
       return [
         ...shared,
         {
-          address: ADDRESSES.vault,
+          address: vaultForEarn,
           abi: YST_VAULT_ABI,
           functionName: "earned" as const,
           args: [address] as const,
@@ -336,7 +369,7 @@ export function useArcSepoliaSync(options: {
       ];
     }
     return [...shared];
-  }, [readEnabled, liveSync, address]);
+  }, [readEnabled, liveSync, address, vaultForEarn]);
 
   const { data: batchResults, isPending: loadingConsoleBatch } = useReadContracts({
     contracts: consoleReadContracts,
@@ -362,7 +395,7 @@ export function useArcSepoliaSync(options: {
     address: (vaultUsdcTokenAddress ?? ADDRESSES.usdc) as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "balanceOf",
-    args: [ADDRESSES.vault],
+    args: [vaultForEarn],
     chainId: SEPOLIA_CHAIN_ID,
     query: {
       enabled: readEnabled,
@@ -444,7 +477,7 @@ export function useArcSepoliaSync(options: {
           upsertFeedRow(key, parsed.timestamp, {
             time: formatClockFromUnix(parsed.timestamp),
             amount: amountNum,
-            protocol: parsed.protocol,
+            protocol: labelForLogProtocol(parsed.protocol),
             chainLabel: parsed.chainLabel,
             txHash: log.transactionHash ?? undefined,
           });
@@ -458,7 +491,7 @@ export function useArcSepoliaSync(options: {
           upsertFeedRow(key, parsed.timestamp, {
             time: formatClockFromUnix(parsed.timestamp),
             amount: amountNum,
-            protocol: parsed.protocol,
+            protocol: labelForLogProtocol(parsed.protocol),
             chainLabel: parsed.chainLabel,
             txHash: log.transactionHash ?? undefined,
           });
@@ -471,7 +504,14 @@ export function useArcSepoliaSync(options: {
     return () => {
       cancelled = true;
     };
-  }, [readEnabled, feedHeavySyncEnabled, clientForHistory, etherscanApiKey, upsertFeedRow]);
+  }, [
+    readEnabled,
+    feedHeavySyncEnabled,
+    clientForHistory,
+    etherscanApiKey,
+    upsertFeedRow,
+    labelForLogProtocol,
+  ]);
 
   const emitFeeFromLogs = useCallback(
     (logs: readonly Log[]) => {
@@ -494,7 +534,7 @@ export function useArcSepoliaSync(options: {
         upsertFeedRow(key, parsed.timestamp, {
           time: formatClockFromUnix(parsed.timestamp),
           amount: amountNum,
-          protocol: parsed.protocol,
+          protocol: labelForLogProtocol(parsed.protocol),
           chainLabel: parsed.chainLabel,
           txHash: log.transactionHash ?? undefined,
         });
@@ -502,7 +542,7 @@ export function useArcSepoliaSync(options: {
         console.log(`${LOG_PREFIX} FeesDecoded → feed`, parsed);
       }
     },
-    [upsertFeedRow]
+    [upsertFeedRow, labelForLogProtocol]
   );
 
   const onBaseLogs = useCallback(

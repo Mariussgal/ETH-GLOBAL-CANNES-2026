@@ -6,6 +6,7 @@ import {
   useChainId,
   usePublicClient,
   useReadContract,
+  useReadContracts,
   useWatchContractEvent,
 } from "wagmi";
 import {
@@ -40,8 +41,16 @@ const MAX_ETH_GETLOGS_BLOCKS_INCLUSIVE = BigInt(10);
  * ~200 ms ≈ ≤5 req/s, compatible free tier.
  */
 const BETWEEN_LOG_CHUNKS_MS = 200;
-/** Polling eth_getLogs : 2 watchers × intervalle — garder large pour éviter les 429 sur RPC publics */
-const EVENT_POLLING_MS = 12_000;
+/**
+ * Polling eth_getLogs : 2 watchers × intervalle.
+ * En prod, augmenter l’espace entre polls réduit la concurrence avec les eth_call / multicall de la console.
+ */
+const EVENT_POLLING_MS =
+  typeof process !== "undefined" && process.env.NODE_ENV === "production"
+    ? 20_000
+    : 12_000;
+/** Après ce délai, on lance quand même le scan feed (évite de bloquer le feed si la console reste en pending) */
+const FEED_HEAVY_FALLBACK_MS = 5_000;
 
 const LOG_PREFIX = "[useArcSepoliaSync]";
 
@@ -289,29 +298,65 @@ export function useArcSepoliaSync(options: {
     });
   }, [readEnabled, address]);
 
-  const { data: earnedRaw, isLoading: loadingEarned } = useReadContract({
-    address: ADDRESSES.vault,
-    abi: YST_VAULT_ABI,
-    functionName: "earned",
-    args: address ? [address] : undefined,
-    chainId: SEPOLIA_CHAIN_ID,
+  /**
+   * Un seul appel RPC (multicall viem) pour usdc + fees Base/Poly + earned — évite la saturation
+   * concurrente de connexions HTTP vers le même hôte qu’eth_getLogs.
+   */
+  const consoleReadContracts = useMemo(() => {
+    const shared = [
+      {
+        address: ADDRESSES.vault,
+        abi: YST_VAULT_ABI,
+        functionName: "usdc" as const,
+        chainId: SEPOLIA_CHAIN_ID,
+      },
+      {
+        address: ADDRESSES.mockBase,
+        abi: STRICT_ABI,
+        functionName: "totalFeesGenerated" as const,
+        chainId: SEPOLIA_CHAIN_ID,
+      },
+      {
+        address: ADDRESSES.mockPolygon,
+        abi: STRICT_ABI,
+        functionName: "totalFeesGenerated" as const,
+        chainId: SEPOLIA_CHAIN_ID,
+      },
+    ] as const;
+    if (readEnabled && liveSync && address) {
+      return [
+        ...shared,
+        {
+          address: ADDRESSES.vault,
+          abi: YST_VAULT_ABI,
+          functionName: "earned" as const,
+          args: [address] as const,
+          chainId: SEPOLIA_CHAIN_ID,
+        },
+      ];
+    }
+    return [...shared];
+  }, [readEnabled, liveSync, address]);
+
+  const { data: batchResults, isPending: loadingConsoleBatch } = useReadContracts({
+    contracts: consoleReadContracts,
     query: {
-      enabled: readEnabled && liveSync && Boolean(address),
-      refetchInterval: 20_000,
+      enabled: readEnabled,
+      refetchInterval: 25_000,
+      staleTime: 10_000,
     },
   });
 
-  /** Token USDC réellement branché sur le Vault (ne pas utiliser une adresse statique seule) */
-  const { data: vaultUsdcTokenAddress } = useReadContract({
-    address: ADDRESSES.vault,
-    abi: YST_VAULT_ABI,
-    functionName: "usdc",
-    chainId: SEPOLIA_CHAIN_ID,
-    query: {
-      enabled: readEnabled,
-      refetchInterval: 60_000,
-    },
-  });
+  const vaultUsdcTokenAddress = batchResults?.[0]?.result as `0x${string}` | undefined;
+  const baseFeesRaw = batchResults?.[1]?.result as bigint | undefined;
+  const polygonFeesRaw = batchResults?.[2]?.result as bigint | undefined;
+  const earnedRaw =
+    readEnabled && liveSync && address && batchResults?.[3]
+      ? (batchResults[3].result as bigint | undefined)
+      : undefined;
+
+  const loadingEarned =
+    readEnabled && liveSync && Boolean(address) && loadingConsoleBatch;
 
   const { data: vaultUsdcBalanceRaw, isPending: loadingVaultLiquidity } = useReadContract({
     address: (vaultUsdcTokenAddress ?? ADDRESSES.usdc) as `0x${string}`,
@@ -322,34 +367,29 @@ export function useArcSepoliaSync(options: {
     query: {
       enabled: readEnabled,
       refetchInterval: 30_000,
+      staleTime: 10_000,
     },
   });
 
-  const { data: baseFeesRaw } = useReadContract({
-    address: ADDRESSES.mockBase,
-    abi: STRICT_ABI,
-    functionName: "totalFeesGenerated",
-    chainId: SEPOLIA_CHAIN_ID,
-    query: {
-      enabled: readEnabled,
-      refetchInterval: 30_000,
-    },
-  });
-
-  const { data: polygonFeesRaw } = useReadContract({
-    address: ADDRESSES.mockPolygon,
-    abi: STRICT_ABI,
-    functionName: "totalFeesGenerated",
-    chainId: SEPOLIA_CHAIN_ID,
-    query: {
-      enabled: readEnabled,
-      refetchInterval: 30_000,
-    },
-  });
+  /** Historique + watchers getLogs : uniquement après la console ou timeout — priorité RPC pour earned / liquidité */
+  const [feedHeavySyncEnabled, setFeedHeavySyncEnabled] = useState(false);
+  useEffect(() => {
+    if (!readEnabled) {
+      setFeedHeavySyncEnabled(false);
+      return;
+    }
+    const settled = !loadingConsoleBatch && !loadingVaultLiquidity;
+    if (settled) {
+      setFeedHeavySyncEnabled(true);
+      return;
+    }
+    const id = window.setTimeout(() => setFeedHeavySyncEnabled(true), FEED_HEAVY_FALLBACK_MS);
+    return () => window.clearTimeout(id);
+  }, [readEnabled, loadingConsoleBatch, loadingVaultLiquidity]);
 
   /** Historique : d’abord `/api/arc-feed-history` (clé lue côté serveur), sinon Etherscan client puis RPC */
   useEffect(() => {
-    if (!readEnabled) return;
+    if (!readEnabled || !feedHeavySyncEnabled) return;
 
     let cancelled = false;
 
@@ -431,7 +471,7 @@ export function useArcSepoliaSync(options: {
     return () => {
       cancelled = true;
     };
-  }, [readEnabled, clientForHistory, etherscanApiKey, upsertFeedRow]);
+  }, [readEnabled, feedHeavySyncEnabled, clientForHistory, etherscanApiKey, upsertFeedRow]);
 
   const emitFeeFromLogs = useCallback(
     (logs: readonly Log[]) => {
@@ -483,7 +523,7 @@ export function useArcSepoliaSync(options: {
     abi: STRICT_ABI,
     eventName: "FeesGenerated" as const,
     chainId: SEPOLIA_CHAIN_ID,
-    enabled: readEnabled,
+    enabled: readEnabled && feedHeavySyncEnabled,
     /** Si true, aucun poll Sepolia tant que le wallet n’est pas sur Sepolia — les eth_call passent quand même via chainId */
     syncConnectedChain: false as const,
     pollingInterval: EVENT_POLLING_MS,

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import DataTicker from "./DataTicker";
+
 import FeeSplitterVisual from "./FeeSplitterVisual";
 import { useMarketplaceSync } from "./MarketplaceSyncContext";
 import SegmentedProgress from "./SegmentedProgress";
@@ -12,7 +12,7 @@ export default function HeroSection() {
 
   return (
     <>
-      <DataTicker />
+
       <section className="min-h-[calc(100vh-32px)] flex flex-col pt-8 md:pt-12 lg:pt-16 px-xl pb-2xl relative overflow-hidden">
 
 
@@ -21,8 +21,7 @@ export default function HeroSection() {
           <div>
             {/* Tertiary — System label */}
             <span className="font-mono text-label uppercase tracking-label text-text-secondary block mb-lg relative">
-              <span className="absolute -left-4 top-1/2 -translate-y-1/2 w-2 h-[1px] bg-accent" />
-              YIELD STREAM MARKETPLACE — ETHGLOBAL CANNES 2026
+              ETHGLOBAL CANNES 2026
             </span>
 
             {/* Primary — Headline */}
@@ -53,27 +52,26 @@ export default function HeroSection() {
                 </div>
               )}
               <div className="flex items-center gap-md flex-wrap">
-              <button
-                type="button"
-                onClick={startAccessFlow}
-                disabled={isSyncing}
-                aria-busy={isSyncing}
-                className="font-mono text-[13px] uppercase tracking-[0.06em] px-xl py-md bg-text-display text-black rounded-pill transition-opacity duration-200 ease-nothing hover:opacity-90 active:opacity-80 min-h-[52px] disabled:opacity-40 disabled:pointer-events-none"
-              >
-                ACCESS MARKETPLACE
-              </button>
-              <Link
-                href="/create"
-                className="font-mono text-[13px] uppercase tracking-[0.06em] px-xl py-md border border-border-visible text-text-primary rounded-pill transition-all duration-300 ease-nothing min-h-[52px] flex items-center hover:border-transparent btn-dot-matrix-hover relative overflow-hidden z-10"
-              >
-                <span>MONETIZE REVENUE</span>
-              </Link>
+                <button
+                  type="button"
+                  onClick={startAccessFlow}
+                  disabled={isSyncing}
+                  aria-busy={isSyncing}
+                  className="font-mono text-[13px] uppercase tracking-[0.06em] px-xl py-md bg-text-display text-black rounded-pill transition-opacity duration-200 ease-nothing hover:opacity-90 active:opacity-80 min-h-[52px] disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  ACCESS MARKETPLACE
+                </button>
+                <Link
+                  href="/create"
+                  className="font-mono text-[13px] uppercase tracking-[0.06em] px-xl py-md border border-border-visible text-text-primary rounded-pill transition-all duration-300 ease-nothing min-h-[52px] flex items-center hover:border-transparent btn-dot-matrix-hover relative overflow-hidden z-10"
+                >
+                  <span>MONETIZE REVENUE</span>
+                </Link>
               </div>
             </div>
 
             {/* Sponsor attribution */}
             <div className="mt-2xl flex items-center gap-lg flex-wrap">
-              <span className="font-mono text-[10px] uppercase text-text-disabled mr-2 border-r border-border-visible pr-4">INFRA_PROVIDED_BY</span>
               <a href="https://docs.chain.link" target="_blank" rel="noopener noreferrer" className="flex items-center gap-sm opacity-50 hover:opacity-80 transition-opacity duration-200 ease-nothing">
                 <Image src="/Chainlink_Logo.png" alt="Chainlink" width={20} height={20} className="brightness-0 invert" />
                 <span className="font-mono text-caption uppercase tracking-label text-text-disabled">Chainlink</span>
@@ -99,12 +97,6 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-xl left-xl">
-          <span className="font-mono text-label uppercase tracking-label text-text-disabled">
-            SCROLL ↓
-          </span>
-        </div>
       </section>
     </>
   );

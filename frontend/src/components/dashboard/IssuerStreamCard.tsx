@@ -1,13 +1,10 @@
 "use client";
 
-import ActivateAutomationButton from "@/components/dashboard/ActivateAutomationButton";
 import SegmentedProgress from "@/components/SegmentedProgress";
-import { useCreAutomationStatus } from "@/hooks/useCreAutomationStatus";
 import type { OnChainStreamRow } from "@/hooks/useMarketplaceOnChainStreams";
 import { formatNumber } from "@/lib/format";
 import { computeStreamKey } from "@/lib/stream-key";
 import Link from "next/link";
-import { useMemo } from "react";
 import type { Address } from "viem";
 
 type Props = {
@@ -16,12 +13,6 @@ type Props = {
 
 export default function IssuerStreamCard({ row }: Props) {
   const { stream, nominalCapUsdc } = row;
-  const streamKey = useMemo(
-    () =>
-      computeStreamKey(stream.protocol, row.emitter as Address) as `0x${string}`,
-    [stream.protocol, row.emitter]
-  );
-  const { chainlinkAutomationActive } = useCreAutomationStatus(streamKey);
 
   /** Primary raise: `vaultFill` = actual USDC collected; `vaultTarget` on StreamData = face value (do not use here). */
   const targetUsdc = nominalCapUsdc;
@@ -46,11 +37,6 @@ export default function IssuerStreamCard({ row }: Props) {
           <span className="font-mono text-[9px] uppercase tracking-wider px-sm py-[4px] border border-success/60 text-success rounded-sm">
             LIVE ON SEPOLIA
           </span>
-          {chainlinkAutomationActive && (
-            <span className="font-mono text-[8px] uppercase tracking-wider px-sm py-[3px] border border-[#375BD2]/70 text-[#9ECFFF] rounded-sm">
-              CRE LINKED
-            </span>
-          )}
         </div>
       </div>
 
@@ -78,14 +64,32 @@ export default function IssuerStreamCard({ row }: Props) {
           </span>
         </div>
 
+        <div>
+          <div className="flex justify-between items-baseline mb-xs">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-text-disabled">
+              PAYOUT STATUS
+            </span>
+            <span
+              className={`font-mono text-[10px] uppercase tracking-wider ${
+                pct === 100 ? "text-success" : "text-text-secondary"
+              }`}
+            >
+              {pct === 100 ? "FULLY DISBURSED" : "DIRECT TO WALLET"}
+            </span>
+          </div>
+          <p className="font-mono text-[9px] text-text-disabled leading-tight">
+            {pct === 100
+              ? "All raised capital was transferred to your wallet during the sale transactions."
+              : "USDC from primary sales are sent directly to your wallet upon each purchase."}
+          </p>
+        </div>
+
         <Link
           href={`/invest/${stream.id}`}
           className="mt-auto font-mono text-[12px] uppercase tracking-[0.08em] text-center py-md border border-text-display text-text-display hover:bg-text-display hover:text-black transition-colors duration-200 ease-nothing rounded-technical"
         >
           VIEW ANALYTICS
         </Link>
-
-        <ActivateAutomationButton row={row} />
       </div>
     </article>
   );

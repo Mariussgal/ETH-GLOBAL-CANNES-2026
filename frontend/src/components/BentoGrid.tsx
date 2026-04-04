@@ -6,14 +6,14 @@ const FEATURES = [
     title: "Trustless Pricing",
     plainEnglish: "You always know exactly what you're paying — no negotiation, no surprises.",
     description:
-      "Discount calculated by [[Chainlink CRE]] from real volatility (σ), trend analysis, and 90-day revenue consistency. No human judgment.",
-    metric: "10–50%",
+      "Discount calculated by our [[Risk Scoring Engine (RSE)]] from real volatility (σ), trend analysis, and 90-day revenue consistency. No human judgment.",
+    metric: "10–55%",
     metricLabel: "DISCOUNT RANGE",
     glossary: [
       {
-        term: "Chainlink CRE",
+        term: "Risk Scoring Engine (RSE)",
         definition:
-          "Chainlink's off-chain compute engine. It runs the discount formula using live market data so the price is always objective and verifiable.",
+          "Advanced algorithmic pricing model. It runs the discount formula using live market data so the price is always objective and verifiable.",
       },
     ],
   },

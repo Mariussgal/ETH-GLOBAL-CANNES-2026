@@ -52,7 +52,7 @@ export default function StreamCard({ stream }: StreamCardProps) {
           <h3 className="font-grotesk text-heading text-text-display mt-xs">
             {stream.ensName}
           </h3>
-          {stream.ensName.endsWith(".mariusgal.eth") && (
+          {stream.ensName.endsWith(".ysm.eth") && (
             <a
               href={`https://app.ens.domains/${stream.ensName}`}
               target="_blank"

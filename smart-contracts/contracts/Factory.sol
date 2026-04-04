@@ -80,9 +80,9 @@ contract Factory is IReceiver, ERC1155Holder {
 IPublicResolver public constant PUBLIC_RESOLVER =
     IPublicResolver(0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5);
 
-    /// @notice namehash de "mariusgal.eth" — parent node pour les subdomains YSM
-    bytes32 public constant MARIUSGAL_NODE =
-    0xfc883de7eb7452c0121b35672c4378c319cc5894b7950a7842be636bc0637309;
+    /// @notice namehash de "ysm.eth" — parent node pour les subdomains YSM
+    bytes32 public constant YSM_NODE =
+    0x345c84a6a96a31462a60497a193e69782f691558ad44b05f42eb18b3973f82b9;
 
     address public creForwarder = 0x15fC6ae953E024d975e77382eEeC56A9101f9F88;
     address public primarySale;
@@ -334,9 +334,9 @@ function submitWorkflowResult(
         allVaults.push(address(vault));
 
         // ── ENS Subdomain creation ────────────────────────────────────────────────
-        // Crée protocolSlug.mariusgal.eth pointant vers le vault
+        // Crée protocolSlug.ysm.eth pointant vers le vault
         try NAME_WRAPPER.setSubnodeRecord(
-            MARIUSGAL_NODE,
+            YSM_NODE,
             pending.protocolSlug,
             address(this),           // Factory = owner du subdomain
             address(PUBLIC_RESOLVER),

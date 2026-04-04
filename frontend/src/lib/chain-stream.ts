@@ -133,7 +133,7 @@ export function buildChainStreamCardData(
   return {
     id: indexOneBased,
     protocol: record.protocolSlug,
-    ensName: `${record.protocolSlug}.mariusgal.eth`,
+    ensName: `${record.protocolSlug}.ysm.eth`,
     feePercent: Number(streamBps) / 100,
     duration: durationDays,
     daysRemaining,

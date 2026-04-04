@@ -96,6 +96,7 @@ IPublicResolver public constant PUBLIC_RESOLVER =
 
     bytes32[] public streamKeys;
     address[] public allVaults;
+    mapping(bytes32 => bytes32) public streamKeyToSubnode;
 
     event StreamRequested(bytes32 indexed streamKey, address indexed emitter, string protocolSlug);
     event GateValidated(bytes32 indexed streamKey, bool passed);
@@ -182,7 +183,7 @@ IPublicResolver public constant PUBLIC_RESOLVER =
 
 
 function onReport(
-    bytes calldata metadata,
+    bytes calldata /* metadata */,
     bytes calldata report
 ) external onlyCREForwarder {
     (uint8 workflowType, bytes32 streamKey, bytes memory payload) = abi.decode(
@@ -347,6 +348,7 @@ function submitWorkflowResult(
             // Pointe le subdomain vers le vault
             try PUBLIC_RESOLVER.setAddr(subnode, address(vault)) {} catch {}
             emit ENSSubdomainCreated(pending.protocolSlug, subnode, address(vault));
+            streamKeyToSubnode[streamKey] = subnode;
             
             // Stocke le subnode dans le vault pour le DEFAULTED write
             if (subnode != bytes32(0)) {
@@ -365,6 +367,18 @@ function submitWorkflowResult(
 
     function _refundCollateral(bytes32 streamKey) internal {
         // collatéral désactivé pour le hackathon
+    }
+
+    function markDefaulted(bytes32 streamKey) external onlyOwner {
+        bytes32 subnode = streamKeyToSubnode[streamKey];
+        require(subnode != bytes32(0), "no subnode");
+        PUBLIC_RESOLVER.setText(subnode, "ysm.status", "DEFAULTED");
+    }
+
+    function clearDefaulted(bytes32 streamKey) external onlyOwner {
+        bytes32 subnode = streamKeyToSubnode[streamKey];
+        require(subnode != bytes32(0), "no subnode");
+        PUBLIC_RESOLVER.setText(subnode, "ysm.status", "");
     }
 
     function getStream(bytes32 streamKey) external view returns (StreamRecord memory) {

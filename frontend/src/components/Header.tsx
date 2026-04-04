@@ -2,6 +2,7 @@
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Header() {
   return (
@@ -9,7 +10,7 @@ export default function Header() {
       {/* Wordmark */}
       <div className="flex items-center gap-lg flex-wrap">
         <Link href="/" className="flex items-center shrink-0">
-          <img src="/logoYSM.png" alt="YSM" className="h-12 w-auto" />
+          <Image src="/logoYSM.png" alt="YSM" width={100} height={48} className="h-12 w-auto" />
         </Link>
         <nav
           className="hidden sm:flex items-center gap-x-md gap-y-sm font-mono text-[11px] uppercase tracking-wider text-text-disabled"

@@ -3,9 +3,7 @@
 import SegmentedProgress from "@/components/SegmentedProgress";
 import type { OnChainStreamRow } from "@/hooks/useMarketplaceOnChainStreams";
 import { formatNumber } from "@/lib/format";
-import { computeStreamKey } from "@/lib/stream-key";
 import Link from "next/link";
-import type { Address } from "viem";
 
 type Props = {
   row: OnChainStreamRow;

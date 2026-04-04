@@ -4,7 +4,6 @@
  */
 
 import { hexToBigInt } from "viem";
-import type { Log } from "viem";
 import { ADDRESSES, SEPOLIA_CHAIN_ID } from "@/contracts";
 
 const ETHERSCAN_V2 = "https://api.etherscan.io/v2/api";
@@ -24,8 +23,7 @@ export type IssuerReceiveTx = {
 /** Évite tout RPC, passe par le proxy Etherscan pour les logs du PrimarySale filtrés par topic3 (emitter). */
 export async function fetchIssuerBuyLogsEtherscan(
   apiKey: string,
-  issuerAddress: `0x${string}`,
-  lookbackBlocks: bigint = BigInt(50_000)
+  issuerAddress: `0x${string}`
 ): Promise<IssuerReceiveTx[]> {
   if (!apiKey) throw new Error("Etherscan API key missing");
 
@@ -54,7 +52,7 @@ export async function fetchIssuerBuyLogsEtherscan(
   }
 
   const rows = Array.isArray(json.result) ? json.result : [];
-  return rows.map((r: any) => {
+  return rows.map((r: { topics: string[]; data: `0x${string}`; transactionHash: string; timeStamp: string; blockNumber: string }) => {
     // Topic 1 = buyer
     const buyer = `0x${r.topics[1].slice(26)}` as `0x${string}`;
     // Data = amountUsdc (uint256)

@@ -157,7 +157,7 @@ export default function IssuerDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {receiveEntries.map((e: any) => (
+                    {receiveEntries.map((e) => (
                       <tr
                         key={e.hash}
                         className="border-b border-border/80 hover:bg-surface/20 transition-colors"

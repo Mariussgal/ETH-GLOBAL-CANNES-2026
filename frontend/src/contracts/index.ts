@@ -19,7 +19,7 @@ function mockAddressFromEnv(
 }
 
 export const ADDRESSES = {
-  streamFactory: "0xE9C87aadD98A8E463281d893a4297F85be5b28c7" as `0x${string}`,
+  streamFactory: "0x0d5871393aeAA37aF403A9f6C24cCe44B12297e6" as `0x${string}`,
   ystSplitter: "0xaCD8f042eE1E29580A84e213760D144957eec148" as `0x${string}`,
   vault: "0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8" as `0x${string}`,
   mockBase: mockAddressFromEnv("NEXT_PUBLIC_MOCK_BASE_ADDRESS", MOCK_BASE_DEFAULT),

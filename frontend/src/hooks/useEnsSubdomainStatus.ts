@@ -8,7 +8,7 @@ import { SEPOLIA_CHAIN_ID } from "@/contracts";
 const PUBLIC_RESOLVER_SEPOLIA =
   "0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5" as const;
 
-export const ENS_PARENT_DOMAIN = "mariusgal.eth";
+export const ENS_PARENT_DOMAIN = "ysm.eth";
 
 const RESOLVER_TEXT_ABI = [
   {

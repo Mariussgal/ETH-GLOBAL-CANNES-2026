@@ -16,6 +16,7 @@ import {
   useEnsName,
   usePublicClient,
   useReadContract,
+  useReadContracts,
   useSwitchChain,
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -104,13 +105,21 @@ function normalizeFeesSlugOverride(raw: string): string {
   return raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 48);
 }
 
-/** Suffixe après le slug ENS pour `createStreamDirect` — plusieurs streams / même identité démo. */
-function normalizeDeploySuffix(raw: string): string {
-  return raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32);
+/** Essais `slug`, `slug-1`, `slug-2`… jusqu’au premier slot libre on-chain. */
+const MAX_DEPLOY_SLUG_TRIES = 48;
+
+function deploySlugCandidate(base: string, index: number): string {
+  if (index === 0) return base;
+  return `${base}-${index}`;
 }
 
-function demoDeploySeqStorageKey(wallet: string): string {
-  return `arc-demo-deploy-seq:${wallet.toLowerCase()}`;
+/** Retour `active` depuis le tuple / struct `getStream`. */
+function getStreamActive(result: unknown): boolean {
+  if (result == null) return false;
+  if (Array.isArray(result)) {
+    return Boolean(result[6]);
+  }
+  return Boolean((result as { active?: boolean }).active);
 }
 
 export default function CreateStreamTerminal() {
@@ -202,8 +211,6 @@ export default function CreateStreamTerminal() {
   /** Part des revenus annuels estimés que vous cédez (1–50 %). */
   const [revenuePct, setRevenuePct] = useState(10);
   const revenueTrackRef = useRef<HTMLDivElement>(null);
-  /** Évite un double +1 localStorage en React Strict Mode sur la même tx. */
-  const deploySeqBumpedForTxHash = useRef<string | null>(null);
 
   const setRevenuePctFromClientX = useCallback((clientX: number) => {
     const el = revenueTrackRef.current;
@@ -226,14 +233,9 @@ export default function CreateStreamTerminal() {
     rScore: number;
   } | null>(null);
   /**
-   * Slug DeFiLlama optionnel (ex. uniswap). Vide = on tente le slug ENS.
-   * Indépendant du slug passé à la Factory (`onChainDeploySlug`).
+   * Saisie optionnelle (ex. uniswap). Sinon = slug ENS — même valeur pour DeFiLlama **et** déploiement Factory.
    */
   const [feesSlugOverrideInput, setFeesSlugOverrideInput] = useState("");
-  /** Nombre de déploiements réussis déjà enregistrés (localStorage) — prochain slug auto : `{ens}-s{deploySeq+1}`. */
-  const [deploySeq, setDeploySeq] = useState(0);
-  /** Si non vide, remplace le suffixe auto `-sN` (ex. pitch2, demo-b). */
-  const [customDeploySuffix, setCustomDeploySuffix] = useState("");
 
   /** Slug dérivé du label ENS ; repli court si le label ne donne aucun caractère [a-z0-9-] (sinon DEPLOY reste désactivé). */
   const protocolSlug = useMemo(() => {
@@ -243,44 +245,56 @@ export default function CreateStreamTerminal() {
     return "";
   }, [ensName, address]);
 
-  useEffect(() => {
-    if (!address) return;
-    try {
-      const raw = localStorage.getItem(demoDeploySeqStorageKey(address));
-      setDeploySeq(raw ? Math.max(0, parseInt(raw, 10)) || 0 : 0);
-    } catch {
-      setDeploySeq(0);
-    }
-  }, [address]);
+  /** Slug DeFiLlama + base du déploiement : override si renseigné, sinon ENS. */
+  const feesLookupSlug = useMemo(() => {
+    const o = normalizeFeesSlugOverride(feesSlugOverrideInput);
+    if (o.length > 0) return o;
+    return protocolSlug;
+  }, [feesSlugOverrideInput, protocolSlug]);
 
-  /**
-   * Slug exact passé à `createStreamDirect` — doit être unique par wallet pour éviter StreamAlreadyExists.
-   * Démo : `{ens}-s1`, `{ens}-s2`, … ou suffixe personnalisé.
-   */
+  const deploySlugContracts = useMemo(() => {
+    if (!feesLookupSlug || !address) return [];
+    return Array.from({ length: MAX_DEPLOY_SLUG_TRIES }, (_, i) => {
+      const slug = deploySlugCandidate(feesLookupSlug, i);
+      const key = computeStreamKey(slug, address as Address);
+      return {
+        address: ADDRESSES.streamFactory,
+        abi: STREAM_FACTORY_ABI,
+        functionName: "getStream" as const,
+        args: [key] as const,
+        chainId: SEPOLIA_CHAIN_ID,
+      };
+    });
+  }, [feesLookupSlug, address]);
+
+  const {
+    data: streamSlotResults,
+    isPending: streamSlotsPending,
+    refetch: refetchStreamSlots,
+  } = useReadContracts({
+    contracts: deploySlugContracts,
+    query: {
+      enabled: Boolean(identityReady && deploySlugContracts.length > 0),
+      staleTime: 4_000,
+    },
+  });
+
   const onChainDeploySlug = useMemo(() => {
-    if (!protocolSlug) return "";
-    const custom = normalizeDeploySuffix(customDeploySuffix);
-    if (custom.length > 0) return `${protocolSlug}-${custom}`;
-    return `${protocolSlug}-s${deploySeq + 1}`;
-  }, [protocolSlug, customDeploySuffix, deploySeq]);
+    if (!feesLookupSlug || !streamSlotResults?.length) return "";
+    for (let i = 0; i < streamSlotResults.length; i++) {
+      const row = streamSlotResults[i];
+      if (row.status !== "success") continue;
+      if (!getStreamActive(row.result)) {
+        return deploySlugCandidate(feesLookupSlug, i);
+      }
+    }
+    return "";
+  }, [streamSlotResults, feesLookupSlug]);
 
-  /** `keccak256(abi.encodePacked(onChainDeploySlug, msg.sender))` — collision si slug déjà utilisé. */
   const predictedStreamKey = useMemo(() => {
     if (!onChainDeploySlug || !address) return undefined;
     return computeStreamKey(onChainDeploySlug, address as Address);
   }, [onChainDeploySlug, address]);
-
-  const { data: existingStreamRecord } = useReadContract({
-    address: ADDRESSES.streamFactory,
-    abi: STREAM_FACTORY_ABI,
-    functionName: "getStream",
-    args: predictedStreamKey ? [predictedStreamKey] : undefined,
-    chainId: SEPOLIA_CHAIN_ID,
-    query: {
-      enabled: Boolean(identityReady && predictedStreamKey),
-      staleTime: 12_000,
-    },
-  });
 
   const { data: factoryStreamKeys } = useReadContract({
     address: ADDRESSES.streamFactory,
@@ -299,14 +313,6 @@ export default function CreateStreamTerminal() {
     const i = factoryStreamKeys.findIndex((k) => k.toLowerCase() === pk);
     return i >= 0 ? i + 1 : undefined;
   }, [factoryStreamKeys, predictedStreamKey]);
-
-  const streamAlreadyExists = Boolean(existingStreamRecord?.active);
-
-  const feesLookupSlug = useMemo(() => {
-    const o = normalizeFeesSlugOverride(feesSlugOverrideInput);
-    if (o.length > 0) return o;
-    return protocolSlug;
-  }, [feesSlugOverrideInput, protocolSlug]);
 
   useEffect(() => {
     if (!identityReady || !feesLookupSlug) {
@@ -410,7 +416,7 @@ export default function CreateStreamTerminal() {
     onSepolia &&
     protocolSlug.trim().length > 0 &&
     onChainDeploySlug.trim().length > 0 &&
-    !streamAlreadyExists &&
+    !streamSlotsPending &&
     !isWritePending &&
     !awaitingReceipt &&
     Boolean(offeringEconomics && offeringEconomics.nominalUsd > 0);
@@ -424,8 +430,11 @@ export default function CreateStreamTerminal() {
     if (!protocolSlug.trim()) {
       return "Identifiant protocole indisponible — reconnectez le portefeuille.";
     }
-    if (streamAlreadyExists) {
-      return "Ce slug Factory existe déjà pour ce wallet — changez le suffixe démo (ou videz le champ pour passer au compteur auto suivant).";
+    if (streamSlotsPending) {
+      return "Recherche du prochain slug libre (nohemmg, nohemmg-1, …)…";
+    }
+    if (!onChainDeploySlug.trim()) {
+      return `Limite atteinte : plus de ${MAX_DEPLOY_SLUG_TRIES} streams pour ce label ENS et ce wallet.`;
     }
     if (feesLoading) {
       return "Chargement des frais protocole (DeFiLlama via proxy)…";
@@ -454,7 +463,7 @@ export default function CreateStreamTerminal() {
     onSepolia,
     protocolSlug,
     onChainDeploySlug,
-    streamAlreadyExists,
+    streamSlotsPending,
     feesLoading,
     feesError,
     annualRevenueUsd,
@@ -496,20 +505,7 @@ export default function CreateStreamTerminal() {
   useEffect(() => {
     /** `isReceiptSuccess` = reçu RPC récupéré ; une tx peut être incluse avec `status: reverted`. */
     if (!receipt || receipt.status !== "success" || !publicClient) return;
-    const txHashDone = receipt.transactionHash;
-    if (address && txHashDone && deploySeqBumpedForTxHash.current !== txHashDone) {
-      deploySeqBumpedForTxHash.current = txHashDone;
-      try {
-        const key = demoDeploySeqStorageKey(address);
-        const raw = localStorage.getItem(key);
-        const n = raw ? Math.max(0, parseInt(raw, 10)) || 0 : 0;
-        const next = n + 1;
-        localStorage.setItem(key, String(next));
-        setDeploySeq(next);
-      } catch {
-        /* ignore */
-      }
-    }
+    void refetchStreamSlots();
     let cancelled = false;
     void (async () => {
       try {
@@ -530,15 +526,13 @@ export default function CreateStreamTerminal() {
     return () => {
       cancelled = true;
     };
-  }, [receipt, publicClient, router, address]);
+  }, [receipt, publicClient, router, refetchStreamSlots]);
 
   const terminalBody = useMemo(() => {
     const lines: string[] = [];
-    lines.push(`> PROTOCOL_SLUG (depuis ENS): ${protocolSlug || "—"}`);
-    lines.push(`> DEPLOY_SLUG (Factory): ${onChainDeploySlug || "—"}`);
-    lines.push(
-      `> FEES_SLUG (DeFiLlama): ${feesLookupSlug || "—"}${normalizeFeesSlugOverride(feesSlugOverrideInput) ? " [override]" : ""}`
-    );
+    lines.push(`> ENS_LABEL: ${protocolSlug || "—"}`);
+    lines.push(`> SLUG_PROTOCOLE (frais + base Factory): ${feesLookupSlug || "—"}`);
+    lines.push(`> DEPLOY_SLUG (premier slot libre): ${onChainDeploySlug || "—"}`);
     lines.push(`> ERC20: name="${onChainDeploySlug || "—"}" · symbol=YST (Factory)`);
     lines.push(
       `> REV_ANNUEL_USD (DeFiLlama avg30×365): ${feesLoading ? "…" : formatNumber(Math.round(annualRevenueUsd))}`
@@ -559,7 +553,7 @@ export default function CreateStreamTerminal() {
       const em = writeError.message;
       if (/StreamAlreadyExists/i.test(em)) {
         lines.push(
-          "> ERROR: StreamAlreadyExists — ce DEPLOY_SLUG est déjà utilisé avec ce wallet. Changez le suffixe démo."
+          "> ERROR: StreamAlreadyExists — slug pris entre-temps. Réessayez (prochain libre recalculé)."
         );
       } else {
         lines.push(`> ERROR: ${em.slice(0, 280)}`);
@@ -585,7 +579,6 @@ export default function CreateStreamTerminal() {
     protocolSlug,
     onChainDeploySlug,
     feesLookupSlug,
-    feesSlugOverrideInput,
     annualRevenueUsd,
     feesLoading,
     creDecotePercent,
@@ -705,90 +698,80 @@ export default function CreateStreamTerminal() {
                     <span className="text-text-display">{ensName}</span>
                   </p>
                   <p className="font-mono text-caption text-text-disabled">
-                    Le slug ENS sert de base ; chaque déploiement ajoute un suffixe unique (voir ci-dessous) pour
-                    permettre plusieurs streams en démo. DeFiLlama reste optionnel pour les montants.
+                    Le slug affiché sur la marketplace et déployé en chaîne suit le champ « slug protocole »
+                    (ex. uniswap) ; sans override, c’est votre label ENS.
                   </p>
                 </div>
               )}
 
               <div className="flex flex-col gap-xl">
                 <div className="border border-border-visible rounded-technical px-md py-md bg-black/40">
-                  <p className="font-mono text-label uppercase tracking-label text-text-secondary mb-sm">
-                    Slug Factory (déploiement)
-                  </p>
-                  {protocolSlug ? (
-                    <>
-                      <p className="font-mono text-body-sm text-text-primary">
-                        Base ENS : <span className="text-text-display">{protocolSlug}</span>
-                      </p>
-                      <p className="font-mono text-body-sm text-text-primary mt-xs">
-                        Slug envoyé à <span className="text-text-disabled">createStreamDirect</span> :{" "}
-                        <span className="text-text-display">{onChainDeploySlug}</span>
-                      </p>
-                      <p className="font-mono text-body-sm text-text-primary mt-xs">
-                        Token (nom ERC20) : <span className="text-text-display">{onChainDeploySlug}</span> ·
-                        symbole <span className="text-text-display">YST</span>
-                      </p>
-                      <label
-                        htmlFor="deploy-suffix"
-                        className="font-mono text-caption text-text-disabled block mt-md mb-xs"
-                      >
-                        Suffixe personnalisé (optionnel)
-                      </label>
-                      <input
-                        id="deploy-suffix"
-                        type="text"
-                        autoComplete="off"
-                        placeholder={`auto : -s${deploySeq + 1}`}
-                        value={customDeploySuffix}
-                        onChange={(e) => setCustomDeploySuffix(e.target.value)}
-                        className="w-full bg-black border border-border-visible px-md py-sm font-mono text-body-sm text-text-display placeholder:text-text-disabled outline-none focus:border-text-secondary transition-colors duration-200 ease-nothing rounded-technical"
-                      />
-                      <p className="font-mono text-caption text-text-disabled mt-sm leading-relaxed">
-                        Vide = prochain slug automatique{" "}
-                        <span className="text-text-secondary">{protocolSlug}-s{deploySeq + 1}</span> (compteur
-                        mémorisé par wallet après chaque déploiement réussi). Renseignez un suffixe (ex.{" "}
-                        <span className="text-text-display">pitch</span>) pour forcer un nom précis.
-                      </p>
-                    </>
-                  ) : (
-                    <p className="font-mono text-caption text-accent">
-                      Impossible de dériver le slug depuis l’ENS — vérifiez votre primary name.
-                    </p>
-                  )}
-                </div>
-
-                <div className="border border-border-visible rounded-technical px-md py-md bg-black/40">
                   <label
                     htmlFor="fees-slug-override"
                     className="font-mono text-label uppercase tracking-label text-text-secondary block mb-sm"
                   >
-                    Slug DeFiLlama (optionnel, démo)
+                    Slug protocole (DeFiLlama + déploiement)
                   </label>
                   <p className="font-grotesk text-body-sm text-text-secondary mb-md leading-snug">
-                    Si votre ENS (ex. <span className="text-text-display">nohemmg</span>) ne correspond pas à un
-                    protocole sur DeFiLlama, saisissez un slug public pour les chiffres de frais :{" "}
-                    <span className="text-text-display">uniswap</span>,{" "}
-                    <span className="text-text-display">aave</span>, etc. Le nom du token suit le slug Factory :{" "}
-                    <span className="text-text-display">{onChainDeploySlug || "…"}</span> (nom du token, symbole
-                    YST).
+                    Par défaut = votre label ENS. Pour une démo lisible (ex.{" "}
+                    <span className="text-text-display">uniswap</span>), saisissez le slug ici : il sert à la
+                    fois aux <strong className="text-text-primary font-medium">frais</strong> et au{" "}
+                    <strong className="text-text-primary font-medium">nom du stream / token sur la chaîne</strong>.
                   </p>
                   <input
                     id="fees-slug-override"
                     type="text"
                     autoComplete="off"
-                    placeholder="ex. uniswap"
+                    placeholder="vide = label ENS · ex. uniswap"
                     value={feesSlugOverrideInput}
                     onChange={(e) => setFeesSlugOverrideInput(e.target.value)}
                     className="w-full bg-black border border-border-visible px-md py-sm font-mono text-body-sm text-text-display placeholder:text-text-disabled tabular-nums outline-none focus:border-text-secondary transition-colors duration-200 ease-nothing rounded-technical"
                   />
                   <p className="font-mono text-caption text-text-disabled mt-sm">
-                    Requête frais :{" "}
+                    Slug effectif (frais + Factory) :{" "}
                     <span className="text-text-secondary">{feesLookupSlug || "—"}</span>
-                    {normalizeFeesSlugOverride(feesSlugOverrideInput) ? (
-                      <span className="text-success"> (remplace le slug ENS pour les données uniquement)</span>
-                    ) : null}
                   </p>
+                </div>
+
+                <div className="border border-border-visible rounded-technical px-md py-md bg-black/40">
+                  <p className="font-mono text-label uppercase tracking-label text-text-secondary mb-sm">
+                    Aperçu déploiement (Factory)
+                  </p>
+                  {feesLookupSlug ? (
+                    <>
+                      <p className="font-mono text-body-sm text-text-primary">
+                        Identité ENS : <span className="text-text-display">{ensName ?? "—"}</span> (label{" "}
+                        <span className="text-text-display">{protocolSlug}</span>)
+                      </p>
+                      <p className="font-mono text-body-sm text-text-primary mt-xs">
+                        Prochain slug libre sur la chaîne :{" "}
+                        {streamSlotsPending ? (
+                          <span className="text-text-disabled">…</span>
+                        ) : (
+                          <span className="text-text-display">{onChainDeploySlug || "—"}</span>
+                        )}
+                      </p>
+                      <p className="font-mono text-body-sm text-text-primary mt-xs">
+                        Token (nom ERC20) :{" "}
+                        {streamSlotsPending ? (
+                          <span className="text-text-disabled">…</span>
+                        ) : (
+                          <span className="text-text-display">{onChainDeploySlug || "—"}</span>
+                        )}{" "}
+                        · symbole <span className="text-text-display">YST</span>
+                      </p>
+                      <p className="font-mono text-caption text-text-disabled mt-sm">
+                        Si <span className="text-text-secondary">{feesLookupSlug}</span> est déjà pris pour ce
+                        wallet, on enchaîne{" "}
+                        <span className="text-text-secondary">{feesLookupSlug}-1</span>,{" "}
+                        <span className="text-text-secondary">{feesLookupSlug}-2</span>…
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-mono text-caption text-accent">
+                      Impossible de dériver le slug — vérifiez votre primary ENS.
+                    </p>
+                  )}
                 </div>
 
                 <div className="border border-success/30 rounded-technical px-md py-md bg-success/5">
@@ -981,19 +964,14 @@ export default function CreateStreamTerminal() {
                   </p>
                 )}
 
-                {streamAlreadyExists && (
+                {writeError && /StreamAlreadyExists/i.test(writeError.message) && (
                   <div className="rounded-technical border border-accent/60 bg-accent/5 px-md py-md space-y-sm">
                     <p className="font-mono text-label uppercase tracking-label text-accent">
                       StreamAlreadyExists
                     </p>
                     <p className="font-grotesk text-body-sm text-text-secondary leading-snug">
-                      Un vault existe déjà pour{" "}
-                      <span className="font-mono text-text-display text-caption">
-                        keccak256({onChainDeploySlug || "…"}, votre adresse)
-                      </span>
-                      . Changez le <strong className="text-text-primary font-medium">suffixe démo</strong>{" "}
-                      (ou laissez le compteur auto passer au suivant après un déploiement réussi). Le champ
-                      DeFiLlama ne modifie pas ce slug.
+                      Course rare : le slug a été pris entre-temps. Réessayez — le prochain libre sera
+                      recalculé.
                     </p>
                     {existingStreamInvestId != null ? (
                       <Link
@@ -1002,14 +980,7 @@ export default function CreateStreamTerminal() {
                       >
                         Ouvrir /invest/{existingStreamInvestId}
                       </Link>
-                    ) : (
-                      <Link
-                        href="/"
-                        className="inline-flex font-mono text-[12px] uppercase tracking-[0.06em] px-md py-sm border border-border-visible text-text-secondary rounded-technical hover:border-text-display transition-colors"
-                      >
-                        Marketplace
-                      </Link>
-                    )}
+                    ) : null}
                   </div>
                 )}
 

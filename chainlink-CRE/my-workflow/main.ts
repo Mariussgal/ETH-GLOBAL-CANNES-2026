@@ -10,8 +10,8 @@ const envVar = (key: string): string | undefined =>
 // ============================================================
 // ADRESSES SEPOLIA — à mettre à jour après redéploiement P1
 // ============================================================
-const STREAM_FACTORY_ADDRESS = "0a52b6D02f55ae19Ff3973559Bf2b8129EfcC73B";
-const MASTER_SETTLER_ADDRESS = "2F3dd4718A8e8f709d82aC37840565ABCEddA780"; // TODO: confirmer avec P1
+const STREAM_FACTORY_ADDRESS = "249c8855b842Cf044De78596702471098B31B082";
+const MASTER_SETTLER_ADDRESS = "FE6B4a8Ae90C47dA0E19296CaeBb2FF8D313954f";
 const PROXY_URL = "http://ysm-defilama-proxy.ysm-market-proxy.workers.dev/fees/";
 
 // ============================================================
@@ -39,20 +39,22 @@ const encodeBytesPayload = (hexData: string): string => {
 };
 
 /**
- * Encode le report final : abi.encode(uint8 workflowType, bytes innerPayload)
+ * Encode le report final : abi.encode(uint8 workflowType, bytes32 streamKey, bytes innerPayload)
  *
  * Slots ABI :
- *   [0x00] uint8  workflowType   (padded to 32 bytes)
- *   [0x20] offset → bytes data  = 0x40 (2 slots)
- *   [0x40] length de innerPayload
- *   [0x60+] innerPayload data    (padded to 32 bytes)
+ *   [0x00] uint8   workflowType  (padded to 32 bytes)
+ *   [0x20] bytes32 streamKey
+ *   [0x40] offset → bytes data  = 0x60 (3 slots)
+ *   [0x60] length de innerPayload
+ *   [0x80+] innerPayload data   (padded to 32 bytes)
  */
-const encodeReport = (workflowType: number, innerPayloadHex: string): Uint8Array => {
-  const typeSlot   = encodeUint8(workflowType);
-  const offsetSlot = encodeUint256(0x40); // offset fixe : 2 slots × 32 bytes = 64
+const encodeReport = (workflowType: number, streamKeyHex: string, innerPayloadHex: string): Uint8Array => {
+  const typeSlot    = encodeUint8(workflowType);
+  const keySlot     = streamKeyHex.replace(/^0x/i, "").padStart(64, "0");
+  const offsetSlot  = encodeUint256(0x60); // offset : 3 slots × 32 bytes = 96
   const payloadBody = encodeBytesPayload(innerPayloadHex);
 
-  const fullHex = typeSlot + offsetSlot + payloadBody;
+  const fullHex = typeSlot + keySlot + offsetSlot + payloadBody;
   const bytes = new Uint8Array(fullHex.length / 2);
   for (let i = 0; i < bytes.length; i++) {
     bytes[i] = parseInt(fullHex.slice(i * 2, i * 2 + 2), 16);
@@ -126,9 +128,11 @@ const fetchProxyStatsApi = (sendRequester: HTTPSendRequester, url: string): stri
 
 const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Promise<string> => {
   let slug = "quickswap";
+  let streamKeyHex = "";
   try {
     const body = decodeJson(payload.input) as any;
     if (body?.slug) slug = body.slug;
+    if (body?.streamKey) streamKeyHex = body.streamKey as string;
   } catch {}
 
   runtime.log(`[WORKFLOW #1] Calcul décote pour slug : ${slug}`);
@@ -227,7 +231,7 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
   // --- Envoi on-chain via CRE ---
   // report = abi.encode(uint8=1, bytes=abi.encode(uint256 discountBps))
   const innerPayload = encodeUint256(discountBps);
-  const reportBytes  = encodeReport(1, innerPayload);
+  const reportBytes  = encodeReport(1, streamKeyHex, innerPayload);
 
   // Log du hex pour test manuel via demo-sender.ts
   let reportHex = "0x";
@@ -256,9 +260,11 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
 
 const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Promise<string> => {
   let slug = "quickswap";
+  let streamKeyHex = "";
   try {
     const body = decodeJson(payload.input) as any;
     if (body?.slug) slug = body.slug;
+    if (body?.streamKey) streamKeyHex = body.streamKey as string;
   } catch {}
 
   runtime.log(`[WORKFLOW #2] Évaluation Gate pour : ${slug}`);
@@ -314,7 +320,7 @@ const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Pr
   // --- Envoi on-chain via CRE ---
   // report = abi.encode(uint8=2, bytes=abi.encode(bool approved))
   const innerPayload = encodeBool(approved);
-  const reportBytes  = encodeReport(2, innerPayload);
+  const reportBytes  = encodeReport(2, streamKeyHex, innerPayload);
 
   // Log du hex pour test manuel via demo-sender.ts
   let reportHex = "0x";

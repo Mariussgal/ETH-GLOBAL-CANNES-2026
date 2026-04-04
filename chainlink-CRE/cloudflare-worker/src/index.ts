@@ -85,13 +85,17 @@ export default {
       ? Math.min(Math.max(avg30 / avg60prev, 0), 2.0)
       : 1.0;
 
+    const last90 = values.slice(Math.max(0, n - 90));
+    const activeDays = last90.filter((v) => v > 0).length;
+
     const result = {
       slug,
 
       rScore: Math.round(rScore * 1000) / 1000,       
 
       avg30: Math.round(avg30),                        
-      daysOfData: n,                                   
+      daysOfData: n,
+      activeDays,
 
       yesterdayFees: Math.round(yesterdayFees),        
 

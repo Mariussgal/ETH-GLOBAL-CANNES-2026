@@ -28,7 +28,7 @@ dotenv.config();
 // ============================================================
 
 const RPC_URL        = "https://ethereum-sepolia-rpc.publicnode.com";
-const FACTORY_ADDRESS = process.env.FACTORY_ADDRESS || "0x1Bc1135c04Ad7236C56b8EBc1F3b25A8A0ecb5D6";
+const FACTORY_ADDRESS = process.env.FACTORY_ADDRESS || "0x0a52b6D02f55ae19Ff3973559Bf2b8129EfcC73B";
 
 // streamKey du stream à tester — keccak256(abi.encodePacked(protocolSlug, emitterAddress))
 // Exemple pour quickswap + ton wallet : calcule-le ou demande à P1

@@ -64,13 +64,13 @@ export default function FeeSplitterVisual() {
             <div className="flex items-center gap-3 w-[180px] justify-between">
               <span className="font-mono text-[10px] text-text-disabled uppercase">BASE_SOURCE</span>
               <div className="relative w-16 h-[2px] bg-border-visible overflow-hidden">
-                <div className="absolute top-0 left-0 w-2 h-full bg-text-display animate-steppy-flow" style={{ animationDuration: '0.45s' }} />
+                <div className="absolute top-0 left-0 w-2 h-full bg-text-display animate-steppy-flow" style={{ animationDuration: '1s' }} />
               </div>
             </div>
             <div className="flex items-center gap-3 w-[180px] justify-between">
               <span className="font-mono text-[10px] text-text-disabled uppercase">POLYGON_SOURCE</span>
               <div className="relative w-16 h-[2px] bg-border-visible overflow-hidden">
-                <div className="absolute top-0 left-0 w-2 h-full bg-text-secondary animate-steppy-flow animation-delay-500" style={{ animationDuration: '0.45s' }} />
+                <div className="absolute top-0 left-0 w-2 h-full bg-text-display animate-steppy-flow" style={{ animationDuration: '1s' }} />
               </div>
             </div>
           </div>

@@ -2,9 +2,6 @@
 
 Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protocol revenue streams into 1:1 USDC-backed **Yield Stream Tokens (YST)**. By integrating **Arc L1 (Circle)**, **Chainlink CRE**, and **ENS**, YSM creates a transparent, automated, and institutional-grade on-chain capital marketplace.
 
-
-**Team:** [Nohem Monnet-Gani](https://linkedin.com/in/nohem-mg) · [Marius Gal](https://linkedin.com/in/marius-gal) · [Cyriac Mirkovik](https://linkedin.com/in/cyriac-mirkovik)
-
 ---
 
 ## Hackathon Tracks

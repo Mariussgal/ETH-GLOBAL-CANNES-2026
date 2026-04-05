@@ -13,7 +13,7 @@ Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protoc
   - *See:* `smart-contracts/scripts/bridge-arc-to-sepolia.ts` & `Router.sol:receiveFromArc`
   - *Also see:* `frontend/ARC_BRIDGE_FLOW.md` for the full end-to-end walkthrough
 
-
+--
 
 ### 2. ENS — Identity, Reputation & Subname Registry
 
@@ -23,7 +23,7 @@ Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protoc
 
 > **Demo note:** For this demo, the ENS name ownership check (verifying `msg.sender` owns `{protocolSlug}.eth`) is not enforced, allowing us to simulate campaigns for real protocols like Quickswap. In production, only the wallet holding `quickswap.eth` would be allowed to create a Quickswap stream — ENS proves identity, Chainlink CRE proves revenue.
 
-
+--
 
 ### 3. Chainlink
 

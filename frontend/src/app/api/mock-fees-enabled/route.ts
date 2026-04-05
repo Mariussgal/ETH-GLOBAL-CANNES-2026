@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { createWalletClient, http, parseAbi } from "viem";
+import { createPublicClient, createWalletClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 import { ADDRESSES } from "@/contracts";
@@ -60,6 +60,10 @@ export async function POST(request: Request) {
     chain: sepolia,
     transport: http(rpc),
   });
+  const publicClient = createPublicClient({
+    chain: sepolia,
+    transport: http(rpc),
+  });
 
   const results: { label: string; hash?: string; ok: boolean; error?: string }[] = [];
 
@@ -74,6 +78,7 @@ export async function POST(request: Request) {
         functionName: "setFeesEnabled",
         args: [body.enabled],
       });
+      await publicClient.waitForTransactionReceipt({ hash });
       results.push({ label, ok: true, hash });
     } catch (e: unknown) {
       const msg =

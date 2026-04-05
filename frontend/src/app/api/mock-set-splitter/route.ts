@@ -9,7 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { createWalletClient, http, isAddress, parseAbi } from "viem";
+import { createPublicClient, createWalletClient, http, isAddress, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 import { ADDRESSES } from "@/contracts";
@@ -79,6 +79,11 @@ export async function POST(request: Request) {
     transport: http(rpc),
   });
 
+  const publicClient = createPublicClient({
+    chain: sepolia,
+    transport: http(rpc),
+  });
+
   const targets = [
     { label: "Base", address: ADDRESSES.mockBase },
     { label: "Polygon", address: ADDRESSES.mockPolygon },
@@ -94,6 +99,7 @@ export async function POST(request: Request) {
         functionName: "setSplitter",
         args: [splitter as `0x${string}`],
       });
+      await publicClient.waitForTransactionReceipt({ hash });
       results.push({ label: t.label, ok: true, hash });
     } catch (e: unknown) {
       const ex = e as { shortMessage?: string };

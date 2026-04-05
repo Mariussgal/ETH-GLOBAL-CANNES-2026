@@ -10,7 +10,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { createWalletClient, http, parseAbi } from "viem";
+import { createPublicClient, createWalletClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 import { ADDRESSES } from "@/contracts";
@@ -107,6 +107,10 @@ async function runCrank(): Promise<NextResponse> {
     chain: sepolia,
     transport: http(rpc),
   });
+  const publicClient = createPublicClient({
+    chain: sepolia,
+    transport: http(rpc),
+  });
 
   const targets = [
     { label: "Base", address: ADDRESSES.mockBase },
@@ -128,6 +132,7 @@ async function runCrank(): Promise<NextResponse> {
         abi: MOCK_ABI,
         functionName: "generateFees",
       });
+      await publicClient.waitForTransactionReceipt({ hash });
       results.push({ label: t.label, address: t.address, ok: true, hash });
     } catch (e: unknown) {
       const ex = e as { shortMessage?: string; details?: string; cause?: unknown };

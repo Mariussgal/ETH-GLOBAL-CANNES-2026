@@ -145,6 +145,7 @@ export async function POST(request: Request) {
         functionName: "setFeeBounds",
         args: [minB, maxB],
       });
+      await publicClient.waitForTransactionReceipt({ hash });
       results.push({
         label: t.label,
         ok: true,

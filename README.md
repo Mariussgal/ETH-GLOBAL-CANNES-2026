@@ -1,17 +1,18 @@
-# YIELD STREAM MARKETPLACE (YSM) — ETHGLOBAL CANNES 2026
+# YIELD STREAM MARKETPLACE (YSM) 
 
-Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protocol revenue streams into 1:1 USDC-backed **Yield Stream Tokens (YST)**. By integrating **Arc L1 (Circle)**, **Chainlink CRE**, and **ENS**, YSM creates a transparent, automated, and institutional-grade on-chain capital marketplace.
+Yield Stream Marketplace (YSM) is a decentralized platform that allows DeFi protocols to sell their future fee against an instant payout. Investors buy Yield Stream Tokens (YST) at a discount and earn yield as fees flow in. Assuring no debt and no dilution for the issuers.
 
 ---
 
-## Hackathon Tracks
+### Hackathon Tracks
+
+---
 
 ### 1. Arc (Circle)
 
 - **Programmable USDC Settlement**: `Router.sol` is a programmable settlement engine. It handles multi-step fee distribution, splitting revenue between investor `Vault` contracts and a protocol `Treasury` with basis-point precision (`BPS_DENOMINATOR = 10,000`).
 - **Chain-Abstracted Liquidity Hub**: YSM treats Arc as its primary **Economic OS**. Using the **Circle Bridge Kit** (`@circle-fin/bridge-kit`) and **Circle Forwarder**, USDC flows effortlessly from Arc Testnet to Ethereum Sepolia via CCTP V2.
-  - *See:* `smart-contracts/scripts/bridge-arc-to-sepolia.ts` & `Router.sol:receiveFromArc`
-  - *Also see:* `frontend/ARC_BRIDGE_FLOW.md` for the full end-to-end walkthrough
+  - *See:* `smart-contracts/scripts/bridge-arc-to-sepolia.ts` & `Router.sol:flushBalance`
 
 ---
 

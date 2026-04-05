@@ -1,6 +1,6 @@
 # YIELD STREAM MARKETPLACE (YSM) 
 
-Yield Stream Marketplace (YSM) is a decentralized platform that allows DeFi protocols to sell their future fee against an instant payout. Investors buy Yield Stream Tokens (YST) at a discount and earn yield as fees flow in. Assuring no debt and no dilution for the issuers.
+Yield Stream Marketplace (YSM) is a decentralized platform that allows DeFi protocols to sell their future fee revenue in exchange for instant USDC capital. Investors buy Yield Stream Tokens (YST) at a discount and earn yield as fees flow in. Assuring no debt and no dilution for the issuers.
 
 ---
 

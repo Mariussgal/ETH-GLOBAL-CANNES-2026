@@ -2,7 +2,7 @@ import { cre, Runner, type Runtime, type HTTPPayload, decodeJson, HTTPClient, co
 import { SDK_PB } from "@chainlink/cre-sdk/pb";
 import { create } from "@bufbuild/protobuf";
 
-interface Config {}
+interface Config { }
 
 const envVar = (key: string): string | undefined =>
   (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[key];
@@ -48,7 +48,7 @@ const encodeBytesPayload = (hexData: string): string => {
  *   [0x60+] innerPayload data    (padded to 32 bytes)
  */
 const encodeReport = (workflowType: number, innerPayloadHex: string): Uint8Array => {
-  const typeSlot   = encodeUint8(workflowType);
+  const typeSlot = encodeUint8(workflowType);
   const offsetSlot = encodeUint256(0x40); // offset fixe : 2 slots × 32 bytes = 64
   const payloadBody = encodeBytesPayload(innerPayloadHex);
 
@@ -119,8 +119,8 @@ const fetchProxyStatsApi = (sendRequester: HTTPSendRequester, url: string): stri
 };
 
 // ============================================================
-// WORKFLOW #1 — Calcul décote (workflowType = 1)
-// Trigger : HTTP  |  Payload attendu : { "slug": "..." }
+// WORKFLOW #1 — discount (workflowType = 1)
+// Trigger : HTTP  |  Payload : { "slug": "..." }
 // Report  : abi.encode(uint8=1, bytes=abi.encode(uint256 discountBps))
 // ============================================================
 
@@ -129,13 +129,12 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
   try {
     const body = decodeJson(payload.input) as any;
     if (body?.slug) slug = body.slug;
-  } catch {}
+  } catch { }
 
   runtime.log(`[WORKFLOW #1] Calcul décote pour slug : ${slug}`);
 
   const httpClient = new HTTPClient();
 
-  // --- Prix ETH actuel : Chainlink feed Sepolia, sinon spot Binance (la simu renvoie souvent data vide) ---
   let ethUsdPriceNow = 3500;
   const spotUrl = "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT";
   try {
@@ -163,7 +162,6 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
     }
   }
 
-  // --- Prix ETH il y a 30j via Binance ---
   let ethUsdPrice30d = 3200;
   try {
     const t30j = Math.floor(Date.now() / 86400000) * 86400000 - 30 * 24 * 3600 * 1000;
@@ -174,7 +172,6 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
     runtime.log(`[WORKFLOW #1] Binance indisponible, fallback $${ethUsdPrice30d} : ${e.message}`);
   }
 
-  // --- rScore via proxy DeFiLlama ---
   let rScore = 0.8;
   try {
     const statsJson = httpClient.sendRequest(runtime, fetchProxyStatsApi, consensusIdenticalAggregation())(`${PROXY_URL}${slug}`).result();
@@ -187,7 +184,6 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
     runtime.log(`[WORKFLOW #1] Proxy indisponible, fallback rScore=${rScore} : ${e.message}`);
   }
 
-  // --- Calcul décote ---
   const sigma = 0.165;
   const trend = 1 - rScore;
   const marketRisk = ethUsdPriceNow < ethUsdPrice30d
@@ -199,7 +195,6 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
 
   runtime.log(`[WORKFLOW #1] Décote : ${Math.floor(decote * 100)}% = ${discountBps} bps (marketRisk=${marketRisk.toFixed(3)}, rScore=${rScore})`);
 
-  // --- P2.2 : résumé + commande cast pour P1 ---
   const FACTORY_ADDRESS = envVar("FACTORY_ADDRESS") ?? "0x" + STREAM_FACTORY_ADDRESS;
   const STREAM_KEY = envVar("STREAM_KEY") ?? "";
   runtime.log("");
@@ -227,7 +222,7 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
   // --- Envoi on-chain via CRE ---
   // report = abi.encode(uint8=1, bytes=abi.encode(uint256 discountBps))
   const innerPayload = encodeUint256(discountBps);
-  const reportBytes  = encodeReport(1, innerPayload);
+  const reportBytes = encodeReport(1, innerPayload);
 
   // Log du hex pour test manuel via demo-sender.ts
   let reportHex = "0x";
@@ -259,7 +254,7 @@ const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Pr
   try {
     const body = decodeJson(payload.input) as any;
     if (body?.slug) slug = body.slug;
-  } catch {}
+  } catch { }
 
   runtime.log(`[WORKFLOW #2] Évaluation Gate pour : ${slug}`);
 
@@ -270,8 +265,8 @@ const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Pr
     const statsJson = httpClient.sendRequest(runtime, fetchProxyStatsApi, consensusIdenticalAggregation())(`${PROXY_URL}${slug}`).result();
     const stats = JSON.parse(statsJson);
     if (stats && !stats.error) {
-      avg30      = stats.avg30 ?? 0;
-      rScore     = stats.rScore ?? 0.5;
+      avg30 = stats.avg30 ?? 0;
+      rScore = stats.rScore ?? 0.5;
       daysOfData = stats.daysOfData ?? 0;
       activeDays = stats.activeDays ?? 0;
       runtime.log(`[WORKFLOW #2] Stats proxy : avg30=$${avg30.toFixed(0)}/j, rScore=${rScore}, days=${daysOfData}, activeDays(90j)=${activeDays}`);
@@ -314,7 +309,7 @@ const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Pr
   // --- Envoi on-chain via CRE ---
   // report = abi.encode(uint8=2, bytes=abi.encode(bool approved))
   const innerPayload = encodeBool(approved);
-  const reportBytes  = encodeReport(2, innerPayload);
+  const reportBytes = encodeReport(2, innerPayload);
 
   // Log du hex pour test manuel via demo-sender.ts
   let reportHex = "0x";
@@ -364,7 +359,7 @@ const onSettlementTrigger = async (runtime: Runtime<Config>, _payload: any): Pro
 const initWorkflow = (_config: Config) => {
   const http1 = new cre.capabilities.HTTPCapability();
   const http2 = new cre.capabilities.HTTPCapability();
-  const cron  = new cre.capabilities.CronCapability();
+  const cron = new cre.capabilities.CronCapability();
 
   return [
     cre.handler(http1.trigger({}), onDecoteTrigger),

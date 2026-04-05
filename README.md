@@ -7,21 +7,30 @@ Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protoc
 ## Hackathon Tracks
 
 ### 1. Arc (Circle)
+
 - **Programmable USDC Settlement**: `Router.sol` is a programmable settlement engine. It handles multi-step fee distribution, splitting revenue between investor `Vault` contracts and a protocol `Treasury` with basis-point precision (`BPS_DENOMINATOR = 10,000`).
 - **Chain-Abstracted Liquidity Hub**: YSM treats Arc as its primary **Economic OS**. Using the **Circle Bridge Kit** (`@circle-fin/bridge-kit`) and **Circle Forwarder**, USDC flows effortlessly from Arc Testnet to Ethereum Sepolia via CCTP V2.
   - *See:* `smart-contracts/scripts/bridge-arc-to-sepolia.ts` & `Router.sol:receiveFromArc`
   - *Also see:* `frontend/ARC_BRIDGE_FLOW.md` for the full end-to-end walkthrough
 
-### 2. ENS
-- **Decentralized Risk Ledger**: Every Yield Stream is mapped to an ENS subnode (e.g., `issuer.ysm.eth`). Upon a technical default or missed payment, `Vault.sol` programmatically updates the ENS `ysm.status` text record to `DEFAULTED` via the `IENSResolver` interface.
-  - *See:* `smart-contracts/contracts/Vault.sol:_writeENSDefault` & `smart-contracts/contracts/interfaces/IENS.sol`
-  - *Frontend:* `frontend/src/hooks/useEnsSubdomainStatus.ts`
+
+
+### 2. ENS — Identity, Reputation & Subname Registry
+
+- **Identity Gate** — `createStreamDirect()` requires a primary ENS name via Reverse Registrar. No ENS = no stream.
+- **Automatic Subname Minting** — On stream deployment, `Factory` mints `{protocolSlug}.ysm.eth` pointing to the Vault via `NameWrapper.setSubnodeRecord()`. Factory holds the ERC-1155 NFT — the issuer cannot modify it.
+- **Decentralized Risk Ledger** — After 30 days without fees, or if the stream ends without the expected yield being delivered, `slashCollateral()` flags the protocol as defaulted by writing `ysm.status = DEFAULTED` to the subdomain's ENS text records. Written by the contract, not the issuer — trustless and visible to any ENS-compatible wallet.
+
+> **Demo note:** For this demo, the ENS name ownership check (verifying `msg.sender` owns `{protocolSlug}.eth`) is not enforced, allowing us to simulate campaigns for real protocols like Quickswap. In production, only the wallet holding `quickswap.eth` would be allowed to create a Quickswap stream — ENS proves identity, Chainlink CRE proves revenue.
+
+
 
 ### 3. Chainlink
+
 - **Chainlink CRE (Compute Runtime Engine)** — Three production workflows in `chainlink-CRE/my-workflow/main.ts`:
   - **Workflow #1 — Risk Scoring** (HTTP trigger): Fetches real-time ETH/USD price from the Chainlink Sepolia feed (`0x694AA1769357215DE4FAC081bf1f309aDC325306`) with a Binance API fallback, fetches protocol rScore from our **Cloudflare Worker** proxy (DeFiLlama data), and computes a `discountBps` value. Writes the report on-chain via `EVMClient.writeReport` → `StreamFactory.onReport`.
   - **Workflow #2 — Quality Gate** (HTTP trigger): Evaluates `avg30 ≥ $1000`, `rScore ≥ 0.5`, and `daysOfData ≥ 90` against live DeFiLlama data. Writes an approval boolean on-chain to gate new stream creation.
-  - **Workflow #3 — Auto-Settlement** (Cron: `0 0 * * *` daily): Triggers `Keeper.sol` on-chain to execute batch yield distribution.
+  - **Workflow #3 — Auto-Settlement** (Cron: `0 0 * * `* daily): Triggers `Keeper.sol` on-chain to execute batch yield distribution.
   - *See:* `chainlink-CRE/my-workflow/main.ts`, `chainlink-CRE/my-workflow/workflow.yaml`
 
 ---
@@ -65,6 +74,8 @@ flowchart LR
     Vault -->|"_writeENSDefault()"| ENS
 ```
 
+
+
 ### Yield Streaming Lifecycle (IPO to Settlement)
 
 ```mermaid
@@ -85,31 +96,37 @@ sequenceDiagram
     Investor->>Vault: claimRewards() → USDC
 ```
 
+
+
 ---
 
 ## Smart Contract Registry (Sepolia)
 
-| Contract | Role | Address |
-| :--- | :--- | :--- |
-| **StreamFactory** | Registry, ENS subdomain creation, CRE report receiver | [`0x902514A32F0882b5F38F8C6583F5c13E52717d4d`](https://sepolia.etherscan.io/address/0x902514A32F0882b5F38F8C6583F5c13E52717d4d) |
-| **PrimarySale** | IPO / funding entry point | [`0x5161d70daCBfFc651FAd24aC63200Ac72c4A4aF3`](https://sepolia.etherscan.io/address/0x5161d70daCBfFc651FAd24aC63200Ac72c4A4aF3) |
-| **YSM Router** | Fee splitter & CCTP bridge receiver | [`0x02E75407376e5FBEd0e507E8265d92CeE9279fDC`](https://sepolia.etherscan.io/address/0x02E75407376e5FBEd0e507E8265d92CeE9279fDC) |
-| **Arc Stream Router** | Latest Arc → Sepolia CCTP target | [`0xD45A28c968A6C3311e109e903a573671193B1e2d`](https://sepolia.etherscan.io/address/0xD45A28c968A6C3311e109e903a573671193B1e2d) |
-| **Keeper / MasterSettler** | Chainlink Automation + CRE Settlement hub | [`0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4`](https://sepolia.etherscan.io/address/0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4) |
-| **Vault (Demo)** | Active yield vault for the demo stream | [`0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8`](https://sepolia.etherscan.io/address/0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8) |
-| **YST Token** | Yield-bearing ERC20 asset | [`0x343f28CEA446Cef6e8A380bFe11BcBf95f115370`](https://sepolia.etherscan.io/address/0x343f28CEA446Cef6e8A380bFe11BcBf95f115370) |
-| **YST Splitter** | Revenue splitter (vault / treasury BPS) | [`0xaCD8f042eE1E29580A84e213760D144957eec148`](https://sepolia.etherscan.io/address/0xaCD8f042eE1E29580A84e213760D144957eec148) |
-| **PriceFloorHook** | Uniswap v4 hook (experimental) | [`0x718a99478f65Bc0d67499641D8888E4B02DD81DC`](https://sepolia.etherscan.io/address/0x718a99478f65Bc0d67499641D8888E4B02DD81DC) |
-| **USDC (Sepolia)** | Circle test USDC | [`0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`](https://sepolia.etherscan.io/address/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238) |
-| **MockQuickswap (Base sim)** | Revenue mock — Base fees | [`0x646f3ba4fe570D52e0C80D2A7Bf2131A990e4d95`](https://sepolia.etherscan.io/address/0x646f3ba4fe570D52e0C80D2A7Bf2131A990e4d95) |
-| **MockQuickswap (Polygon sim)** | Revenue mock — Polygon fees | [`0x72dbd97F1B8dAe5D4F31F8cEDe65895208E51f9c`](https://sepolia.etherscan.io/address/0x72dbd97F1B8dAe5D4F31F8cEDe65895208E51f9c) |
+
+| Contract                        | Role                                                  | Address                                                                                                                         |
+| ------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **StreamFactory**               | Registry, ENS subdomain creation, CRE report receiver | `[0x902514A32F0882b5F38F8C6583F5c13E52717d4d](https://sepolia.etherscan.io/address/0x902514A32F0882b5F38F8C6583F5c13E52717d4d)` |
+| **PrimarySale**                 | IPO / funding entry point                             | `[0x5161d70daCBfFc651FAd24aC63200Ac72c4A4aF3](https://sepolia.etherscan.io/address/0x5161d70daCBfFc651FAd24aC63200Ac72c4A4aF3)` |
+| **YSM Router**                  | Fee splitter & CCTP bridge receiver                   | `[0x02E75407376e5FBEd0e507E8265d92CeE9279fDC](https://sepolia.etherscan.io/address/0x02E75407376e5FBEd0e507E8265d92CeE9279fDC)` |
+| **Arc Stream Router**           | Latest Arc → Sepolia CCTP target                      | `[0xD45A28c968A6C3311e109e903a573671193B1e2d](https://sepolia.etherscan.io/address/0xD45A28c968A6C3311e109e903a573671193B1e2d)` |
+| **Keeper / MasterSettler**      | Chainlink Automation + CRE Settlement hub             | `[0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4](https://sepolia.etherscan.io/address/0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4)` |
+| **Vault (Demo)**                | Active yield vault for the demo stream                | `[0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8](https://sepolia.etherscan.io/address/0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8)` |
+| **YST Token**                   | Yield-bearing ERC20 asset                             | `[0x343f28CEA446Cef6e8A380bFe11BcBf95f115370](https://sepolia.etherscan.io/address/0x343f28CEA446Cef6e8A380bFe11BcBf95f115370)` |
+| **YST Splitter**                | Revenue splitter (vault / treasury BPS)               | `[0xaCD8f042eE1E29580A84e213760D144957eec148](https://sepolia.etherscan.io/address/0xaCD8f042eE1E29580A84e213760D144957eec148)` |
+| **PriceFloorHook**              | Uniswap v4 hook (experimental)                        | `[0x718a99478f65Bc0d67499641D8888E4B02DD81DC](https://sepolia.etherscan.io/address/0x718a99478f65Bc0d67499641D8888E4B02DD81DC)` |
+| **USDC (Sepolia)**              | Circle test USDC                                      | `[0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238](https://sepolia.etherscan.io/address/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238)` |
+| **MockQuickswap (Base sim)**    | Revenue mock — Base fees                              | `[0x646f3ba4fe570D52e0C80D2A7Bf2131A990e4d95](https://sepolia.etherscan.io/address/0x646f3ba4fe570D52e0C80D2A7Bf2131A990e4d95)` |
+| **MockQuickswap (Polygon sim)** | Revenue mock — Polygon fees                           | `[0x72dbd97F1B8dAe5D4F31F8cEDe65895208E51f9c](https://sepolia.etherscan.io/address/0x72dbd97F1B8dAe5D4F31F8cEDe65895208E51f9c)` |
+
 
 ### Arc Testnet Addresses
 
-| Contract | Address |
-| :--- | :--- |
-| **USDC (native, 18 dec)** | `0x3600000000000000000000000000000000000000` |
+
+| Contract                    | Address                                      |
+| --------------------------- | -------------------------------------------- |
+| **USDC (native, 18 dec)**   | `0x3600000000000000000000000000000000000000` |
 | **TokenMessengerV2 (CCTP)** | `0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA` |
+
 
 ---
 
@@ -127,13 +144,15 @@ sequenceDiagram
 
 The CRE Risk Scoring workflow computes a dynamic discount rate $\mathcal{D}$ for each Yield Stream, bounding the face value vs. the purchase price of the RWA.
 
-$$\mathcal{D} = 0.25\,(\sigma \times 3.46) + 0.35\,(1 - R) + 0.40\,M$$
+$$\mathcal{D} = 0.25(\sigma \times 3.46) + 0.35(1 - R) + 0.40M$$
 
-| Symbol | Meaning | Source |
-| :--- | :--- | :--- |
-| $\sigma$ | Monthly asset volatility (benchmark: `0.165`) | Fixed constant |
-| $R$ | Protocol reliability score $[0, 1]$ | Cloudflare Worker → DeFiLlama |
-| $M$ | 30-day market drawdown: $1 - P_\text{now} / P_{-30d}$ | Binance API / Chainlink ETH/USD feed |
+
+| Symbol   | Meaning                                               | Source                               |
+| -------- | ----------------------------------------------------- | ------------------------------------ |
+| $\sigma$ | Monthly asset volatility (benchmark: `0.165`)         | Fixed constant                       |
+| $R$      | Protocol reliability score $[0, 1]$                   | Cloudflare Worker → DeFiLlama        |
+| $M$      | 30-day market drawdown: $1 - P_\text{now} / P_{-30d}$ | Binance API / Chainlink ETH/USD feed |
+
 
 > The final discount is clamped to **[10%, 50%]** and expressed in basis points for on-chain encoding.
 
@@ -141,11 +160,13 @@ $$\mathcal{D} = 0.25\,(\sigma \times 3.46) + 0.35\,(1 - R) + 0.40\,M$$
 
 A protocol stream is approved for creation only if **all three** conditions are met via the DeFiLlama proxy:
 
-| Criterion | Threshold |
-| :--- | :--- |
-| Average daily fees (30d) | ≥ $1,000 |
-| Reliability score (`rScore`) | ≥ 0.5 |
+
+| Criterion                    | Threshold |
+| ---------------------------- | --------- |
+| Average daily fees (30d)     | ≥ $1,000  |
+| Reliability score (`rScore`) | ≥ 0.5     |
 | Days of on-chain fee history | ≥ 90 days |
+
 
 ### Cloudflare Worker — DeFiLlama Proxy
 

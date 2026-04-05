@@ -219,12 +219,9 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
   runtime.log("========================================");
   runtime.log("");
 
-  // --- Envoi on-chain via CRE ---
-  // report = abi.encode(uint8=1, bytes=abi.encode(uint256 discountBps))
   const innerPayload = encodeUint256(discountBps);
   const reportBytes = encodeReport(1, innerPayload);
 
-  // Log du hex pour test manuel via demo-sender.ts
   let reportHex = "0x";
   for (let i = 0; i < reportBytes.length; i++) reportHex += reportBytes[i]!.toString(16).padStart(2, "0");
   runtime.log(`[WORKFLOW #1] REPORT_HEX=${reportHex}`);

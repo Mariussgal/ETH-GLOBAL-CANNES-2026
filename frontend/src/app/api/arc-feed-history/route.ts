@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { ADDRESSES } from "@/contracts";
+import { ARC_STREAM_ROUTER } from "@/contracts";
+import { fetchFeesReceivedLogsEtherscan } from "@/lib/etherscanArcLogs";
 import {
   fetchFeesGeneratedLogsEtherscan,
   getSepoliaBlockNumberEtherscan,
   serializeLog,
   TOTAL_HISTORY_LOOKBACK_BLOCKS,
 } from "@/lib/etherscanFeesLogs";
+
+
 
 /**
  * Historique FeesGenerated pour le LIVE ACTIVITY FEED.
@@ -48,11 +52,15 @@ export async function GET() {
       latest
     );
 
+    await new Promise((r) => setTimeout(r, 1100));
+    const arcLogs = await fetchFeesReceivedLogsEtherscan(apiKey, ARC_STREAM_ROUTER, fromBlock, latest);
+
     return NextResponse.json({
-      ok: true as const,
+      ok: true,
       latest: latest.toString(),
       baseLogs: baseLogs.map(serializeLog),
       polyLogs: polyLogs.map(serializeLog),
+      arcLogs: arcLogs.map(serializeLog), // ← ajout
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

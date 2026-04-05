@@ -463,6 +463,7 @@ export default function StreamInvestView({
     fallbackProtocolLabel: protocolShort,
     feedProtocolLabel: stream.protocol,
     streamVaultAddress: chainInvest?.vault,
+    streamCreatedAt: stream.createdAt,
   });
 
   const demo = useDemoProtocolRevenueFeed(stream.protocol, demoFeedActive);

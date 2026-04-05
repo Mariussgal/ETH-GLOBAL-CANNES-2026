@@ -1,167 +1,363 @@
-# YIELD STREAM MARKETPLACE (YSM) - ETHGLOBAL CANNES 2026
+# YIELD STREAM MARKETPLACE (YSM) — ETHGLOBAL CANNES 2026
 
-**YSM lets DeFi protocols sell their future fee revenue against immediate liquidity**
+Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protocol revenue streams into 1:1 USDC-backed **Yield Stream Tokens (YST)**. By integrating **Arc L1 (Circle)**, **Chainlink CRE**, and **ENS**, YSM creates a transparent, automated, and institutional-grade on-chain capital market for Real World Asset (RWA) yield.
 
-Yield Stream Marketplace (YSM) is a decentralized protocol designed to tokenize revenue streams into 1:1 USDC-backed Yield Stream Tokens (YST). By integrating **Arc L1 (Circle)**, **Chainlink CRE (Orchestration)**, and **ENS (Identity & Reputation)**, YSM creates a transparent, automated, and secure ecosystem for on-chain lending and capital markets.
+**Live demo:** deployed on Ethereum Sepolia testnet.
 
----
-
-## 🏆 Hackathon Tracks & Technical Merit
-
-### 1. Arc (Circle) 
-*   **Advanced Stablecoin Logic (Programmable USDC)**: Our `Router.sol` acts as a programmable settlement engine. It handles multi-step fee distribution, splitting revenue between investor `Vaults` and the protocol `Treasury` with basis-point precision (`BPS_DENOMINATOR = 10,000`).
-*   **Chain Abstracted USDC Apps (Liquidity Hub)**: YSM treats Arc as the primary **Economic OS**. Using the **Circle Bridge Kit** and **Circle Forwarder**, we move capital effortlessly between Arc Testnet and Ethereum Sepolia.
-    *   *Reference*: `smart-contracts/scripts/bridge-arc-to-sepolia.ts` & `Router.sol:receiveFromArc`.
-
-### 2. ENS 
-*   **Most Creative Use of ENS (Reputation & Credit)**: We use ENS as a **Decentralized Risk Ledger**. 
-    *   Every Yield Stream is mapped to an ENS subnode (e.g., `issuer.ysm.eth`).
-    *   **On-Chain Status Updates**: Upon a technical default or missed payment, the `Vault.sol` contract programmatically updates the ENS `ysm.status` text record to `DEFAULTED` via the `IENSResolver`.
-    *   *Reference*: `Vault.sol:_writeENSDefault`.
-
-### 3. Chainlink 
-*   **Best Workflow with Chainlink CRE (Orchestration)**:
-    *   **Workflow #1 (Risk Scoring)**: Fetches real-time market data (Binance/Chainlink) to compute dynamic discount rates for RWA streams.
-    *   **Workflow #2 (Quality Gate)**: Automated audit of protocol history (DeFiLlama) before authorizing a stream.
-    *   **Workflow #3 (Settlement)**: Time-based Cron triggers that orchestrate daily yield distribution via our `Keeper.sol` and `creForwarder`.
-    *   *Reference*: `chainlink-CRE/my-workflow/main.ts` & `Keeper.sol:onReport`.
+**Team:** [Nohem Monnet-Gani](https://linkedin.com/in/nohem-mg) · [Marius Gal](https://linkedin.com/in/marius-gal) · [Cyriac Mirkovik](https://linkedin.com/in/cyriac-mirkovik)
 
 ---
 
-## 🏗 System Architecture
+## Hackathon Tracks & Technical Merit
 
-### 1. The Global Ecosystem
+### 1. Arc (Circle)
+- **Programmable USDC Settlement**: `Router.sol` is a programmable settlement engine. It handles multi-step fee distribution, splitting revenue between investor `Vault` contracts and a protocol `Treasury` with basis-point precision (`BPS_DENOMINATOR = 10,000`).
+- **Chain-Abstracted Liquidity Hub**: YSM treats Arc as its primary **Economic OS**. Using the **Circle Bridge Kit** (`@circle-fin/bridge-kit`) and **Circle Forwarder**, USDC flows effortlessly from Arc Testnet to Ethereum Sepolia via CCTP V2.
+  - *See:* `smart-contracts/scripts/bridge-arc-to-sepolia.ts` & `Router.sol:receiveFromArc`
+  - *Also see:* `frontend/ARC_BRIDGE_FLOW.md` for the full end-to-end walkthrough
+
+### 2. ENS
+- **Decentralized Risk Ledger**: Every Yield Stream is mapped to an ENS subnode (e.g., `issuer.ysm.eth`). Upon a technical default or missed payment, `Vault.sol` programmatically updates the ENS `ysm.status` text record to `DEFAULTED` via the `IENSResolver` interface.
+  - *See:* `smart-contracts/contracts/Vault.sol:_writeENSDefault` & `smart-contracts/contracts/interfaces/IENS.sol`
+  - *Frontend:* `frontend/src/hooks/useEnsSubdomainStatus.ts`
+
+### 3. Chainlink
+- **Chainlink CRE (Compute Runtime Engine)** — Three production workflows in `chainlink-CRE/my-workflow/main.ts`:
+  - **Workflow #1 — Risk Scoring** (HTTP trigger): Fetches real-time ETH/USD price from the Chainlink Sepolia feed (`0x694AA1769357215DE4FAC081bf1f309aDC325306`) with a Binance API fallback, fetches protocol rScore from our **Cloudflare Worker** proxy (DeFiLlama data), and computes a `discountBps` value. Writes the report on-chain via `EVMClient.writeReport` → `StreamFactory.onReport`.
+  - **Workflow #2 — Quality Gate** (HTTP trigger): Evaluates `avg30 ≥ $1000`, `rScore ≥ 0.5`, and `daysOfData ≥ 90` against live DeFiLlama data. Writes an approval boolean on-chain to gate new stream creation.
+  - **Workflow #3 — Auto-Settlement** (Cron: `0 0 * * *` daily): Triggers `Keeper.sol` on-chain to execute batch yield distribution.
+  - *See:* `chainlink-CRE/my-workflow/main.ts`, `chainlink-CRE/my-workflow/workflow.yaml`
+
+---
+
+## System Architecture
+
+### Global Ecosystem
+
 ```mermaid
 flowchart TB
-    subgraph Frontend["Frontend Layer"]
-        UI["Industrial Dashboard"]
-        Wagmi["Wagmi & RainbowKit"]
+    subgraph Frontend["Frontend (Next.js 14)"]
+        UI["Dashboard / Marketplace / Dashboards"]
+        Wagmi["Wagmi v2 + RainbowKit"]
+        NextAPI["Next.js API Routes"]
     end
 
     subgraph Arc["Arc & Circle Layer"]
-        Bridge["Circle Bridge Kit"]
+        ArcUSDC["USDC on Arc Testnet (native, 18 dec)"]
+        BridgeKit["Circle Bridge Kit (CCTP V2)"]
         Forwarder["Circle Forwarder"]
-        ArcUSDC["USDC on Arc"]
     end
 
-    subgraph Chainlink["Chainlink CRE"]
-        WF1["Workflow: Risk Scoring"]
-        WF2["Workflow: Quality Gate"]
-        WF3["Workflow: Auto-Settlement"]
+    subgraph CRE["Chainlink CRE"]
+        WF1["Workflow #1: Risk Scoring (HTTP)"]
+        WF2["Workflow #2: Quality Gate (HTTP)"]
+        WF3["Workflow #3: Settlement (Cron)"]
+        CF["Cloudflare Worker (DeFiLlama Proxy)"]
     end
 
-    subgraph Sepolia["Business Logic (Sepolia)"]
-        Factory["Stream Factory"]
-        Primary["Primary Sale (IPO)"]
-        Router["Fee Router"]
-        Vault["Yield Vault"]
-        YST["Yield Token"]
-        Keeper["Automation Keeper"]
+    subgraph Sepolia["Business Logic (Ethereum Sepolia)"]
+        Factory["StreamFactory"]
+        Primary["PrimarySale (IPO)"]
+        Router["Router (Fee Splitter)"]
+        Vault["Vault (Yield Engine)"]
+        YST["YSTToken (ERC20)"]
+        Keeper["Keeper / MasterSettler"]
+        PFH["PriceFloorHook (Uniswap v4)"]
     end
 
     subgraph ENS["Identity (ENS)"]
-        Registry["ENS Registry"]
-        Resolver["ENS Risk Resolver"]
+        Resolver["ENS Resolver (Risk Ledger)"]
     end
 
     UI --> Wagmi
     Wagmi --> Primary
-    Bridge --> Forwarder
+    Wagmi --> Vault
+    ArcUSDC --> BridgeKit
+    BridgeKit --> Forwarder
     Forwarder --> Router
-    WF1 --> Factory
-    WF3 --> Keeper
+    Router -->|"flushBalance()"| Vault
+    Router --> Treasury["Treasury"]
+    WF1 & WF2 -->|writeReport| Factory
+    WF3 -->|writeReport| Keeper
+    WF1 & WF2 --> CF
+    CF -->|"DeFiLlama /fees/{slug}"| WF1
     Keeper --> Vault
-    Vault -->|Update Status| Resolver
-    Primary -->|IPOs| YST
+    Vault -->|"_writeENSDefault()"| Resolver
+    Primary -->|"mint YST"| YST
+    Factory --> Primary
+    Factory --> Vault
+    Factory --> Router
 ```
 
-### 2. Yield Streaming Lifecycle (IPO to Settlement)
+### Yield Streaming Lifecycle (IPO to Settlement)
+
 ```mermaid
 sequenceDiagram
     participant Issuer
     participant Factory
-    participant Primary as Primary Sale (IPO)
+    participant CRE as Chainlink CRE
+    participant Primary as PrimarySale (IPO)
     participant Investor
     participant Router
     participant Vault
-    participant YST as Yield Token
     participant Keeper
 
-    Note over Issuer,Factory: 1. Initialization
-    Issuer->>Factory: createStream(...)
+    Note over CRE,Factory: 0. Pre-Approval
+    CRE->>Factory: writeReport(workflowType=2, approved=true)
+
+    Note over Issuer,Factory: 1. Stream Creation
+    Issuer->>Factory: createStream(slug, totalSupply, price)
     Factory->>Vault: deploy()
-    Factory->>YST: deploy & mint()
+    Factory->>Router: deploy()
 
-    Note over Investor,Primary: 2. Funding (IPO)
-    Investor->>Primary: buy(USDC)
+    Note over CRE,Factory: 2. Risk Pricing
+    CRE->>Factory: writeReport(workflowType=1, discountBps)
+
+    Note over Investor,Primary: 3. Funding (IPO)
+    Investor->>Primary: buy(amountUSDC)
     Primary->>Investor: transfer(YST)
-    Primary->>Issuer: transfer(USDC)
+    Primary->>Issuer: transfer(USDC proceeds)
 
-    Note over Router,Vault: 3. Yield Generation
-    Router->>Vault: depositFees(revenue)
+    Note over Router,Vault: 4. Fee Distribution (Arc → Sepolia)
+    Router->>Vault: depositFees(vaultBps % of USDC)
     Vault->>Vault: updateRewardPerToken()
 
-    Note over Keeper,Vault: 4. Maintenance
+    Note over Keeper,Vault: 5. Daily Settlement (Cron)
     Keeper->>Vault: executeSettlement()
-    Investor->>Vault: claimRewards(USDC)
+    Investor->>Vault: claimRewards() → USDC
 ```
 
 ---
 
-## 🛠 Smart Contract Registry (Sepolia)
+## Repository Structure
+
+```
+ETH-GLOBAL-CANNES-2026/
+├── frontend/                        # Next.js 14 web application
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── page.tsx             # Landing / Marketplace
+│   │   │   ├── create/page.tsx      # Create Stream terminal
+│   │   │   ├── invest/[id]/         # Stream investment view
+│   │   │   ├── dashboard/
+│   │   │   │   ├── investor/        # Investor portfolio dashboard
+│   │   │   │   └── issuer/          # Issuer stream management
+│   │   │   └── api/                 # Next.js API routes
+│   │   │       ├── arc-feed-history/
+│   │   │       ├── crank-mock-fees/
+│   │   │       ├── fees/[slug]/
+│   │   │       ├── investor-claim-logs/
+│   │   │       └── mock-*/
+│   │   ├── components/              # UI components (Wagmi hooks, dashboards)
+│   │   ├── contracts/index.ts       # All ABI definitions + deployed addresses
+│   │   ├── hooks/                   # React hooks (on-chain data fetching)
+│   │   └── lib/                     # Utilities (chain-stream, wagmi config, etc.)
+│   └── vercel.json                  # Vercel cron config (daily fee generation)
+│
+├── smart-contracts/                 # Hardhat project
+│   ├── contracts/
+│   │   ├── Factory.sol              # Stream registry + ENS subdomain management
+│   │   ├── PrimarySale.sol          # IPO / crowdfunding entry point
+│   │   ├── Router.sol               # Fee splitter + Arc CCTP bridge receiver
+│   │   ├── Vault.sol                # Synthetix-style yield distribution
+│   │   ├── YSTToken.sol             # ERC20 yield-bearing token
+│   │   ├── Keeper.sol               # Chainlink Automation + CRE report handler
+│   │   ├── PriceFloorHook.sol       # Uniswap v4 hook (experimental)
+│   │   ├── interfaces/IENS.sol      # ENS Registry / Resolver interfaces
+│   │   └── mocks/                   # MockArcProtocol, MockQuickswap{Base,Polygon}
+│   ├── scripts/
+│   │   ├── bridge-arc-to-sepolia.ts # Circle Bridge Kit: Arc → Sepolia USDC
+│   │   ├── deploy-factory.ts
+│   │   ├── deploy-primary-sale.ts
+│   │   ├── deploy-keeper.ts
+│   │   ├── deploy-mocks.ts
+│   │   └── demo-flow.ts
+│   └── test/YSM.test.ts
+│
+└── chainlink-CRE/                   # Chainlink CRE integration
+    ├── my-workflow/
+    │   ├── main.ts                  # 3 CRE workflow handlers (Risk, Gate, Settlement)
+    │   ├── workflow.yaml            # Staging / production targets
+    │   └── config/
+    │       ├── config.staging.json
+    │       └── config.production.json
+    └── cloudflare-worker/
+        └── src/index.ts            # DeFiLlama proxy (rScore, avg30, activeDays)
+```
+
+---
+
+## Smart Contract Registry (Sepolia)
 
 | Contract | Role | Address |
 | :--- | :--- | :--- |
-| **StreamFactory** | Registry & Deployment | `0x902514A32F0882b5F38F8C6583F5c13E52717d4d` |
-| **PrimarySale** | IPO / Funding Entry | `0x5161d70daCBfFc651FAd24aC63200Ac72c4A4aF3` |
-| **YSM Router** | Fee Splitter & Bridge Receiver | `0x02E75407376e5FBEd0e507E8265d92CeE9279fDC` |
-| **Keeper/Settler** | Chainlink Automation & CRE Hub | `0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4` |
-| **Vault (Demo)** | Current Active Yield Vault | `0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8` |
-| **YST Token** | Yield-Bearing ERC20 Asset | `0x343f28CEA446Cef6e8A380bFe11BcBf95f115370` |
-| **PriceFloorHook** | Uniswap v4 Hook (Experimental) | `0x718a99478f65Bc0d67499641D8888E4B02DD81DC` |
+| **StreamFactory** | Registry, ENS subdomain creation, CRE report receiver | [`0x902514A32F0882b5F38F8C6583F5c13E52717d4d`](https://sepolia.etherscan.io/address/0x902514A32F0882b5F38F8C6583F5c13E52717d4d) |
+| **PrimarySale** | IPO / funding entry point | [`0x5161d70daCBfFc651FAd24aC63200Ac72c4A4aF3`](https://sepolia.etherscan.io/address/0x5161d70daCBfFc651FAd24aC63200Ac72c4A4aF3) |
+| **YSM Router** | Fee splitter & CCTP bridge receiver | [`0x02E75407376e5FBEd0e507E8265d92CeE9279fDC`](https://sepolia.etherscan.io/address/0x02E75407376e5FBEd0e507E8265d92CeE9279fDC) |
+| **Arc Stream Router** | Latest Arc → Sepolia CCTP target | [`0xD45A28c968A6C3311e109e903a573671193B1e2d`](https://sepolia.etherscan.io/address/0xD45A28c968A6C3311e109e903a573671193B1e2d) |
+| **Keeper / MasterSettler** | Chainlink Automation + CRE Settlement hub | [`0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4`](https://sepolia.etherscan.io/address/0xcd01f4a7cadceAA89B71fbf77aD80dDD3CfE2fC4) |
+| **Vault (Demo)** | Active yield vault for the demo stream | [`0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8`](https://sepolia.etherscan.io/address/0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8) |
+| **YST Token** | Yield-bearing ERC20 asset | [`0x343f28CEA446Cef6e8A380bFe11BcBf95f115370`](https://sepolia.etherscan.io/address/0x343f28CEA446Cef6e8A380bFe11BcBf95f115370) |
+| **YST Splitter** | Revenue splitter (vault / treasury BPS) | [`0xaCD8f042eE1E29580A84e213760D144957eec148`](https://sepolia.etherscan.io/address/0xaCD8f042eE1E29580A84e213760D144957eec148) |
+| **PriceFloorHook** | Uniswap v4 hook (experimental) | [`0x718a99478f65Bc0d67499641D8888E4B02DD81DC`](https://sepolia.etherscan.io/address/0x718a99478f65Bc0d67499641D8888E4B02DD81DC) |
+| **USDC (Sepolia)** | Circle test USDC | [`0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`](https://sepolia.etherscan.io/address/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238) |
+| **MockQuickswap (Base sim)** | Revenue mock — Base fees | [`0x646f3ba4fe570D52e0C80D2A7Bf2131A990e4d95`](https://sepolia.etherscan.io/address/0x646f3ba4fe570D52e0C80D2A7Bf2131A990e4d95) |
+| **MockQuickswap (Polygon sim)** | Revenue mock — Polygon fees | [`0x72dbd97F1B8dAe5D4F31F8cEDe65895208E51f9c`](https://sepolia.etherscan.io/address/0x72dbd97F1B8dAe5D4F31F8cEDe65895208E51f9c) |
+
+### Arc Testnet Addresses
+
+| Contract | Address |
+| :--- | :--- |
+| **USDC (native, 18 dec)** | `0x3600000000000000000000000000000000000000` |
+| **TokenMessengerV2 (CCTP)** | `0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA` |
 
 ---
 
-## 🔬 Technical Deep Dive
+## Technical Deep Dive
 
-### The YST Yield Math
-The system uses a modified **Synthetix-style Staking** algorithm. Rewards are not pushed to users; they are accumulated globally.
-*   **Checkpointing**: Whenever a YST balance changes (via transfer, mint, or burn), the `Vault.sol` contract checkpoints the rewards for both the sender and receiver.
-*   **Formula**: `earned = balance * (rewardPerToken - userRewardPerTokenPaid)`.
+### YST Yield Math — Synthetix-Style Staking
 
-### 📊 Mathematical Model: Dynamic Discounting
-To ensure institutional-grade risk management, our **Chainlink CRE Workflow** calculates a dynamic discount rate ($\mathcal{D}$) for each Yield Stream. This rate determines the "Face Value" vs. the "Purchase Price" of the RWA.
+`Vault.sol` uses a **checkpoint-based reward accumulator** (adapted from Synthetix).
 
-The formula is a weighted aggregation of three risk vectors:
+- Rewards are never pushed to users — they accumulate globally in a `rewardPerToken` counter.
+- Whenever a YST balance changes (transfer, mint, or burn), both sender and receiver are checkpointed.
+- **Formula:** `earned = balance × (rewardPerToken − userRewardPerTokenPaid)`
 
-$$
-\mathcal{D} = 0.25(\sigma \times 3.46) + 0.35(1 - R) + 0.40(M)
-$$
+### Dynamic Discount Model (Chainlink CRE Workflow #1)
 
-**Risk Components:**
-- **Volatility Risk ($25\%$)**: Based on monthly asset volatility ($\sigma$).
-- **Reliability Risk ($35\%$)**: Based on protocol rScore ($R$).
-- **Market Risk ($40\%$)**: Based on 30-day drawdown ($M$).
+The CRE Risk Scoring workflow computes a dynamic discount rate $\mathcal{D}$ for each Yield Stream, bounding the face value vs. the purchase price of the RWA.
 
-**Parameters:**
-- **$\sigma$ (Sigma)**: Monthly asset volatility (benchmark set at 0.165).
-- **$R$ (rScore)**: Reliability score ($0 \dots 1$) fetched via DeFiLlama proxy.
-- **$M$ (Market Risk)**: 30-day drawdown exposure. $M = 1 - (Price_{now} / Price_{30d})$.
+$$\mathcal{D} = 0.25\,(\sigma \times 3.46) + 0.35\,(1 - R) + 0.40\,M$$
 
-*The final discount is bounded between **10%** and **50%**.*
+| Symbol | Meaning | Source |
+| :--- | :--- | :--- |
+| $\sigma$ | Monthly asset volatility (benchmark: `0.165`) | Fixed constant |
+| $R$ | Protocol reliability score $[0, 1]$ | Cloudflare Worker → DeFiLlama |
+| $M$ | 30-day market drawdown: $1 - P_\text{now} / P_{-30d}$ | Binance API / Chainlink ETH/USD feed |
 
-### RWA Simulation (Mocks)
-To demonstrate cross-chain revenue in a testnet environment, we use a suite of **MockProtocols**:
-- **MockArcProtocol**: Simulates yield natively on Arc.
-- **MockQuickswapBase / Polygon**: Simulates revenue from other EVM L2s, which is then consolidated in our liquidity hub.
+> The final discount is clamped to **[10%, 50%]** and expressed in basis points for on-chain encoding.
+
+### Quality Gate Model (Chainlink CRE Workflow #2)
+
+A protocol stream is approved for creation only if **all three** conditions are met via the DeFiLlama proxy:
+
+| Criterion | Threshold |
+| :--- | :--- |
+| Average daily fees (30d) | ≥ $1,000 |
+| Reliability score (`rScore`) | ≥ 0.5 |
+| Days of on-chain fee history | ≥ 90 days |
+
+### Cloudflare Worker — DeFiLlama Proxy
+
+Deployed at `ysm-defilama-proxy.ysm-market-proxy.workers.dev/fees/{slug}`.
+
+- Proxies `https://api.llama.fi/summary/fees/{slug}` with a 1-hour Cloudflare edge cache.
+- Computes and returns: `rScore`, `avg30`, `daysOfData`, `activeDays`, `yesterdayFees`.
+- Used by both CRE Workflows #1 and #2, and by the frontend's `useDemoProtocolRevenueFeed` hook.
+
+### Arc → Sepolia CCTP Bridge Flow
+
+```
+Arc Testnet wallet (USDC native, 18 dec)
+  └─ bridge-arc-to-sepolia.ts  (Circle Bridge Kit + Circle Forwarder)
+       ▼ CCTP V2 mint (~1–3 min, ~7% Circle fee)
+  YSM Router (Sepolia)
+       └─ flushBalance()  ← "Flush Arc fees" button in the UI
+            ├─ vaultBps % → Vault.depositFees()   (YST holders earn)
+            └─ remainder  → Treasury
+```
 
 ---
 
-## 📦 Setup & Deployment
+## Setup & Development
 
-1.  **Install Dependencies**: `npm install` (Frontend) and `npm install` (Smart Contracts).
-2.  **Environment Configuration**: Create `.env` files in both directories following `.env.example`.
-3.  **Run Development Server**: `npm run dev`.
+### Prerequisites
+
+- Node.js ≥ 18
+- `bun` (for CRE workflow: `npm install -g bun`)
+
+### 1. Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env   # or fill in manually
+npm run dev            # → http://localhost:3000
+```
+
+**Required env vars (`frontend/.env`):**
+
+```env
+NEXT_PUBLIC_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/<KEY>
+NEXT_PUBLIC_ETHERSCAN_API_KEY=<KEY>
+PRIVATE_KEY=0x<YOUR_KEY>
+BRIDGE_AMOUNT_USDC=5.00
+```
+
+### 2. Smart Contracts
+
+```bash
+cd smart-contracts
+npm install
+```
+
+**Required env vars (`smart-contracts/.env`):**
+
+```env
+PRIVATE_KEY=0x<YOUR_KEY>
+NEXT_PUBLIC_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/<KEY>
+BRIDGE_AMOUNT_USDC=5.00
+```
+
+**Useful scripts:**
+
+```bash
+# Deploy the full stack
+npx hardhat run scripts/deploy-factory.ts --network sepolia
+npx hardhat run scripts/deploy-primary-sale.ts --network sepolia
+npx hardhat run scripts/deploy-keeper.ts --network sepolia
+npx hardhat run scripts/deploy-mocks.ts --network sepolia
+
+# Bridge Arc USDC to Sepolia
+npx ts-node scripts/bridge-arc-to-sepolia.ts
+
+# Run the demo flow end-to-end
+npx ts-node scripts/demo-flow.ts
+```
+
+### 3. Chainlink CRE Workflow
+
+```bash
+cd chainlink-CRE/my-workflow
+bun install
+
+# Deploy to staging
+cre deploy --target staging-settings
+
+# Deploy to production
+cre deploy --target production-settings
+```
+
+### 4. Cloudflare Worker (DeFiLlama Proxy)
+
+```bash
+cd chainlink-CRE/cloudflare-worker
+npm install
+npx wrangler deploy   # requires Cloudflare account
+```
 
 ---
+
+## Frontend Routes
+
+| Route | Description |
+| :--- | :--- |
+| `/` | Landing page, live BentoGrid, on-chain Marketplace |
+| `/create` | Terminal-style stream creation wizard |
+| `/invest/[id]` | Stream detail: IPO purchase, Arc Activity Feed, Arc Consolidation Hub, claim yield |
+| `/dashboard/investor` | Portfolio view: YST positions, earned USDC, claim history |
+| `/dashboard/issuer` | Issuer view: manage streams, activate Keeper automation, end campaign |
+
+---
+
 *Built for ETHGlobal Cannes 2026.*

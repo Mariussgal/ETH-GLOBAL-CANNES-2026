@@ -132,7 +132,7 @@ sequenceDiagram
 
 ## Technical Deep Dive
 
-### YST Yield Math — Synthetix-Style Staking
+### YST Yield Math 
 
 `Vault.sol` uses a **checkpoint-based reward accumulator** (adapted from Synthetix).
 

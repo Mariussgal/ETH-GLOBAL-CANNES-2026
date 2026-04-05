@@ -334,22 +334,19 @@ function submitWorkflowResult(
         allVaults.push(address(vault));
 
         // ── ENS Subdomain creation ────────────────────────────────────────────────
-        // Crée protocolSlug.ysm.eth pointant vers le vault
         try NAME_WRAPPER.setSubnodeRecord(
             YSM_NODE,
             pending.protocolSlug,
-            address(this),           // Factory = owner du subdomain
+            address(this),           
             address(PUBLIC_RESOLVER),
-            0,                       // TTL
-            0,                       // pas de fuses
-            uint64(block.timestamp + 300 days)  // expiry < 1 an, dans la limite de ysm.eth
+            0,                       
+            0,                       
+            uint64(block.timestamp + 300 days)  
         ) returns (bytes32 subnode) {
-            // Pointe le subdomain vers le vault
             try PUBLIC_RESOLVER.setAddr(subnode, address(vault)) {} catch {}
             emit ENSSubdomainCreated(pending.protocolSlug, subnode, address(vault));
             streamKeyToSubnode[streamKey] = subnode;
             
-            // Stocke le subnode dans le vault pour le DEFAULTED write
             if (subnode != bytes32(0)) {
                 try vault.setENSSubnode(subnode) {} catch {}
             }
@@ -365,7 +362,6 @@ function submitWorkflowResult(
     }
 
     function _refundCollateral(bytes32 streamKey) internal {
-        // collatéral désactivé pour le hackathon
     }
 
     function markDefaulted(bytes32 streamKey) external onlyOwner {

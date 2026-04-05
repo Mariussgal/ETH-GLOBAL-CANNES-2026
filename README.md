@@ -134,7 +134,7 @@ sequenceDiagram
 
 ### YST Yield Math 
 
-`Vault.sol` uses a **checkpoint-based reward accumulator** (adapted from Synthetix).
+`Vault.sol` uses a **checkpoint-based reward accumulator**.
 
 - Rewards are never pushed to users — they accumulate globally in a `rewardPerToken` counter.
 - Whenever a YST balance changes (transfer, mint, or burn), both sender and receiver are checkpointed.

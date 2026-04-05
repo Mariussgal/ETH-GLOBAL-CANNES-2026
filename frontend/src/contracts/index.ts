@@ -22,7 +22,7 @@ function mockAddressFromEnv(
 export const ARC_STREAM_ROUTER = "0x6898E46D628BCF913325Fc67c807ba2fF727F44f" as `0x${string}`;
 
 export const ADDRESSES = {
-  streamFactory: "0x902514A32F0882b5F38F8C6583F5c13E52717d4d" as `0x${string}`,
+  streamFactory: "0x0EE0201AA4474360C2Be3AFf0c87B39941B54F49" as `0x${string}`,
   ystSplitter: "0xaCD8f042eE1E29580A84e213760D144957eec148" as `0x${string}`,
   vault: "0xdBcbf598eaC150d62bA0DB1b8E482f1351380bC8" as `0x${string}`,
   mockBase: mockAddressFromEnv("NEXT_PUBLIC_MOCK_BASE_ADDRESS", MOCK_BASE_DEFAULT),

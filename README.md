@@ -1,6 +1,6 @@
 # YIELD STREAM MARKETPLACE (YSM) - ETHGLOBAL CANNES 2026
 
-**The Industrial-Grade Liquidity Layer for Real-World Asset (RWA) Yield.**
+**YSM lets DeFi protocols sell their future fee revenue immediate liquidity**
 
 Yield Stream Marketplace (YSM) is a decentralized protocol designed to tokenize revenue streams into 1:1 USDC-backed Yield Stream Tokens (YST). By integrating **Arc L1 (Circle)**, **Chainlink CRE (Orchestration)**, and **ENS (Identity & Reputation)**, YSM creates a transparent, automated, and secure ecosystem for on-chain lending and capital markets.
 

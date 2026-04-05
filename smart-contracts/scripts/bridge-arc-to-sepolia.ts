@@ -20,7 +20,7 @@ dotenv.config();
 // ── Config ──────────────────────────────────────────────────────────────────
 
 /** Router YSM sur Sepolia — destination des fees Arc */
-const SEPOLIA_ROUTER = "0xD45A28c968A6C3311e109e903a573671193B1e2d";
+const SEPOLIA_ROUTER = "0xBf08Bc411afe9e2D96e8B743447D4dAD948Cd28c";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY as `0x${string}`;
 const AMOUNT = process.env.BRIDGE_AMOUNT_USDC ?? "5.00";

@@ -672,14 +672,14 @@ export function useArcSepoliaSync(options: {
       for (const log of logs) {
         lastArcEventAtRef.current = Date.now();
         try {
-          const decodedArgs = (log as Log & { args?: { vaultAmount?: bigint; timestamp?: bigint } }).args;
-          const vaultAmount = decodedArgs?.vaultAmount ?? BigInt(0);
+          const decoded = (log as { args?: { vaultAmount?: bigint } }).args;
+          const vaultAmount = decoded?.vaultAmount ?? BigInt(0);
           const amountNum = parseFloat(formatUnits(vaultAmount, USDC_DECIMALS));
           if (amountNum <= 0) continue;
 
           setTotalArcRevenue((prev) => prev + amountNum);
 
-          const eventTs = decodedArgs?.timestamp ? BigInt(decodedArgs.timestamp) : BigInt(Math.floor(Date.now() / 1000));
+          const eventTs = (log as any).args?.timestamp ? BigInt((log as any).args.timestamp) : BigInt(Math.floor(Date.now() / 1000));
           const key = dedupeKeyFromLog(log);
           upsertFeedRow(key, eventTs, {
             time: formatClockFromUnix(eventTs),
@@ -784,7 +784,15 @@ export function useArcSepoliaSync(options: {
     upsertFeedRow,
   ]);
 
+  const totalBaseRevenue = useMemo(() => {
+    const v = baseFeesRaw ?? BigInt(0);
+    return Number(formatUnits(v, USDC_DECIMALS));
+  }, [baseFeesRaw]);
 
+  const totalPolygonRevenue = useMemo(() => {
+    const v = polygonFeesRaw ?? BigInt(0);
+    return Number(formatUnits(v, USDC_DECIMALS));
+  }, [polygonFeesRaw]);
 
   const accumulatedYieldUsdc = useMemo(() => {
     if (!liveSync || !address || earnedRaw === undefined) return null;

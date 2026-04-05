@@ -8,18 +8,18 @@ Yield Stream Marketplace (YSM) is a decentralized protocol designed to tokenize 
 
 ## 🏆 Hackathon Tracks & Technical Merit
 
-### 1. Arc (Circle) - $6,000
+### 1. Arc (Circle) 
 *   **Advanced Stablecoin Logic (Programmable USDC)**: Our `Router.sol` acts as a programmable settlement engine. It handles multi-step fee distribution, splitting revenue between investor `Vaults` and the protocol `Treasury` with basis-point precision (`BPS_DENOMINATOR = 10,000`).
 *   **Chain Abstracted USDC Apps (Liquidity Hub)**: YSM treats Arc as the primary **Economic OS**. Using the **Circle Bridge Kit** and **Circle Forwarder**, we move capital effortlessly between Arc Testnet and Ethereum Sepolia.
     *   *Reference*: `smart-contracts/scripts/bridge-arc-to-sepolia.ts` & `Router.sol:receiveFromArc`.
 
-### 2. ENS - $5,000
+### 2. ENS 
 *   **Most Creative Use of ENS (Reputation & Credit)**: We use ENS as a **Decentralized Risk Ledger**. 
     *   Every Yield Stream is mapped to an ENS subnode (e.g., `issuer.ysm.eth`).
     *   **On-Chain Status Updates**: Upon a technical default or missed payment, the `Vault.sol` contract programmatically updates the ENS `ysm.status` text record to `DEFAULTED` via the `IENSResolver`.
     *   *Reference*: `Vault.sol:_writeENSDefault`.
 
-### 3. Chainlink - $4,000
+### 3. Chainlink 
 *   **Best Workflow with Chainlink CRE (Orchestration)**:
     *   **Workflow #1 (Risk Scoring)**: Fetches real-time market data (Binance/Chainlink) to compute dynamic discount rates for RWA streams.
     *   **Workflow #2 (Quality Gate)**: Automated audit of protocol history (DeFiLlama) before authorizing a stream.

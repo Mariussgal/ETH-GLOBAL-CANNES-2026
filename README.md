@@ -1,14 +1,13 @@
 # YIELD STREAM MARKETPLACE (YSM) — ETHGLOBAL CANNES 2026
 
-Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protocol revenue streams into 1:1 USDC-backed **Yield Stream Tokens (YST)**. By integrating **Arc L1 (Circle)**, **Chainlink CRE**, and **ENS**, YSM creates a transparent, automated, and institutional-grade on-chain capital market for Real World Asset (RWA) yield.
+Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protocol revenue streams into 1:1 USDC-backed **Yield Stream Tokens (YST)**. By integrating **Arc L1 (Circle)**, **Chainlink CRE**, and **ENS**, YSM creates a transparent, automated, and institutional-grade on-chain capital marketplace.
 
-**Live demo:** deployed on Ethereum Sepolia testnet.
 
 **Team:** [Nohem Monnet-Gani](https://linkedin.com/in/nohem-mg) · [Marius Gal](https://linkedin.com/in/marius-gal) · [Cyriac Mirkovik](https://linkedin.com/in/cyriac-mirkovik)
 
 ---
 
-## Sponsor Tracks 
+## Hackathon Tracks
 
 ### 1. Arc (Circle)
 - **Programmable USDC Settlement**: `Router.sol` is a programmable settlement engine. It handles multi-step fee distribution, splitting revenue between investor `Vault` contracts and a protocol `Treasury` with basis-point precision (`BPS_DENOMINATOR = 10,000`).
@@ -125,64 +124,6 @@ sequenceDiagram
     Note over Keeper,Vault: 5. Daily Settlement (Cron)
     Keeper->>Vault: executeSettlement()
     Investor->>Vault: claimRewards() → USDC
-```
-
----
-
-## Repository Structure
-
-```
-ETH-GLOBAL-CANNES-2026/
-├── frontend/                        # Next.js 14 web application
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── page.tsx             # Landing / Marketplace
-│   │   │   ├── create/page.tsx      # Create Stream terminal
-│   │   │   ├── invest/[id]/         # Stream investment view
-│   │   │   ├── dashboard/
-│   │   │   │   ├── investor/        # Investor portfolio dashboard
-│   │   │   │   └── issuer/          # Issuer stream management
-│   │   │   └── api/                 # Next.js API routes
-│   │   │       ├── arc-feed-history/
-│   │   │       ├── crank-mock-fees/
-│   │   │       ├── fees/[slug]/
-│   │   │       ├── investor-claim-logs/
-│   │   │       └── mock-*/
-│   │   ├── components/              # UI components (Wagmi hooks, dashboards)
-│   │   ├── contracts/index.ts       # All ABI definitions + deployed addresses
-│   │   ├── hooks/                   # React hooks (on-chain data fetching)
-│   │   └── lib/                     # Utilities (chain-stream, wagmi config, etc.)
-│   └── vercel.json                  # Vercel cron config (daily fee generation)
-│
-├── smart-contracts/                 # Hardhat project
-│   ├── contracts/
-│   │   ├── Factory.sol              # Stream registry + ENS subdomain management
-│   │   ├── PrimarySale.sol          # IPO / crowdfunding entry point
-│   │   ├── Router.sol               # Fee splitter + Arc CCTP bridge receiver
-│   │   ├── Vault.sol                # Synthetix-style yield distribution
-│   │   ├── YSTToken.sol             # ERC20 yield-bearing token
-│   │   ├── Keeper.sol               # Chainlink Automation + CRE report handler
-│   │   ├── PriceFloorHook.sol       # Uniswap v4 hook (experimental)
-│   │   ├── interfaces/IENS.sol      # ENS Registry / Resolver interfaces
-│   │   └── mocks/                   # MockArcProtocol, MockQuickswap{Base,Polygon}
-│   ├── scripts/
-│   │   ├── bridge-arc-to-sepolia.ts # Circle Bridge Kit: Arc → Sepolia USDC
-│   │   ├── deploy-factory.ts
-│   │   ├── deploy-primary-sale.ts
-│   │   ├── deploy-keeper.ts
-│   │   ├── deploy-mocks.ts
-│   │   └── demo-flow.ts
-│   └── test/YSM.test.ts
-│
-└── chainlink-CRE/                   # Chainlink CRE integration
-    ├── my-workflow/
-    │   ├── main.ts                  # 3 CRE workflow handlers (Risk, Gate, Settlement)
-    │   ├── workflow.yaml            # Staging / production targets
-    │   └── config/
-    │       ├── config.staging.json
-    │       └── config.production.json
-    └── cloudflare-worker/
-        └── src/index.ts            # DeFiLlama proxy (rScore, avg30, activeDays)
 ```
 
 ---
@@ -345,18 +286,6 @@ cd chainlink-CRE/cloudflare-worker
 npm install
 npx wrangler deploy   # requires Cloudflare account
 ```
-
----
-
-## Frontend Routes
-
-| Route | Description |
-| :--- | :--- |
-| `/` | Landing page, live BentoGrid, on-chain Marketplace |
-| `/create` | Terminal-style stream creation wizard |
-| `/invest/[id]` | Stream detail: IPO purchase, Arc Activity Feed, Arc Consolidation Hub, claim yield |
-| `/dashboard/investor` | Portfolio view: YST positions, earned USDC, claim history |
-| `/dashboard/issuer` | Issuer view: manage streams, activate Keeper automation, end campaign |
 
 ---
 

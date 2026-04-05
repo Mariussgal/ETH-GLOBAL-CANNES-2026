@@ -220,14 +220,12 @@ export function useArcSepoliaSync(options: {
    * Vault du stream courant (Factory). Si absent, fallback sur `ADDRESSES.vault` (legacy single-vault).
    */
   streamVaultAddress?: `0x${string}`;
-  streamCreatedAt?: number; // ← ajout
 }) {
   const {
     enabled = true,
     fallbackProtocolLabel = "Arc",
     feedProtocolLabel,
     streamVaultAddress,
-    streamCreatedAt,
   } = options;
 
   const vaultForEarn = useMemo(
@@ -264,16 +262,12 @@ export function useArcSepoliaSync(options: {
 
   const feedRowsRef = useRef<Map<string, FeedRow>>(new Map());
   const [feedItems, setFeedItems] = useState<ArcActivityItem[]>([]);
-  const [totalBaseFromLogs, setTotalBaseFromLogs] = useState(0);
-  const [totalPolygonFromLogs, setTotalPolygonFromLogs] = useState(0);
   const syntheticCounterRef = useRef(0);
 
   useEffect(() => {
     if (!readEnabled) {
       feedRowsRef.current.clear();
       setFeedItems([]);
-      setTotalBaseFromLogs(0);
-      setTotalPolygonFromLogs(0);
     }
   }, [readEnabled]);
 
@@ -310,7 +304,6 @@ export function useArcSepoliaSync(options: {
   );
 
   const lastWatcherLogAtRef = useRef(0);
-  const lastArcEventAtRef = useRef(0);
   const prevYieldRef = useRef<bigint | undefined>(undefined);
   const prevBaseFeesRef = useRef<bigint | undefined>(undefined);
   const prevPolyFeesRef = useRef<bigint | undefined>(undefined);
@@ -318,7 +311,6 @@ export function useArcSepoliaSync(options: {
   useEffect(() => {
     if (!readEnabled) return;
     lastWatcherLogAtRef.current = 0;
-    lastArcEventAtRef.current = 0;
   }, [readEnabled]);
 
   useEffect(() => {
@@ -428,9 +420,6 @@ export function useArcSepoliaSync(options: {
     return () => window.clearTimeout(id);
   }, [readEnabled, loadingConsoleBatch, loadingVaultLiquidity]);
 
-  /** Arc: listen for `FeesReceived` on the Sepolia YSM Router (after `flushBalance()`). */
-  const [totalArcRevenue, setTotalArcRevenue] = useState(0);
-
   /** History: first tries `/api/arc-feed-history` (key read server-side), then Etherscan client, then RPC */
   useEffect(() => {
     if (!readEnabled || !feedHeavySyncEnabled) return;
@@ -447,7 +436,6 @@ export function useArcSepoliaSync(options: {
           ok: boolean;
           baseLogs?: SerializedLog[];
           polyLogs?: SerializedLog[];
-          arcLogs?: SerializedLog[]; // ← ajout
           error?: string;
         };
 
@@ -484,8 +472,6 @@ export function useArcSepoliaSync(options: {
         for (const log of baseLogs) {
           const parsed = decodeFeesLogStrict(log);
           if (!parsed) continue;
-          if (streamCreatedAt && Number(parsed.timestamp) < streamCreatedAt) continue;
-
           const key = dedupeKeyFromLog(log);
           const amountNum = parseFloat(formatUnits(parsed.amount, USDC_DECIMALS));
           upsertFeedRow(key, parsed.timestamp, {
@@ -500,8 +486,6 @@ export function useArcSepoliaSync(options: {
         for (const log of polyLogs) {
           const parsed = decodeFeesLogStrict(log);
           if (!parsed) continue;
-          if (streamCreatedAt && Number(parsed.timestamp) < streamCreatedAt) continue;
-
           const key = dedupeKeyFromLog(log);
           const amountNum = parseFloat(formatUnits(parsed.amount, USDC_DECIMALS));
           upsertFeedRow(key, parsed.timestamp, {
@@ -511,74 +495,6 @@ export function useArcSepoliaSync(options: {
             chainLabel: parsed.chainLabel,
             txHash: log.transactionHash ?? undefined,
           });
-        }
-
-        let baseTotal = 0;
-        for (const log of baseLogs) {
-          const parsed = decodeFeesLogStrict(log);
-          if (parsed) {
-            if (streamCreatedAt && Number(parsed.timestamp) < streamCreatedAt) continue;
-            baseTotal += parseFloat(formatUnits(parsed.amount, USDC_DECIMALS));
-          }
-        }
-        setTotalBaseFromLogs(baseTotal);
-
-        let polyTotal = 0;
-        for (const log of polyLogs) {
-          const parsed = decodeFeesLogStrict(log);
-          if (parsed) {
-            if (streamCreatedAt && Number(parsed.timestamp) < streamCreatedAt) continue;
-            polyTotal += parseFloat(formatUnits(parsed.amount, USDC_DECIMALS));
-          }
-        }
-        setTotalPolygonFromLogs(polyTotal);
-
-        // Après la boucle polyLogs, ajouter le parsing Arc :
-        if (apiJson.arcLogs) {
-          const arcLogsDeserialized = apiJson.arcLogs.map(deserializeLog);
-          let arcHistoricalTotal = 0;
-          for (const log of arcLogsDeserialized) {
-            try {
-              const decoded = decodeEventLog({
-                abi: ROUTER_ABI,
-                data: log.data,
-                topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
-              });
-              if (decoded.eventName !== "FeesReceived") continue;
-              const args = decoded.args as { vaultAmount: bigint; timestamp: bigint };
-              if (streamCreatedAt && Number(args.timestamp) < streamCreatedAt) continue;
-
-              const amountNum = parseFloat(formatUnits(args.vaultAmount, USDC_DECIMALS));
-              if (amountNum <= 0) continue;
-              arcHistoricalTotal += amountNum;
-              const key = dedupeKeyFromLog(log);
-              upsertFeedRow(key, args.timestamp, {
-                time: formatClockFromUnix(args.timestamp),
-                amount: amountNum,
-                protocol: feedProtocolLabel?.trim() ? `${feedProtocolLabel.trim()} · Arc` : "YSM · Arc",
-                chainLabel: "Arc",
-                txHash: log.transactionHash ?? undefined,
-              });
-            } catch { continue; }
-          }
-          if (arcHistoricalTotal > 0) {
-            setTotalArcRevenue(arcHistoricalTotal);
-          }
-          // Update lastArcEventAtRef with the most recent timestamp from historical logs
-          const maxTs = arcLogsDeserialized.reduce((max, log) => {
-            try {
-              const decoded = decodeEventLog({
-                abi: ROUTER_ABI,
-                data: log.data,
-                topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
-              });
-              const ts = Number((decoded.args as { timestamp: bigint }).timestamp);
-              return ts > max ? ts : max;
-            } catch { return max; }
-          }, 0);
-          if (maxTs > lastArcEventAtRef.current) {
-            lastArcEventAtRef.current = maxTs;
-          }
         }
       } catch (e) {
         console.warn(`${LOG_PREFIX} historical feed fetch failed`, e);
@@ -595,8 +511,6 @@ export function useArcSepoliaSync(options: {
     etherscanApiKey,
     upsertFeedRow,
     labelForLogProtocol,
-    feedProtocolLabel,
-    streamCreatedAt,
   ]);
 
   const emitFeeFromLogs = useCallback(
@@ -667,10 +581,12 @@ export function useArcSepoliaSync(options: {
     onLogs: onPolygonLogs,
   });
 
+  /** Arc: listen for `FeesReceived` on the Sepolia YSM Router (after `flushBalance()`). */
+  const [totalArcRevenue, setTotalArcRevenue] = useState(0);
+
   const onArcRouterLogs = useCallback(
     (logs: readonly Log[]) => {
       for (const log of logs) {
-        lastArcEventAtRef.current = Date.now();
         try {
           const decoded = (log as { args?: { vaultAmount?: bigint } }).args;
           const vaultAmount = decoded?.vaultAmount ?? BigInt(0);
@@ -679,10 +595,10 @@ export function useArcSepoliaSync(options: {
 
           setTotalArcRevenue((prev) => prev + amountNum);
 
-          const eventTs = (log as any).args?.timestamp ? BigInt((log as any).args.timestamp) : BigInt(Math.floor(Date.now() / 1000));
+          const nowSec = BigInt(Math.floor(Date.now() / 1000));
           const key = dedupeKeyFromLog(log);
-          upsertFeedRow(key, eventTs, {
-            time: formatClockFromUnix(eventTs),
+          upsertFeedRow(key, nowSec, {
+            time: formatClockFromUnix(nowSec),
             amount: amountNum,
             protocol: feedProtocolLabel?.trim() ? `${feedProtocolLabel.trim()} · Arc` : "YSM · Arc",
             chainLabel: "Arc",
@@ -746,14 +662,6 @@ export function useArcSepoliaSync(options: {
       const dBase = baseNow > prevB ? baseNow - prevB : BigInt(0);
       const dPoly = polyNow > prevP ? polyNow - prevP : BigInt(0);
 
-      const arcJustFired = Date.now() - lastArcEventAtRef.current < 30_000;
-      if (arcJustFired && dBase === BigInt(0) && dPoly === BigInt(0)) {
-        prevYieldRef.current = earned;
-        prevBaseFeesRef.current = baseNow;
-        prevPolyFeesRef.current = polyNow;
-        return;
-      }
-
       let chainLabel = "Base";
       if (dPoly > dBase) chainLabel = "Polygon";
       else if (dBase === BigInt(0) && dPoly === BigInt(0)) chainLabel = "Arc";
@@ -812,8 +720,8 @@ export function useArcSepoliaSync(options: {
     liveSync,
     accumulatedYieldUsdc,
     loadingEarned: readEnabled && liveSync && Boolean(address) && loadingEarned,
-    totalBaseRevenue: totalBaseFromLogs,
-    totalPolygonRevenue: totalPolygonFromLogs,
+    totalBaseRevenue,
+    totalPolygonRevenue,
     totalArcRevenue,
     vaultLiquidityUsdcDisplay,
     routingStatusActive,

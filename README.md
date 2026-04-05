@@ -32,34 +32,34 @@ Yield Stream Marketplace (YSM) is a decentralized protocol designed to tokenize 
 
 ### 1. The Global Ecosystem
 ```mermaid
-graph TB
+flowchart TB
     subgraph Frontend["Frontend Layer"]
         UI["Industrial Dashboard"]
-        Wagmi["Wagmi / RainbowKit"]
+        Wagmi["Wagmi & RainbowKit"]
     end
 
-    subgraph ArcLayer["Arc / Circle Layer (Liquidity Hub)"]
+    subgraph Arc["Arc & Circle Layer"]
         Bridge["Circle Bridge Kit"]
         Forwarder["Circle Forwarder"]
         ArcUSDC["USDC on Arc"]
     end
 
-    subgraph CRE["Orchestration Layer (Chainlink CRE)"]
+    subgraph Chainlink["Chainlink CRE"]
         WF1["Workflow: Risk Scoring"]
         WF2["Workflow: Quality Gate"]
         WF3["Workflow: Auto-Settlement"]
     end
 
-    subgraph Sepolia["Business Logic (Ethereum Sepolia)"]
+    subgraph Sepolia["Business Logic (Sepolia)"]
         Factory["Stream Factory"]
-        Primary["Primary Sale / IPO"]
+        Primary["Primary Sale (IPO)"]
         Router["Fee Router"]
         Vault["Yield Vault"]
-        YST["Yield Stream Token"]
+        YST["Yield Token"]
         Keeper["Automation Keeper"]
     end
 
-    subgraph Identity["Identity & Reputation (ENS)"]
+    subgraph ENS["Identity (ENS)"]
         Registry["ENS Registry"]
         Resolver["ENS Risk Resolver"]
     end
@@ -71,8 +71,8 @@ graph TB
     WF1 --> Factory
     WF3 --> Keeper
     Keeper --> Vault
-    Vault -- "Update Status" --> Resolver
-    Primary -- "IPOs" --> YST
+    Vault -->|Update Status| Resolver
+    Primary -->|IPOs| YST
 ```
 
 ### 2. Yield Streaming Lifecycle (IPO to Settlement)
@@ -133,14 +133,22 @@ The system uses a modified **Synthetix-style Staking** algorithm. Rewards are no
 To ensure institutional-grade risk management, our **Chainlink CRE Workflow** calculates a dynamic discount rate ($\mathcal{D}$) for each Yield Stream. This rate determines the "Face Value" vs. the "Purchase Price" of the RWA.
 
 The formula is a weighted aggregation of three risk vectors:
-$$\mathcal{D} = \underbrace{0.25( \sigma \times 3.46)}_{\text{Volatility Risk}} + \underbrace{0.35(1 - R)}_{\text{Reliability Score}} + \underbrace{0.40(M)}_{\text{Market Exposure}}$$
+
+$$
+\mathcal{D} = 0.25(\sigma \times 3.46) + 0.35(1 - R) + 0.40(M)
+$$
+
+**Risk Components:**
+- **Volatility Risk ($25\%$)**: Based on monthly asset volatility ($\sigma$).
+- **Reliability Risk ($35\%$)**: Based on protocol rScore ($R$).
+- **Market Risk ($40\%$)**: Based on 30-day drawdown ($M$).
 
 **Parameters:**
-- **$\sigma$ (Sigma)**: Monthly asset volatility (benchmark set at 0.165, reflecting standard crypto-asset variance).
-- **$R$ (rScore)**: Reliability score ($0 \dots 1$) fetched via DeFiLlama proxy, representing protocol stability and history.
-- **$M$ (Market Risk)**: 30-day drawdown exposure. $M = 1 - (Price_{now} / Price_{30d})$ if the price dropped, otherwise 0.
+- **$\sigma$ (Sigma)**: Monthly asset volatility (benchmark set at 0.165).
+- **$R$ (rScore)**: Reliability score ($0 \dots 1$) fetched via DeFiLlama proxy.
+- **$M$ (Market Risk)**: 30-day drawdown exposure. $M = 1 - (Price_{now} / Price_{30d})$.
 
-*The final discount is bounded between **10%** (minimum safety margin) and **50%** (high-risk cap).*
+*The final discount is bounded between **10%** and **50%**.*
 
 ### RWA Simulation (Mocks)
 To demonstrate cross-chain revenue in a testnet environment, we use a suite of **MockProtocols**:

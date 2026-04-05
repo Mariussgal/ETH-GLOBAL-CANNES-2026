@@ -19,7 +19,7 @@ function mockAddressFromEnv(
 }
 
 /// Router du stream Arc cible (Sepolia) — reçoit les USDC bridgés via CCTP
-export const ARC_STREAM_ROUTER = "0x02E75407376e5FBEd0e507E8265d92CeE9279fDC" as `0x${string}`;
+export const ARC_STREAM_ROUTER = "0xD45A28c968A6C3311e109e903a573671193B1e2d" as `0x${string}`;
 
 export const ADDRESSES = {
   streamFactory: "0x902514A32F0882b5F38F8C6583F5c13E52717d4d" as `0x${string}`,

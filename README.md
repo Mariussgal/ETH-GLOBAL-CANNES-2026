@@ -33,35 +33,35 @@ Yield Stream Marketplace (YSM) is a decentralized protocol designed to tokenize 
 ### 1. The Global Ecosystem
 ```mermaid
 graph TB
-    subgraph "Frontend Layer"
-        UI[Industrial Dashboard]
-        Wagmi[Wagmi / RainbowKit]
+    subgraph Frontend["Frontend Layer"]
+        UI["Industrial Dashboard"]
+        Wagmi["Wagmi / RainbowKit"]
     end
 
-    subgraph "Arc / Circle Layer (Liquidity Hub)"
-        Bridge[Circle Bridge Kit]
-        Forwarder[Circle Forwarder]
-        ArcUSDC[USDC on Arc]
+    subgraph ArcLayer["Arc / Circle Layer (Liquidity Hub)"]
+        Bridge["Circle Bridge Kit"]
+        Forwarder["Circle Forwarder"]
+        ArcUSDC["USDC on Arc"]
     end
 
-    subgraph "Orchestration Layer (Chainlink CRE)"
-        WF1[Workflow: Risk Scoring]
-        WF2[Workflow: Quality Gate]
-        WF3[Workflow: Auto-Settlement]
+    subgraph CRE["Orchestration Layer (Chainlink CRE)"]
+        WF1["Workflow: Risk Scoring"]
+        WF2["Workflow: Quality Gate"]
+        WF3["Workflow: Auto-Settlement"]
     end
 
-    subgraph "Business Logic (Ethereum Sepolia)"
-        Factory[Stream Factory]
-        Primary[Primary Sale / IPO]
-        Router[Fee Router]
-        Vault[Yield Vault]
-        YST[Yield Stream Token]
-        Keeper[Automation Keeper]
+    subgraph Sepolia["Business Logic (Ethereum Sepolia)"]
+        Factory["Stream Factory"]
+        Primary["Primary Sale / IPO"]
+        Router["Fee Router"]
+        Vault["Yield Vault"]
+        YST["Yield Stream Token"]
+        Keeper["Automation Keeper"]
     end
 
-    subgraph "Identity & Reputation (ENS)"
-        Registry[ENS Registry]
-        Resolver[ENS Risk Resolver]
+    subgraph Identity["Identity & Reputation (ENS)"]
+        Registry["ENS Registry"]
+        Resolver["ENS Risk Resolver"]
     end
 
     UI --> Wagmi
@@ -84,6 +84,7 @@ sequenceDiagram
     participant Investor
     participant Router
     participant Vault
+    participant YST as Yield Token
     participant Keeper
 
     Note over Issuer,Factory: 1. Initialization
@@ -127,6 +128,19 @@ sequenceDiagram
 The system uses a modified **Synthetix-style Staking** algorithm. Rewards are not pushed to users; they are accumulated globally.
 *   **Checkpointing**: Whenever a YST balance changes (via transfer, mint, or burn), the `Vault.sol` contract checkpoints the rewards for both the sender and receiver.
 *   **Formula**: `earned = balance * (rewardPerToken - userRewardPerTokenPaid)`.
+
+### 📊 Mathematical Model: Dynamic Discounting
+To ensure institutional-grade risk management, our **Chainlink CRE Workflow** calculates a dynamic discount rate ($\mathcal{D}$) for each Yield Stream. This rate determines the "Face Value" vs. the "Purchase Price" of the RWA.
+
+The formula is a weighted aggregation of three risk vectors:
+$$\mathcal{D} = \underbrace{0.25( \sigma \times 3.46)}_{\text{Volatility Risk}} + \underbrace{0.35(1 - R)}_{\text{Reliability Score}} + \underbrace{0.40(M)}_{\text{Market Exposure}}$$
+
+**Parameters:**
+- **$\sigma$ (Sigma)**: Monthly asset volatility (benchmark set at 0.165, reflecting standard crypto-asset variance).
+- **$R$ (rScore)**: Reliability score ($0 \dots 1$) fetched via DeFiLlama proxy, representing protocol stability and history.
+- **$M$ (Market Risk)**: 30-day drawdown exposure. $M = 1 - (Price_{now} / Price_{30d})$ if the price dropped, otherwise 0.
+
+*The final discount is bounded between **10%** (minimum safety margin) and **50%** (high-risk cap).*
 
 ### RWA Simulation (Mocks)
 To demonstrate cross-chain revenue in a testnet environment, we use a suite of **MockProtocols**:

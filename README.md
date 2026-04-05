@@ -31,95 +31,57 @@ Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protoc
 ### Global Ecosystem
 
 ```mermaid
-flowchart TB
-    subgraph Frontend["Frontend (Next.js 14)"]
-        UI["Dashboard / Marketplace / Dashboards"]
-        Wagmi["Wagmi v2 + RainbowKit"]
-        NextAPI["Next.js API Routes"]
-    end
+flowchart LR
+    FE["Frontend\n(Next.js 14)"]
 
-    subgraph Arc["Arc & Circle Layer"]
-        ArcUSDC["USDC on Arc Testnet (native, 18 dec)"]
-        BridgeKit["Circle Bridge Kit (CCTP V2)"]
-        Forwarder["Circle Forwarder"]
+    subgraph Circle["Arc & Circle"]
+        Arc["USDC on Arc"]
     end
 
     subgraph CRE["Chainlink CRE"]
-        WF1["Workflow #1: Risk Scoring (HTTP)"]
-        WF2["Workflow #2: Quality Gate (HTTP)"]
-        WF3["Workflow #3: Settlement (Cron)"]
-        CF["Cloudflare Worker (DeFiLlama Proxy)"]
+        WF1["Risk Scoring"]
+        WF2["Quality Gate"]
+        WF3["Settlement\n(daily cron)"]
     end
 
-    subgraph Sepolia["Business Logic (Ethereum Sepolia)"]
+    subgraph Sepolia["Ethereum Sepolia"]
         Factory["StreamFactory"]
-        Primary["PrimarySale (IPO)"]
-        Router["Router (Fee Splitter)"]
-        Vault["Vault (Yield Engine)"]
-        YST["YSTToken (ERC20)"]
-        Keeper["Keeper / MasterSettler"]
-        PFH["PriceFloorHook (Uniswap v4)"]
+        Primary["PrimarySale"]
+        Router["Router"]
+        Vault["Vault"]
+        Keeper["Keeper"]
     end
 
-    subgraph ENS["Identity (ENS)"]
-        Resolver["ENS Resolver (Risk Ledger)"]
-    end
+    ENS["ENS\n(Risk Ledger)"]
+    Treasury["Treasury"]
 
-    UI --> Wagmi
-    Wagmi --> Primary
-    Wagmi --> Vault
-    ArcUSDC --> BridgeKit
-    BridgeKit --> Forwarder
-    Forwarder --> Router
-    Router -->|"flushBalance()"| Vault
-    Router --> Treasury["Treasury"]
-    WF1 & WF2 -->|writeReport| Factory
-    WF3 -->|writeReport| Keeper
-    WF1 & WF2 --> CF
-    CF -->|"DeFiLlama /fees/{slug}"| WF1
-    Keeper --> Vault
-    Vault -->|"_writeENSDefault()"| Resolver
-    Primary -->|"mint YST"| YST
-    Factory --> Primary
-    Factory --> Vault
-    Factory --> Router
+    FE --> Primary & Vault
+    Arc -->|"CCTP V2"| Router
+    Router -->|"vaultBps"| Vault
+    Router --> Treasury
+    WF1 & WF2 -->|"writeReport"| Factory
+    WF3 --> Keeper --> Vault
+    Factory --> Primary & Vault & Router
+    Vault -->|"_writeENSDefault()"| ENS
 ```
 
 ### Yield Streaming Lifecycle (IPO to Settlement)
 
 ```mermaid
 sequenceDiagram
-    participant Issuer
-    participant Factory
     participant CRE as Chainlink CRE
-    participant Primary as PrimarySale (IPO)
+    participant Issuer
     participant Investor
-    participant Router
+    participant Factory
     participant Vault
-    participant Keeper
 
-    Note over CRE,Factory: 0. Pre-Approval
-    CRE->>Factory: writeReport(workflowType=2, approved=true)
-
-    Note over Issuer,Factory: 1. Stream Creation
-    Issuer->>Factory: createStream(slug, totalSupply, price)
-    Factory->>Vault: deploy()
-    Factory->>Router: deploy()
-
-    Note over CRE,Factory: 2. Risk Pricing
-    CRE->>Factory: writeReport(workflowType=1, discountBps)
-
-    Note over Investor,Primary: 3. Funding (IPO)
-    Investor->>Primary: buy(amountUSDC)
-    Primary->>Investor: transfer(YST)
-    Primary->>Issuer: transfer(USDC proceeds)
-
-    Note over Router,Vault: 4. Fee Distribution (Arc → Sepolia)
-    Router->>Vault: depositFees(vaultBps % of USDC)
-    Vault->>Vault: updateRewardPerToken()
-
-    Note over Keeper,Vault: 5. Daily Settlement (Cron)
-    Keeper->>Vault: executeSettlement()
+    CRE->>Factory: approve stream (WF#2)
+    Issuer->>Factory: createStream(slug, supply, price)
+    CRE->>Factory: setDiscount bps (WF#1)
+    Investor->>Factory: buy(USDC) → YST
+    Factory->>Issuer: forward USDC proceeds
+    Note over Factory,Vault: Arc USDC → Router → Vault (CCTP V2)
+    CRE->>Vault: triggerSettlement (WF#3, daily)
     Investor->>Vault: claimRewards() → USDC
 ```
 

@@ -10,7 +10,7 @@ Yield Stream Marketplace (YSM) is a decentralized platform that allows DeFi prot
 
 - **Programmable USDC Settlement**: `Router.sol` is a programmable settlement engine. It handles multi-step fee distribution, splitting revenue between investor `Vault` contracts and a protocol `Treasury` with basis-point precision (`BPS_DENOMINATOR = 10,000`).
 - **Chain-Abstracted Liquidity Hub**: YSM treats Arc as its primary **Economic OS**. Using the **Circle Bridge Kit** (`@circle-fin/bridge-kit`) and **Circle Forwarder**, USDC flows effortlessly from Arc Testnet to Ethereum Sepolia via CCTP V2.
-  - *See:* `smart-contracts/scripts/bridge-arc-to-sepolia.ts` & `Router.sol:receiveFromArc`
+  - *See:* `smart-contracts/scripts/bridge-arc-to-sepolia.ts` & `Router.sol:flushBalance`
   - *Also see:* `frontend/ARC_BRIDGE_FLOW.md` for the full end-to-end walkthrough
 
 ---

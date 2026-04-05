@@ -8,7 +8,7 @@ Yield Stream Marketplace (YSM) is a decentralized protocol that tokenizes protoc
 
 ---
 
-## Hackathon Tracks & Technical Merit
+## Sponsor Tracks 
 
 ### 1. Arc (Circle)
 - **Programmable USDC Settlement**: `Router.sol` is a programmable settlement engine. It handles multi-step fee distribution, splitting revenue between investor `Vault` contracts and a protocol `Treasury` with basis-point precision (`BPS_DENOMINATOR = 10,000`).

@@ -245,7 +245,7 @@ const onDecoteTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): 
 
 // ============================================================
 // WORKFLOW #2 — Gate (workflowType = 2)
-// Trigger : HTTP  |  Payload attendu : { "slug": "..." }
+// Trigger : HTTP  |  Payload : { "slug": "..." }
 // Report  : abi.encode(uint8=2, bytes=abi.encode(bool approved))
 // ============================================================
 
@@ -283,7 +283,6 @@ const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Pr
   runtime.log(`[WORKFLOW #2] Critère ancienneté ${daysOfData}j ≥ 90j → ${daysOfData >= 90 ? "✓" : "✗"}`);
   runtime.log(`[WORKFLOW #2] Gate ${slug} : ${approved ? "ACCEPTÉ ✅" : "REFUSÉ ❌"}`);
 
-  // --- P2.2 : résumé + commande cast pour P1 (seuil 60 jours actifs / 90) ---
   const FACTORY_ADDRESS = envVar("FACTORY_ADDRESS") ?? "0x" + STREAM_FACTORY_ADDRESS;
   const STREAM_KEY = envVar("STREAM_KEY") ?? "";
   runtime.log("");
@@ -306,12 +305,10 @@ const onGateTrigger = async (runtime: Runtime<Config>, payload: HTTPPayload): Pr
   runtime.log("========================================");
   runtime.log("");
 
-  // --- Envoi on-chain via CRE ---
   // report = abi.encode(uint8=2, bytes=abi.encode(bool approved))
   const innerPayload = encodeBool(approved);
   const reportBytes = encodeReport(2, innerPayload);
 
-  // Log du hex pour test manuel via demo-sender.ts
   let reportHex = "0x";
   for (let i = 0; i < reportBytes.length; i++) reportHex += reportBytes[i]!.toString(16).padStart(2, "0");
   runtime.log(`[WORKFLOW #2] REPORT_HEX=${reportHex}`);

@@ -50,7 +50,7 @@ async function main() {
     to: {
       recipientAddress: SEPOLIA_ROUTER,
       chain: "Ethereum_Sepolia",
-      useForwarder: true,   // Circle gère le mint côté Sepolia automatiquement
+      useForwarder: true,
     },
     amount: AMOUNT,
   });
